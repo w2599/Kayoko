@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ -e /Library/LaunchDaemons/dev.traurige.kayokod.plist ]]; then
+    launchctl unload /Library/LaunchDaemons/dev.traurige.kayokod.plist;
+elif [[ -e /var/jb/Library/LaunchDaemons/dev.traurige.kayokod.plist ]]; then
+    launchctl unload /var/jb/Library/LaunchDaemons/dev.traurige.kayokod.plist;
+fi
