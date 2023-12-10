@@ -1,4 +1,4 @@
-Package: dev.traurige.kayoko
+Package: zp.dev.traurige.kayoko
 Name: Kayoko
 Depends: firmware (>= 13.0), firmware (<< 16), mobilesubstrate, preferenceloader, com.opa334.libsandy
 Version: 1.5
