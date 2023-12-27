@@ -9,16 +9,6 @@
 			<string>PSGroupCell</string>
 		</dict>
 		<dict>
-			<key>cellClass</key>
-			<string>SingleContactCell</string>
-			<key>DisplayName</key>
-			<string>Alexandra</string>
-			<key>Username</key>
-			<string>vyolit</string>
-			<key>height</key>
-			<integer>58</integer>
-		</dict>
-		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
@@ -28,7 +18,7 @@
 			<key>key</key>
 			<string>Enabled</string>
 			<key>label</key>
-			<string>Enable Kayoko</string>
+			<string>启用 Kayoko</string>
             <key>PostNotification</key>
 			<string>codes.aurora.kayoko.preferences.reload</string>
 		</dict>
@@ -37,13 +27,13 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>History</string>
+			<string>历史</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSStaticTextCell</string>
 			<key>label</key>
-			<string>Maximum Amount</string>
+			<string>最大保留</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -77,7 +67,7 @@
 			<key>key</key>
 			<string>SaveText</string>
 			<key>label</key>
-			<string>Save Text</string>
+			<string>保存文本</string>
 			<key>PostNotification</key>
 			<string>codes.aurora.kayoko.preferences.reload</string>
 		</dict>
@@ -91,7 +81,7 @@
 			<key>key</key>
 			<string>SaveImages</string>
 			<key>label</key>
-			<string>Save Images</string>
+			<string>保存图像</string>
 			<key>PostNotification</key>
 			<string>codes.aurora.kayoko.preferences.reload</string>
 		</dict>
@@ -100,9 +90,9 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Behavior</string>
+			<string>行为</string>
 			<key>footerText</key>
-			<string>The "Prediction Bar" method displays custom suggestions on the "More Keyboard Keyplane" (123).</string>
+			<string>"预测栏"方法在"更多键盘键位"（123）上显示自定义建议。</string>
 			<key>isStaticText</key>
 			<true />
 		</dict>
@@ -116,7 +106,7 @@
 			<key>defaults</key>
 			<string>codes.aurora.kayoko.preferences</string>
 			<key>label</key>
-			<string>Activation Method:</string>
+			<string>激活方法:</string>
 			<key>key</key>
 			<string>ActivationMethod</string>
 			<key>validValues</key>
@@ -126,8 +116,8 @@
 			</array>
 			<key>validTitles</key>
 			<array>
-				<string>Prediction Bar</string>
-				<string>Dictation Key</string>
+				<string>预测栏</string>
+				<string>听写键</string>
 			</array>
 		</dict>
 		<dict>
@@ -140,7 +130,7 @@
 			<key>key</key>
 			<string>AutomaticallyPaste</string>
 			<key>label</key>
-			<string>Automatically Paste</string>
+			<string>自动粘贴</string>
 			<key>PostNotification</key>
 			<string>codes.aurora.kayoko.preferences.reload</string>
 		</dict>
@@ -170,7 +160,7 @@
 			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
-			<string>Respring</string>
+			<string>注销</string>
 			<key>action</key>
 			<string>respring</string>
 		</dict>
@@ -178,33 +168,15 @@
 			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
-			<string>Reset Preferences</string>
+			<string>重置选项</string>
 			<key>action</key>
 			<string>resetPrompt</string>
 		</dict>
-
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Thanks to you and everyone who has helped in any way.</string>
-			<key>isStaticText</key>
-			<true />
-		</dict>
-		<dict>
- 			<key>cell</key>
- 			<string>PSLinkCell</string>
- 			<key>label</key>
- 			<string>Credits</string>
- 			<key>detail</key>
- 			<string>KayokoCreditsListController</string>
- 		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>footerText</key>
-			<string>Kayoko by Alexandra Aurora Göttlicher</string>
+			<string>Alexandra Aurora Göttlicher制作</string>
 			<key>isStaticText</key>
 			<true />
 		</dict>
@@ -212,21 +184,9 @@
 			<key>cellClass</key>
 			<string>LinkCell</string>
 			<key>label</key>
-			<string>My Tweaks</string>
+			<string>源代码</string>
 			<key>subtitle</key>
-			<string>Check out my other work.</string>
-			<key>url</key>
-			<string>https://undressd.wtf/user/vyolit</string>
-			<key>height</key>
-			<integer>54</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>LinkCell</string>
-			<key>label</key>
-			<string>Source Code</string>
-			<key>subtitle</key>
-			<string>Find it on my GitHub.</string>
+			<string>在GitHub查看它。</string>
 			<key>url</key>
 			<string>https://github.com/vyolit/Kayoko</string>
 			<key>height</key>

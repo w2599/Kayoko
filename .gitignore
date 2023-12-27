@@ -2,3 +2,5 @@
 .theos
 packages/
 .vscode
+Manager/.stamp
+Utils/.stamp

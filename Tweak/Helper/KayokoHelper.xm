@@ -266,6 +266,35 @@ static void load_preferences() {
     pfAutomaticallyPaste = [[preferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
 }
 
+
+%group DictationAppearance
+
+NSString* _icon0=@"arrow.up.doc.on.clipboard";
+NSString* _icon1=@"arrow.up.doc.on.clipboard.fill";
+
+%hook UIKeyboardDockItem
+
+- (id)initWithImageName:(NSString *)arg1 identifier:(id)arg2 {
+    if ([arg1 isEqualToString:@"mic"])
+        return %orig(_icon0, arg2);
+    else if ([arg1 isEqualToString:@"mic.fill"])
+        return %orig(_icon1, arg2);
+    return %orig;
+}
+
+- (void)setImageName:(NSString *)arg1 {
+    if ([arg1 isEqualToString:@"mic"])
+        return %orig(_icon0);
+    else if ([arg1 isEqualToString:@"mic.fill"])
+        return %orig(_icon1);
+    return %orig;
+}
+
+%end
+
+%end
+
+
 #pragma mark - Constructor
 
 /**
@@ -331,7 +360,9 @@ __attribute((constructor)) static void initialize() {
     MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow), (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow, (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:), (IMP)&override_UIKeyboardImpl_applicationDidBecomeActive, (IMP *)&orig_UIKeyboardImpl_applicationDidBecomeActive);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:), (IMP)&override_UIKeyboardImpl_applicationWillResignActive, (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
-
+    if (@available(iOS 15.0, *)) {
+        %init(DictationAppearance);
+    }
     if (pfAutomaticallyPaste) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)paste, (CFStringRef)kNotificationKeyHelperPaste, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
     }
