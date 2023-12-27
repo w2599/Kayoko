@@ -266,6 +266,47 @@ static void load_preferences() {
     pfAutomaticallyPaste = [[preferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
 }
 
+
+%group DictationAppearance
+
+%hook UIKeyboardDockItem
+
+- (id)initWithImageName:(NSString *)arg1 identifier:(id)arg2 {
+    if ([arg1 isEqualToString:@"mic"])
+        return %orig(@"doc.on.clipboard", arg2);
+    else if ([arg1 isEqualToString:@"mic.fill"])
+        return %orig(@"doc.on.clipboard.fill", arg2);
+    return %orig;
+}
+
+- (void)setImageName:(NSString *)arg1 {
+    if ([arg1 isEqualToString:@"mic"])
+        return %orig(@"doc.on.clipboard");
+    else if ([arg1 isEqualToString:@"mic.fill"])
+        return %orig(@"doc.on.clipboard.fill");
+    return %orig;
+}
+
+%end
+
+%hook UIKeyboardDockItemButton
+
+- (CGRect)imageRectForContentRect:(CGRect)arg1 {
+    CGRect origRect = %orig;
+    if (ABS(origRect.size.width - origRect.size.height) > 1.0) {
+        // adjust image to its 83% but keep its center
+        CGSize newSize = CGSizeMake(origRect.size.width * 0.833, origRect.size.height * 0.833);
+        CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2, origRect.origin.y + (origRect.size.height - newSize.height) / 2);
+        return CGRectMake(newOrigin.x, newOrigin.y, newSize.width, newSize.height);
+    }
+    return origRect;
+}
+
+%end
+
+%end
+
+
 #pragma mark - Constructor
 
 /**
@@ -331,7 +372,9 @@ __attribute((constructor)) static void initialize() {
     MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow), (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow, (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:), (IMP)&override_UIKeyboardImpl_applicationDidBecomeActive, (IMP *)&orig_UIKeyboardImpl_applicationDidBecomeActive);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:), (IMP)&override_UIKeyboardImpl_applicationWillResignActive, (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
-
+    if (@available(iOS 15.0, *)) {
+        %init(DictationAppearance);
+    }
     if (pfAutomaticallyPaste) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)paste, (CFStringRef)kNotificationKeyHelperPaste, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
     }
