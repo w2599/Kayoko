@@ -65,11 +65,21 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _pasteboard = [UIPasteboard generalPasteboard];
-        _lastChangeCount = [_pasteboard changeCount];
         _fileManager = [NSFileManager defaultManager];
+        if (@available(iOS 15, *)) {
+            [self prepareGeneralPasteboard];
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+              [self prepareGeneralPasteboard];
+            });
+        }
     }
     return self;
+}
+
+- (void)prepareGeneralPasteboard {
+    _pasteboard = [UIPasteboard generalPasteboard];
+    _lastChangeCount = [_pasteboard changeCount];
 }
 
 - (void)preparePasteboardQueue {
