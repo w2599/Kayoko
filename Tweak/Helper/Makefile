@@ -2,6 +2,7 @@ TWEAK_NAME := KayokoHelper
 
 KayokoHelper_FILES += KayokoHelper.m
 KayokoHelper_FILES += KeyokoHelperLogos.xm
+KayokoHelper_FILES += KayokoMenu.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)

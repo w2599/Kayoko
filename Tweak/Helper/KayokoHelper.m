@@ -6,6 +6,7 @@
 //
 
 #import "KayokoHelper.h"
+#import "KayokoMenu.h"
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
@@ -21,6 +22,10 @@ NSUserDefaults *kayokoHelperPreferences = nil;
 BOOL kayokoHelperPrefsEnabled = NO;
 NSUInteger kayokoHelperPrefsActivationMethod = 0;
 BOOL kayokoHelperPrefsAutomaticallyPaste = NO;
+
+NSString *const kayokoMenuName = @"Kayoko";
+NSString *const kayokoSelectorName = @"_Kayoko_OpenTools_ab2e39c7";
+NSString *const kayokoSelectorSignature = @"v@:";
 
 static BOOL shouldShowCustomSuggestions = NO;
 static BOOL applicationIsInForeground = YES;
@@ -263,6 +268,117 @@ override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent(
                                          (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
 }
 
+#pragma mark - _UIEditMenuPresentation class hooks (iOS 16+)
+
+static void (*orig__UIEditMenuPresentation_displayMenu_configuration_)(id, SEL, UIMenu *, id);
+static void override__UIEditMenuPresentation_displayMenu_configuration_(id self, SEL _cmd, UIMenu *menu,
+                                                                        id configuration) {
+    NSMutableArray *build = [NSMutableArray new];
+    for (id item in [menu children]) {
+        if (KayokoMenuItemIsWritingTool(item)) {
+            continue;
+        }
+        if (![item isKindOfClass:[UIMenu class]]) {
+            [build addObject:item];
+            continue;
+        }
+        UIMenu *submenu = item;
+        if (![submenu.identifier isEqualToString:KayokoAppleMenuIdentifier()]) {
+            [build addObject:submenu];
+            continue;
+        }
+        NSMutableArray *rebuildAppleEditMenu = [submenu.children mutableCopy];
+        [rebuildAppleEditMenu addObject:KayokoMenuItemUICommand()];
+        UIMenu *rebuildAppleMenu = [submenu menuByReplacingChildren:rebuildAppleEditMenu];
+        [build addObject:rebuildAppleMenu];
+    }
+    UIMenu *newMenu = [menu menuByReplacingChildren:build];
+    orig__UIEditMenuPresentation_displayMenu_configuration_(self, _cmd, newMenu, configuration);
+}
+
+#pragma mark - UICalloutBar class hooks (iOS 15)
+
+static void (*orig_UICalloutBar_setExtraItems_)(UICalloutBar *, SEL, NSArray<UIMenuItem *> *);
+static void override_UICalloutBar_setExtraItems_(UICalloutBar *self, SEL _cmd, NSArray<UIMenuItem *> *items) {
+    NSMutableArray<UIMenuItem *> *newItems = [NSMutableArray arrayWithCapacity:items.count];
+    for (UIMenuItem *item in items) {
+        NSString *selectorName = NSStringFromSelector(item.action);
+        if ([selectorName isEqualToString:kayokoSelectorName]) {
+            item.action = NSSelectorFromString(@"__kayoko_dummy__");
+        }
+        [newItems addObject:item];
+    }
+    orig_UICalloutBar_setExtraItems_(self, _cmd, [newItems copy]);
+}
+
+static void (*orig_UICalloutBar_updateAvailableButtons)(UICalloutBar *, SEL);
+static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL _cmd) {
+    Class cbsbdCls = NSClassFromString(@"_UICalloutBarSystemButtonDescription");
+    if (!cbsbdCls || ![cbsbdCls respondsToSelector:@selector(buttonDescriptionWithTitle:action:type:)]) {
+        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+    }
+
+    UIMenuItem *kayokoNowItem = KayokoMenuItem();
+    _UICalloutBarSystemButtonDescription *buttonDescription =
+        [cbsbdCls buttonDescriptionWithTitle:kayokoNowItem.title
+                                      action:NSSelectorFromString(kayokoSelectorName)
+                                        type:1];
+
+    if (!buttonDescription) {
+        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+    }
+
+    Ivar msbd = class_getInstanceVariable(object_getClass(self), "m_systemButtonDescriptions");
+    if (!msbd) {
+        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+    }
+
+    NSMutableArray *buttonDescriptions = object_getIvar(self, msbd);
+    for (_UICalloutBarSystemButtonDescription *description in buttonDescriptions) {
+        if (!description.action) {
+            continue;
+        }
+        NSString *selectorName = NSStringFromSelector(description.action);
+        if ([selectorName isEqualToString:NSStringFromSelector(buttonDescription.action)]) {
+            return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+        }
+    }
+
+    NSInteger insertIndex = NSNotFound;
+    NSInteger currentIndex = 0;
+    for (_UICalloutBarSystemButtonDescription *description in buttonDescriptions) {
+        if (!description.action) {
+            continue;
+        }
+        if ([NSStringFromSelector(description.action) hasPrefix:@"_"]) {
+            insertIndex = currentIndex;
+            break;
+        }
+        currentIndex++;
+    }
+
+    if (insertIndex == 0) {
+        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+    }
+
+    if (insertIndex == NSNotFound) {
+        [buttonDescriptions addObject:buttonDescription];
+    } else {
+        [buttonDescriptions insertObject:buttonDescription atIndex:insertIndex];
+    }
+
+    return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+}
+
+#pragma mark - UIResponder additions
+
+static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                           (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
+    });
+}
+
 #pragma mark - Notification callbacks
 
 /**
@@ -419,6 +535,25 @@ __attribute((constructor)) static void initialize() {
                         (IMP)&override_UIKeyboardLayoutStar_keyHitTest, (IMP *)&orig_UIKeyboardLayoutStar_keyHitTest);
     } else if (kayokoHelperPrefsActivationMethod == kActivationMethodInputSwitcher) {
         EnableKayokoActivationGlobe();
+    } else if (kayokoHelperPrefsActivationMethod == kActivationMethodCalloutBar) {
+        class_addMethod(NSClassFromString(@"UIResponder"), NSSelectorFromString(kayokoSelectorName),
+                        (IMP)addon_UIResponder_openKayoko, "v@:");
+
+        if (@available(iOS 16, *)) {
+            Class targetCls = NSClassFromString(@"_UIEditMenuContentPresentation");
+            if (!targetCls) {
+                targetCls = NSClassFromString(@"_UIEditMenuPresentation");
+            }
+            MSHookMessageEx(targetCls, @selector(displayMenu:configuration:),
+                            (IMP)override__UIEditMenuPresentation_displayMenu_configuration_,
+                            (IMP *)&orig__UIEditMenuPresentation_displayMenu_configuration_);
+        } else if (@available(iOS 15, *)) {
+            MSHookMessageEx(NSClassFromString(@"UICalloutBar"), @selector(setExtraItems:),
+                            (IMP)override_UICalloutBar_setExtraItems_, (IMP *)&orig_UICalloutBar_setExtraItems_);
+            MSHookMessageEx(NSClassFromString(@"UICalloutBar"), @selector(updateAvailableButtons),
+                            (IMP)override_UICalloutBar_updateAvailableButtons,
+                            (IMP *)&orig_UICalloutBar_updateAvailableButtons);
+        }
     }
 
     MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow),
