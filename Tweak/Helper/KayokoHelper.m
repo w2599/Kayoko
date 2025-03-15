@@ -547,7 +547,7 @@ __attribute((constructor)) static void initialize() {
             MSHookMessageEx(targetCls, @selector(displayMenu:configuration:),
                             (IMP)override__UIEditMenuPresentation_displayMenu_configuration_,
                             (IMP *)&orig__UIEditMenuPresentation_displayMenu_configuration_);
-        } else if (@available(iOS 15, *)) {
+        } else {
             MSHookMessageEx(NSClassFromString(@"UICalloutBar"), @selector(setExtraItems:),
                             (IMP)override_UICalloutBar_setExtraItems_, (IMP *)&orig_UICalloutBar_setExtraItems_);
             MSHookMessageEx(NSClassFromString(@"UICalloutBar"), @selector(updateAvailableButtons),
