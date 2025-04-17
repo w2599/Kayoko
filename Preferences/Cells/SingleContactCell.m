@@ -72,7 +72,7 @@
         [self setUsernameLabel:[[UILabel alloc] init]];
         [[self usernameLabel] setText:[NSString stringWithFormat:@"@%@", [self username]]];
         [[self usernameLabel] setFont:[UIFont systemFontOfSize:11 weight:UIFontWeightRegular]];
-        [[self usernameLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.6]];
+        [[self usernameLabel] setTextColor:[UIColor secondaryLabelColor]];
         [self addSubview:[self usernameLabel]];
 
         [[self usernameLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
