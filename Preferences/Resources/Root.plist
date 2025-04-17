@@ -14,7 +14,7 @@
 			<key>displayName</key>
 			<string>Alexandra</string>
 			<key>username</key>
-			<string>AlexandraAurora</string>
+			<string>kaethchen</string>
 			<key>height</key>
 			<integer>58</integer>
 		</dict>
@@ -329,35 +329,11 @@
 			<key>cellClass</key>
 			<string>LinkCell</string>
 			<key>label</key>
-			<string>My Tweaks</string>
-			<key>subtitle</key>
-			<string>Check out my other work.</string>
-			<key>url</key>
-			<string>https://akarii.cafe/user/AlexandraAurora</string>
-			<key>height</key>
-			<integer>54</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>LinkCell</string>
-			<key>label</key>
 			<string>Source Code</string>
 			<key>subtitle</key>
 			<string>Find it on my GitHub.</string>
 			<key>url</key>
-			<string>https://github.com/AlexandraAurora/Kayoko</string>
-			<key>height</key>
-			<integer>54</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>LinkCell</string>
-			<key>label</key>
-			<string>Donate</string>
-			<key>subtitle</key>
-			<string>Let me know that you like what I do.</string>
-			<key>url</key>
-			<string>https://ko-fi.com/AlexandraAurora</string>
+			<string>https://github.com/kaethchen/Kayoko</string>
 			<key>height</key>
 			<integer>54</integer>
 		</dict>

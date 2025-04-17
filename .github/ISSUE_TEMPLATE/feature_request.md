@@ -3,7 +3,7 @@ name: Feature Request
 about: Suggest a feature for Kayoko.
 title: ''
 labels: enhancement
-assignees: AlexandraAurora
+assignees: kaethchen
 
 ---
 

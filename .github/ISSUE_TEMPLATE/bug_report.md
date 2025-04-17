@@ -3,7 +3,7 @@ name: Bug Report
 about: Report a bug in Kayoko.
 title: ''
 labels: bug
-assignees: AlexandraAurora
+assignees: kaethchen
 
 ---
 
