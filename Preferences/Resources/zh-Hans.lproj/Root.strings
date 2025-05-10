@@ -7,6 +7,7 @@
 "Behaviors" = "行为";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "Activation Method" = "激活方法";
+"Activation Methods" = "激活方法";
 "Prediction Bar" = "预测栏";
 "Dictation Key" = "听写键";
 "Input Switcher" = "输入法菜单";
@@ -41,3 +42,5 @@
 "Please support our paid works, thank you!" = "请支持我们的其他付费作品，谢谢！";
 "Original Author" = "原作者";
 "Original author of Kayoko." = "Kayoko 的原作者。";
+"%@ and %@" = "%@和%@";
+"%@ and %d others" = "%@和其他 %d 个";

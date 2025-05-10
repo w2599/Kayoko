@@ -506,7 +506,8 @@ __attribute((constructor)) static void initialize() {
         return;
     }
 
-    if (kayokoHelperPrefsActivationMethod == kActivationMethodPredictionBar) {
+    // Prediction Bar
+    if (kayokoHelperPrefsActivationMethod & kActivationMethodPredictionBar) {
         if (@available(iOS 15.0, *)) {
             MSHookMessageEx(objc_getClass("UIKeyboardAutocorrectionController"), @selector(setAutocorrectionList:),
                             (IMP)&override_UIKeyboardAutocorrectionController_setAutocorrectionList,
@@ -524,7 +525,10 @@ __attribute((constructor)) static void initialize() {
         MSHookMessageEx(objc_getClass("UIPredictionViewController"), @selector(predictionView:didSelectCandidate:),
                         (IMP)&override_UIPredictionViewController_predictionView_didSelectCandidate,
                         (IMP *)&orig_UIPredictionViewController_predictionView_didSelectCandidate);
-    } else if (kayokoHelperPrefsActivationMethod == kActivationMethodDictationKey) {
+    }
+
+    // Dictation Key
+    if (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey) {
         EnableKayokoActivationDictation();
         MSHookMessageEx(objc_getClass("UISystemKeyboardDockController"),
                         @selector(dictationItemButtonWasPressed:withEvent:),
@@ -533,9 +537,15 @@ __attribute((constructor)) static void initialize() {
                         (IMP)&override_UIKeyboardImpl_shouldShowDictationKey, nil);
         MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(keyHitTest:),
                         (IMP)&override_UIKeyboardLayoutStar_keyHitTest, (IMP *)&orig_UIKeyboardLayoutStar_keyHitTest);
-    } else if (kayokoHelperPrefsActivationMethod == kActivationMethodInputSwitcher) {
+    }
+
+    // Input Switcher
+    if (kayokoHelperPrefsActivationMethod & kActivationMethodInputSwitcher) {
         EnableKayokoActivationGlobe();
-    } else if (kayokoHelperPrefsActivationMethod == kActivationMethodCalloutBar) {
+    }
+
+    // Callout Bar
+    if (kayokoHelperPrefsActivationMethod & kActivationMethodCalloutBar) {
         class_addMethod(NSClassFromString(@"UIResponder"), NSSelectorFromString(kayokoSelectorName),
                         (IMP)addon_UIResponder_openKayoko, "v@:");
 

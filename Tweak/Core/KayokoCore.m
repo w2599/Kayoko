@@ -164,7 +164,8 @@ static void show() {
         }
 
         [kayokoView show];
-        if (kayokoPrefsPlayHapticFeedback && kayokoHelperPrefsActivationMethod == kActivationMethodDictationKey) {
+
+        if (kayokoPrefsPlayHapticFeedback && (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey)) {
             AudioServicesPlaySystemSound(1519);
         }
     }

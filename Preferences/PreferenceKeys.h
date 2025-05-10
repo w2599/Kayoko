@@ -7,11 +7,11 @@
 
 #import <Foundation/Foundation.h>
 
-typedef NS_ENUM(NSUInteger, ActivationMethod) {
-    kActivationMethodPredictionBar = 0,
-    kActivationMethodDictationKey = 1,
-    kActivationMethodInputSwitcher = 2,
-    kActivationMethodCalloutBar = 3
+typedef NS_OPTIONS(NSUInteger, ActivationMethod) {
+    kActivationMethodPredictionBar = 1 << 0,
+    kActivationMethodDictationKey = 1 << 1,
+    kActivationMethodInputSwitcher = 1 << 2,
+    kActivationMethodCalloutBar = 1 << 3
 };
 
 static NSString *const kPreferencesIdentifier = @"codes.aurora.kayoko.preferences";

@@ -183,6 +183,54 @@
         }
         return cell;
     }
+    if ([key isEqualToString:@"PSLinkListCell"]) {
+        NSString *detail = [specifier propertyForKey:@"detail"];
+        if ([detail isEqualToString:@"KayokoListItemsController"]) {
+            UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+            NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+            
+            // Get the current activation methods
+            NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+            ActivationMethod currentOptions = [userDefaults integerForKey:kPreferenceKeyActivationMethod];
+            if (currentOptions == 0) {
+                currentOptions = kPreferenceKeyActivationMethodDefaultValue;
+            }
+            
+            // Get valid values and titles
+            NSArray *validValues = [specifier propertyForKey:@"validValues"];
+            NSArray *validTitles = [specifier propertyForKey:@"validTitles"];
+            
+            // Find selected options
+            NSMutableArray *selectedTitles = [NSMutableArray array];
+            for (NSUInteger i = 0; i < validValues.count; i++) {
+                NSNumber *value = validValues[i];
+                if (currentOptions & [value integerValue]) {
+                    [selectedTitles addObject:[bundle localizedStringForKey:validTitles[i] value:nil table:@"Root"]];
+                }
+            }
+            
+            // Format the detail text based on the number of selected options
+            NSString *detailText;
+            if (selectedTitles.count == 1) {
+                // Only one option - display its name
+                detailText = selectedTitles[0];
+            } else if (selectedTitles.count == 2) {
+                // Two options - display "Option A and Option B"
+                NSString *format = [bundle localizedStringForKey:@"%@ and %@" value:nil table:@"Root"];
+                detailText = [NSString stringWithFormat:format, selectedTitles[0], selectedTitles[1]];
+            } else if (selectedTitles.count > 2) {
+                // Three or more options - display "Option A and X others"
+                NSString *format = [bundle localizedStringForKey:@"%@ and %d others" value:nil table:@"Root"];
+                detailText = [NSString stringWithFormat:format, selectedTitles[0], (int)selectedTitles.count - 1];
+            } else {
+                // No options (shouldn't happen)
+                detailText = @"";
+            }
+            
+            cell.detailTextLabel.text = detailText;
+            return cell;
+        }
+    }
     return [super tableView:tableView cellForRowAtIndexPath:indexPath];
 }
 
