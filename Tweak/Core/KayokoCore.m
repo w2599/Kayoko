@@ -285,7 +285,12 @@ __attribute((constructor)) static void initialize() {
 
         EnableKayokoDisablePasteTips();
 
-        MSHookMessageEx(objc_getClass("UIStatusBarWindow"), @selector(initWithFrame:),
+        Class statusBarWindowCls = objc_getClass("UIStatusBarWindow");
+        if (@available(iOS 17, *)) {
+            statusBarWindowCls = objc_getClass("SBStatusBarWindow");
+        }
+
+        MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:),
                         (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
         CFNotificationCenterAddObserver(

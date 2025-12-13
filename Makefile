@@ -1,4 +1,4 @@
-export PACKAGE_VERSION := 2.8
+export PACKAGE_VERSION := 3.0
 export ARCHS := arm64 arm64e
 export TARGET := iphone:clang:16.5:14.0
 export GO_EASY_ON_ME := 1
