@@ -17,9 +17,6 @@ static NSUInteger const kFavoritesButtonImageSize = 24;
 static NSUInteger const kClearButtonImageSize = 20;
 static NSUInteger const kBackButtonImageSize = 20;
 
-@interface _UIGrabber : UIControl
-@end
-
 @interface KayokoView : UIView {
     KayokoTableView *_previewSourceTableView;
     BOOL _isAnimating;
@@ -27,10 +24,12 @@ static NSUInteger const kBackButtonImageSize = 20;
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
+@property(nonatomic, strong) NSLayoutConstraint *headerHeightConstraint;
 @property(nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
-@property(nonatomic, strong) _UIGrabber *grabber;
+@property(nonatomic, strong) UISegmentedControl *contentSegmentedControl;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIButton *clearButton;
+@property(nonatomic, strong) UIButton *closeButton;
 @property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
@@ -38,8 +37,13 @@ static NSUInteger const kBackButtonImageSize = 20;
 @property(nonatomic, strong) KayokoFavoritesTableView *favoritesTableView;
 @property(nonatomic, strong) KayokoPreviewView *previewView;
 @property(nonatomic, strong) UIImpactFeedbackGenerator *feedbackGenerator;
+@property(nonatomic, weak) UIView *backdropView;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
+@property(nonatomic, assign) BOOL alwaysShowFavoritesOnShow;
+@property(nonatomic, assign) BOOL showRecordedTimeInHistory;
+@property(nonatomic, assign) BOOL showRecordedTimeInFavorites;
+@property(nonatomic, assign) BOOL cleaning;
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)show;
 - (void)hide;

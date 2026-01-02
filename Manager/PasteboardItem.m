@@ -14,7 +14,8 @@
  */
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
-                          withImageNamed:(NSString *)imageName {
+                          withImageNamed:(NSString *)imageName
+                          remark:(NSString *)remark {
     self = [super init];
 
     if (self) {
@@ -22,6 +23,8 @@
         [self setContent:content];
         [self setImageName:imageName];
         [self setHasLink:[content hasPrefix:@"http://"] || [content hasPrefix:@"https://"]];
+        [self setRemark:remark];
+        [self setRecordedAt:[[NSDate date] timeIntervalSince1970]];
     }
 
     return self;
@@ -38,9 +41,18 @@
     NSString *bundleIdentifier = dictionary[kItemKeyBundleIdentifier];
     NSString *content = dictionary[kItemKeyContent];
     NSString *imageName = dictionary[kItemKeyImageName];
-    return [[PasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
-                                                 andContent:content
-                                             withImageNamed:imageName];
+    NSString *remark = dictionary[kItemKeyRemark];
+    PasteboardItem *item = [[PasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
+                                                                  andContent:content
+                                                              withImageNamed:imageName
+                                                                      remark:remark];
+    NSNumber *recordedAtNumber = dictionary[kItemKeyRecordedAt];
+    if ([recordedAtNumber isKindOfClass:[NSNumber class]]) {
+        [item setRecordedAt:[recordedAtNumber doubleValue]];
+    } else {
+        [item setRecordedAt:0];
+    }
+    return item;
 }
 
 @end

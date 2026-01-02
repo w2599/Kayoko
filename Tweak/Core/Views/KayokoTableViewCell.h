@@ -12,10 +12,12 @@
 @interface KayokoTableViewCell : UITableViewCell
 @property(nonatomic) UIImageView *iconImageView;
 @property(nonatomic) UILabel *headerLabel;
-@property(nonatomic) UILabel *contentLabel;
+@property(nonatomic) UILabel *remarkLabel;
+@property(nonatomic) UIView *remarkContainer;
 @property(nonatomic) UIImageView *contentImageView;
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       andItem:(PasteboardItem *)item
+              showRecordedTime:(BOOL)showRecordedTime
               reuseIdentifier:(NSString *)reuseIdentifier;
 @end
 

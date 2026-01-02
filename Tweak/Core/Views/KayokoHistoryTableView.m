@@ -21,7 +21,8 @@
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[[super tableView:tableView
         leadingSwipeActionsConfigurationForRowAtIndexPath:indexPath] actions] mutableCopy];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
+  NSDictionary *dictionary = [self items][[indexPath row]];
+  PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *favoriteAction = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleNormal
@@ -35,6 +36,7 @@
                                   NSMutableArray *items = [[self items] mutableCopy];
                                   [items removeObjectAtIndex:[indexPath row]];
                                   [self setItems:items];
+                                  [self removeItemDictionaryFromAllItems:dictionary];
                                 }
                                 completion:^(BOOL finished) {
                                   [[PasteboardManager sharedInstance] addPasteboardItem:item
@@ -61,7 +63,8 @@
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[NSMutableArray alloc] init];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
+  NSDictionary *dictionary = [self items][[indexPath row]];
+  PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *deleteAction = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleNormal
@@ -75,6 +78,7 @@
                                   NSMutableArray *items = [[self items] mutableCopy];
                                   [items removeObjectAtIndex:[indexPath row]];
                                   [self setItems:items];
+                                  [self removeItemDictionaryFromAllItems:dictionary];
                                 }
                                 completion:^(BOOL finished) {
                                   [[PasteboardManager sharedInstance] removePasteboardItem:item

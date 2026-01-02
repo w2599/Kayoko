@@ -10,7 +10,111 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
+static CGFloat const kKayokoTableViewRowHeight = 46.6;
+static CGFloat const kKayokoSearchBarHeight = 44.0;
+
+@interface KayokoTableView ()
+@property(nonatomic, assign) BOOL didHideSearchHeader;
+@end
+
 @implementation KayokoTableView
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+
+    // UITableView 的 tableHeaderView 不会自动跟随 AutoLayout 调整宽度；手动同步。
+    if ([self searchBar]) {
+        CGRect frame = [[self searchBar] frame];
+        CGFloat width = [self bounds].size.width;
+        if (width > 0 && fabs(frame.size.width - width) > 0.5) {
+            frame.size.width = width;
+            [[self searchBar] setFrame:frame];
+            // 重新赋值触发布局刷新。
+            [self setTableHeaderView:[self searchBar]];
+        }
+    }
+
+    [self hideSearchHeaderIfNeededAnimated:NO];
+}
+
+- (void)configureSearchBarIfNeeded {
+    if ([self searchBar]) {
+        return;
+    }
+
+    UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, 0, kKayokoSearchBarHeight)];
+    [searchBar setSearchBarStyle:UISearchBarStyleMinimal];
+    [searchBar setAutocapitalizationType:UITextAutocapitalizationTypeNone];
+    [searchBar setAutocorrectionType:UITextAutocorrectionTypeNo];
+    [searchBar setReturnKeyType:UIReturnKeyDone];
+    [searchBar setEnablesReturnKeyAutomatically:YES];
+    [searchBar setDelegate:self];
+
+    NSString *placeholder = [[PasteboardManager localizationBundle] localizedStringForKey:@"Search"
+                                                                                   value:@"Search"
+                                                                                   table:@"Tweak"];
+    [searchBar setPlaceholder:placeholder];
+
+    [searchBar sizeToFit];
+    [self setSearchBar:searchBar];
+    [self setTableHeaderView:searchBar];
+}
+
+- (void)hideSearchHeaderIfNeededAnimated:(BOOL)animated {
+    if ([self didHideSearchHeader] || ![self searchBar]) {
+        return;
+    }
+
+    CGFloat height = [[self searchBar] bounds].size.height;
+    if (height <= 0) {
+        return;
+    }
+
+    // 把搜索栏先“藏起来”，用户下拉即可露出并搜索。
+    [self setDidHideSearchHeader:YES];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // 如果用户已经在滚动/交互，不强行修改。
+        if ([self isDragging] || [self isDecelerating]) {
+            return;
+        }
+        [self setContentOffset:CGPointMake(0, height) animated:animated];
+    });
+}
+
+- (BOOL)dictionary:(NSDictionary *)dictionary matchesSearchText:(NSString *)searchText {
+    if (!dictionary || ![searchText length]) {
+        return YES;
+    }
+
+    NSString *content = dictionary[kItemKeyContent] ?: @"";
+    NSString *bundleIdentifier = dictionary[kItemKeyBundleIdentifier] ?: @"";
+
+    NSRange contentRange = [content rangeOfString:searchText options:NSCaseInsensitiveSearch];
+    if (contentRange.location != NSNotFound) {
+        return YES;
+    }
+
+    NSRange bundleRange = [bundleIdentifier rangeOfString:searchText options:NSCaseInsensitiveSearch];
+    return bundleRange.location != NSNotFound;
+}
+
+- (void)applyFilterForSearchText:(NSString *)searchText {
+    NSString *trimmed = [searchText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (![trimmed length]) {
+        [self setItems:[self allItems] ?: @[]];
+        [self reloadData];
+        return;
+    }
+
+    NSMutableArray *filtered = [[NSMutableArray alloc] init];
+    for (NSDictionary *dictionary in ([self allItems] ?: @[])) {
+        if ([self dictionary:dictionary matchesSearchText:trimmed]) {
+            [filtered addObject:dictionary];
+        }
+    }
+    [self setItems:filtered];
+    [self reloadData];
+}
 
 /**
  * Initializes the table view.
@@ -25,7 +129,9 @@
         [self setDelegate:self];
         [self setDataSource:self];
         [self setBackgroundColor:[UIColor clearColor]];
-        [self setRowHeight:65];
+        [self setRowHeight:kKayokoTableViewRowHeight];
+
+        [self configureSearchBarIfNeeded];
     }
 
     return self;
@@ -53,6 +159,7 @@
 
     KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                                    andItem:item
+                                    showRecordedTime:[self showRecordedTime]
                                                            reuseIdentifier:@"KayokoTableViewCell"];
 
     // Add long press gesture recognizer to preview the cell's content.
@@ -61,6 +168,26 @@
     [cell addGestureRecognizer:gesture];
 
     return cell;
+}
+
+- (void)searchBarTextDidBeginEditing:(UISearchBar *)searchBar {
+    [searchBar setShowsCancelButton:YES animated:YES];
+}
+
+- (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
+    [self applyFilterForSearchText:searchText];
+}
+
+- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
+    [searchBar resignFirstResponder];
+}
+
+- (void)searchBarCancelButtonClicked:(UISearchBar *)searchBar {
+    [searchBar setText:@""];
+    [searchBar setShowsCancelButton:NO animated:YES];
+    [searchBar resignFirstResponder];
+    [self applyFilterForSearchText:@""];
+    [self hideSearchHeaderIfNeededAnimated:YES];
 }
 
 /**
@@ -171,8 +298,35 @@
  * @param items The new items to laod.
  */
 - (void)reloadDataWithItems:(NSArray *)items {
-    [self setItems:items];
+    NSArray *safeItems = items ?: @[];
+    [self setAllItems:safeItems];
+
+    // 刷新数据时，重置搜索状态。
+    if ([self searchBar]) {
+        [[self searchBar] setText:@""];
+        [[self searchBar] setShowsCancelButton:NO animated:NO];
+        [[self searchBar] resignFirstResponder];
+    }
+
+    [self setItems:safeItems];
     [self reloadData];
+
+    // 允许再次“下拉出现”。
+    [self setDidHideSearchHeader:NO];
+    [self hideSearchHeaderIfNeededAnimated:NO];
+}
+
+- (void)removeItemDictionaryFromAllItems:(NSDictionary *)dictionary {
+    if (!dictionary) {
+        return;
+    }
+
+    NSMutableArray *allItems = [[self allItems] mutableCopy] ?: [[NSMutableArray alloc] init];
+    NSUInteger idx = [allItems indexOfObject:dictionary];
+    if (idx != NSNotFound) {
+        [allItems removeObjectAtIndex:idx];
+        [self setAllItems:allItems];
+    }
 }
 
 @end

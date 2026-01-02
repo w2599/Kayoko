@@ -7,7 +7,6 @@
 
 #import <UIKit/UIKit.h>
 
-OBJC_EXTERN NSUserDefaults *kayokoHelperPreferences;
 OBJC_EXTERN BOOL kayokoHelperPrefsEnabled;
 OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
 OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;

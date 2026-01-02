@@ -16,8 +16,8 @@
 #import <Foundation/Foundation.h>
 #import <libSandy.h>
 #import <substrate.h>
-
-NSUserDefaults *kayokoHelperPreferences = nil;
+#import <roothide.h>
+#import "NSLogDebug.h"
 
 BOOL kayokoHelperPrefsEnabled = NO;
 NSUInteger kayokoHelperPrefsActivationMethod = 0;
@@ -28,7 +28,27 @@ NSString *const kayokoSelectorName = @"_Kayoko_OpenTools_ab2e39c7";
 NSString *const kayokoSelectorSignature = @"v@:";
 
 static BOOL shouldShowCustomSuggestions = NO;
-static BOOL applicationIsInForeground = YES;
+static BOOL applicationIsInForeground = NO;
+
+static __weak UIResponder *kayokoLastTextInputResponder = nil;
+
+static void kayokoRestoreFirstResponder(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                       const void *object, CFDictionaryRef userInfo);
+
+static BOOL (*orig_UIResponder_becomeFirstResponder)(UIResponder *self, SEL _cmd);
+static BOOL override_UIResponder_becomeFirstResponder(UIResponder *self, SEL _cmd) {
+    BOOL didBecome = orig_UIResponder_becomeFirstResponder(self, _cmd);
+    NSLogDebug(@"[Kayoko_zqbb] UIResponder becomeFirstResponder: %d", didBecome);
+    if (didBecome) {
+        if ([self conformsToProtocol:@protocol(UITextInput)] && ![self isKindOfClass:[UISearchBar class]]) {
+            NSLogDebug(@"[Kayoko_zqbb] UIResponder is text input responder");
+            kayokoLastTextInputResponder = self;
+            applicationIsInForeground = YES;
+        }
+    }
+
+    return didBecome;
+}
 
 static TIAutocorrectionList *kayokoCreateAutocorrectionList(void);
 static void kayokoPaste(void);
@@ -210,12 +230,13 @@ static UIKBTree *override_UIKeyboardLayoutStar_keyHitTest(UIKeyboardLayoutStar *
 /**
  * Hides the history when they keyboard was dismissed, if the history is already visible.
  */
-static void (*orig_UIKeyboardLayoutStar_didMoveToWindow)(UIKeyboardLayoutStar *self, SEL _cmd);
-static void override_UIKeyboardLayoutStar_didMoveToWindow(UIKeyboardLayoutStar *self, SEL _cmd) {
-    orig_UIKeyboardLayoutStar_didMoveToWindow(self, _cmd);
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
-}
+// static void (*orig_UIKeyboardLayoutStar_didMoveToWindow)(UIKeyboardLayoutStar *self, SEL _cmd);
+// static void override_UIKeyboardLayoutStar_didMoveToWindow(UIKeyboardLayoutStar *self, SEL _cmd) {
+//     orig_UIKeyboardLayoutStar_didMoveToWindow(self, _cmd);
+
+//     // 不要在键盘生命周期里自动隐藏 Kayoko。
+//     // （例如 Kayoko 内置搜索框收起键盘时，用户仍希望保持 Kayoko 可见。）
+// }
 
 #pragma mark - UIKeyboardImpl class hooks
 
@@ -237,7 +258,11 @@ static BOOL override_UIKeyboardImpl_shouldShowDictationKey(UIKeyboardImpl *self,
 static void (*orig_UIKeyboardImpl_applicationDidBecomeActive)(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive);
 static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive) {
     orig_UIKeyboardImpl_applicationDidBecomeActive(self, _cmd, didBecomeActive);
-    applicationIsInForeground = YES;
+    // 延时1秒再给YES
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        applicationIsInForeground = YES;
+        NSLogDebug(@"[Kayoko_zqbb] YES UIKeyboardImpl");
+    });
 }
 
 /**
@@ -248,7 +273,10 @@ static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *s
 static void (*orig_UIKeyboardImpl_applicationWillResignActive)(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive);
 static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive) {
     orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
-    applicationIsInForeground = NO;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      applicationIsInForeground = NO;
+      NSLogDebug(@"[Kayoko_zqbb] NO UIKeyboardImpl");
+    });
 }
 
 #pragma mark - UISystemKeyboardDockController class hooks
@@ -385,31 +413,64 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
  * Pastes the last copied item from the history.
  */
 static void kayokoPaste() {
+    NSLogDebug(@"[Kayoko_zqbb] kayokoPaste called, applicationIsInForeground: %d", applicationIsInForeground);
     if (!applicationIsInForeground) {
         return;
     }
 
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyPasteWillStart, nil, nil, YES);
+    dispatch_async(dispatch_get_main_queue(), ^{
+      // 先把焦点还给 App 的输入框（覆盖：用户点 Kayoko 搜索结果时键盘未消失的情况）。
+      UIResponder *responder = kayokoLastTextInputResponder;
+      if (responder && ![responder isFirstResponder] && [responder respondsToSelector:@selector(becomeFirstResponder)]) {
+          [responder becomeFirstResponder];
+      }
 
-    UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
+      // 再执行原本的粘贴逻辑。
+      CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                           (CFStringRef)kNotificationKeyPasteWillStart, nil, nil, YES);
 
-    // Get the latest copied item if the pasteboard cleared itself.
-    // The pasteboard clears itself after inactivity.
-    if (![pasteboard string] && ![pasteboard image]) {
-        PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
-        if (!item) {
-            return;
-        }
+      UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
 
-        if (![[item imageName] isEqualToString:@""]) {
-            [pasteboard setImage:[[PasteboardManager sharedInstance] getImageForItem:item]];
-        } else {
-            [pasteboard setString:[item content]];
-        }
+      // Get the latest copied item if the pasteboard cleared itself.
+      // The pasteboard clears itself after inactivity.
+      if (![pasteboard string] && ![pasteboard image]) {
+          PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
+          if (!item) {
+              return;
+          }
+
+          if (![[item imageName] isEqualToString:@""]) {
+              [pasteboard setImage:[[PasteboardManager sharedInstance] getImageForItem:item]];
+          } else {
+              [pasteboard setString:[item content]];
+          }
+      }
+
+      // 给一次 runloop，让 becomeFirstResponder 的切换更稳。
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+      });
+    });
+}
+
+static void kayokoRestoreFirstResponder(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                       const void *object, CFDictionaryRef userInfo) {
+    if (!applicationIsInForeground) {
+        return;
     }
 
-    [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      UIResponder *responder = kayokoLastTextInputResponder;
+      if (!responder) {
+          return;
+      }
+      if ([responder isFirstResponder]) {
+          return;
+      }
+      if ([responder respondsToSelector:@selector(becomeFirstResponder)]) {
+          [responder becomeFirstResponder];
+      }
+    });
 }
 
 @interface KayokoKeyboardObserver : NSObject
@@ -418,14 +479,7 @@ static void kayokoPaste() {
 @implementation KayokoKeyboardObserver
 
 - (void)keyboardWillHide:(NSNotification *)notification {
-    NSDictionary *userInfo = [notification userInfo];
-    BOOL isLocalKeyboard = [userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
-    if (!isLocalKeyboard) {
-        return;
-    }
-
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
+    // 不要因为键盘收起就隐藏 Kayoko。
 }
 
 @end
@@ -436,27 +490,26 @@ static void kayokoPaste() {
  * Loads the user's preferences.
  */
 static void load_preferences() {
-    kayokoHelperPreferences = [[NSUserDefaults alloc]
-        initWithSuiteName:[NSString
-                              stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]];
+    NSString *preferencesPath =
+        jbroot([NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]);
+    NSDictionary *storedPreferences = [NSDictionary dictionaryWithContentsOfFile:preferencesPath] ?: @{};
 
-#if THEOS_PACKAGE_SCHEME_ROOTHIDE
-    libSandy_applyProfile("Kayoko_RootHide");
-#else
     libSandy_applyProfile("Kayoko");
-#endif
 
-    [kayokoHelperPreferences registerDefaults:@{
+    NSDictionary *defaultPreferences = @{
         kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
         kPreferenceKeyActivationMethod : @(kPreferenceKeyActivationMethodDefaultValue),
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue)
-    }];
+    };
 
-    kayokoHelperPrefsEnabled = [[kayokoHelperPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    NSMutableDictionary *effectivePreferences = [defaultPreferences mutableCopy];
+    [effectivePreferences addEntriesFromDictionary:storedPreferences];
+
+    kayokoHelperPrefsEnabled = [effectivePreferences[kPreferenceKeyEnabled] boolValue];
     kayokoHelperPrefsActivationMethod =
-        [[kayokoHelperPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
+        [effectivePreferences[kPreferenceKeyActivationMethod] unsignedIntegerValue];
     kayokoHelperPrefsAutomaticallyPaste =
-        [[kayokoHelperPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
+        [effectivePreferences[kPreferenceKeyAutomaticallyPaste] boolValue];
 }
 
 #pragma mark - Constructor
@@ -504,6 +557,18 @@ __attribute((constructor)) static void initialize() {
 
     if (!shouldLoad) {
         return;
+    }
+
+    // 记录 App 内当前输入焦点，并支持在 Kayoko 搜索结束后恢复。
+    if (!isSpringBoard) {
+        MSHookMessageEx(NSClassFromString(@"UIResponder"), @selector(becomeFirstResponder),
+                        (IMP)&override_UIResponder_becomeFirstResponder,
+                        (IMP *)&orig_UIResponder_becomeFirstResponder);
+
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+                                        (CFNotificationCallback)kayokoRestoreFirstResponder,
+                                        (CFStringRef)kNotificationKeyHelperRestoreFirstResponder, NULL,
+                                        (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDrop);
     }
 
     // Prediction Bar
@@ -566,13 +631,13 @@ __attribute((constructor)) static void initialize() {
         }
     }
 
-    MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow),
-                    (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow,
-                    (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
-    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:),
+    // MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow),
+    //                 (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow,
+    //                 (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
+    MSHookMessageEx(objc_getMetaClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:),
                     (IMP)&override_UIKeyboardImpl_applicationDidBecomeActive,
                     (IMP *)&orig_UIKeyboardImpl_applicationDidBecomeActive);
-    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:),
+    MSHookMessageEx(objc_getMetaClass("UIKeyboardImpl"), @selector(applicationWillResignActive:),
                     (IMP)&override_UIKeyboardImpl_applicationWillResignActive,
                     (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
 
@@ -582,11 +647,5 @@ __attribute((constructor)) static void initialize() {
                                         NULL, (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDrop);
     }
 
-    static KayokoKeyboardObserver *observer;
-    observer = [[KayokoKeyboardObserver alloc] init];
-
-    [[NSNotificationCenter defaultCenter] addObserver:observer
-                                             selector:@selector(keyboardWillHide:)
-                                                 name:UIKeyboardWillHideNotification
-                                               object:nil];
+        // 不再监听 UIKeyboardWillHideNotification 来隐藏 Kayoko。
 }

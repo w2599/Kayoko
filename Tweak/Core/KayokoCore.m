@@ -7,12 +7,13 @@
 
 #import "KayokoCore.h"
 
+#import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 
 #import <HBLog.h>
-#import <libroot.h>
+#import <roothide.h>
 #import <substrate.h>
 
 #import "NotificationKeys.h"
@@ -23,8 +24,8 @@
 #define kMinimumFeedbackInterval 0.6
 
 KayokoView *kayokoView = nil;
+UIControl *kayokoBackdropView = nil;
 
-NSUserDefaults *kayokoPreferences = nil;
 BOOL kayokoPrefsEnabled = NO;
 NSUInteger kayokoHelperPrefsActivationMethod = 0;
 
@@ -33,6 +34,9 @@ BOOL kayokoPrefsSaveText = NO;
 BOOL kayokoPrefsSaveImages = NO;
 BOOL kayokoPrefsAutomaticallyPaste = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
+BOOL kayokoPrefsAlwaysShowFavoritesOnShow = NO;
+BOOL kayokoPrefsShowRecordedTimeInHistory = NO;
+BOOL kayokoPrefsShowRecordedTimeInFavorites = NO;
 BOOL kayokoPrefsPlaySoundEffects = NO;
 BOOL kayokoPrefsPlayHapticFeedback = NO;
 
@@ -42,6 +46,10 @@ static BOOL isInPasteProgress = NO;
 
 static NSTimeInterval lastPasteFeedbackOccurred = 0;
 static NSTimeInterval lastCopyFeedbackOccurred = 0;
+
+static void hide(void);
+static void kayokoPreferencesDidReload(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                       const void *object, CFDictionaryRef userInfo);
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -57,7 +65,263 @@ static NSTimeInterval lastCopyFeedbackOccurred = 0;
 - (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
 
+static BOOL KayokoViewContainsFirstResponder(UIView *view) {
+    if (!view) {
+        return NO;
+    }
+    if ([view isFirstResponder]) {
+        return YES;
+    }
+    for (UIView *subview in [view subviews]) {
+        if (KayokoViewContainsFirstResponder(subview)) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+@interface KayokoCoreBackdropTapHandler : NSObject
+- (void)backdropTapped:(id)sender;
+@end
+
+@implementation KayokoCoreBackdropTapHandler
+
+- (void)backdropTapped:(id)sender {
+    hide();
+}
+
+@end
+
+static KayokoCoreBackdropTapHandler *kayokoBackdropTapHandler = nil;
+
+static CGRect KayokoBackdropFrameForWindow(UIWindow *statusBarWindow) {
+    CGRect screenBounds = [[UIScreen mainScreen] bounds];
+    return CGRectMake(0 - statusBarWindow.frame.origin.x, 0 - statusBarWindow.frame.origin.y,
+                      screenBounds.size.width, screenBounds.size.height);
+}
+
+static void KayokoEnsureBackdropInStatusBarWindow(UIWindow *statusBarWindow) {
+    if (!statusBarWindow) {
+        return;
+    }
+
+    if (!kayokoBackdropView) {
+        kayokoBackdropView = [[UIControl alloc] initWithFrame:KayokoBackdropFrameForWindow(statusBarWindow)];
+        [kayokoBackdropView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+        [kayokoBackdropView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.025]];
+        [kayokoBackdropView setHidden:YES];
+
+        if (!kayokoBackdropTapHandler) {
+            kayokoBackdropTapHandler = [[KayokoCoreBackdropTapHandler alloc] init];
+        }
+        [kayokoBackdropView addTarget:kayokoBackdropTapHandler
+                               action:@selector(backdropTapped:)
+                     forControlEvents:UIControlEventTouchUpInside];
+    }
+
+    if ([kayokoBackdropView superview] != statusBarWindow) {
+        [kayokoBackdropView removeFromSuperview];
+        [statusBarWindow addSubview:kayokoBackdropView];
+    }
+
+    [kayokoBackdropView setFrame:KayokoBackdropFrameForWindow(statusBarWindow)];
+
+    if (kayokoView && [kayokoView superview] == statusBarWindow) {
+        [statusBarWindow insertSubview:kayokoBackdropView belowSubview:kayokoView];
+        [kayokoView setBackdropView:kayokoBackdropView];
+    }
+}
+
 #pragma mark - UIStatusBarWindow class hooks
+
+static CGFloat kayokoDesiredScreenY = -1;
+
+static CGFloat KayokoBaseScreenY(void) {
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGFloat baseY = bounds.size.height - kayokoPrefsHeightInPoints;
+    return baseY < 0 ? 0 : baseY;
+}
+
+static void KayokoUpdateFrameInStatusBarWindow(UIWindow *statusBarWindow, BOOL animated, NSDictionary *userInfo) {
+    if (!statusBarWindow || !kayokoView) {
+        return;
+    }
+
+    KayokoEnsureBackdropInStatusBarWindow(statusBarWindow);
+
+    CGRect screenBounds = [[UIScreen mainScreen] bounds];
+    CGFloat baseScreenY = KayokoBaseScreenY();
+    if (kayokoDesiredScreenY < 0) {
+        kayokoDesiredScreenY = baseScreenY;
+    }
+
+    CGFloat desiredScreenY = kayokoDesiredScreenY;
+    
+    // Ensure the top of Kayoko doesn't overlap the system status bar / Dynamic Island.
+    CGFloat topInset = 0;
+    if (statusBarWindow && [statusBarWindow respondsToSelector:@selector(safeAreaInsets)]) {
+        if (@available(iOS 11.0, *)) {
+            topInset = [statusBarWindow safeAreaInsets].top;
+        }
+    }
+    // If safeAreaInsets isn't available or returns 0, fall back to application's statusBarFrame height.
+    if (topInset <= 0) {
+        @try {
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            CGRect sbFrame = [[UIApplication sharedApplication] statusBarFrame];
+            #pragma clang diagnostic pop
+            if (sbFrame.size.height > 0) {
+                topInset = sbFrame.size.height;
+            }
+        } @catch (NSException *ex) {
+            // ignore
+        }
+    }
+    if (desiredScreenY < topInset) {
+        desiredScreenY = topInset;
+    }
+    if (desiredScreenY > baseScreenY) {
+        desiredScreenY = baseScreenY;
+    }
+
+    // 把“屏幕坐标系的目标位置”换算到 statusBarWindow 的坐标系里。
+    // 当系统因为键盘/编辑状态移动 statusBarWindow 时，可避免 Kayoko 跟着飘走。
+    CGFloat targetXInWindow = 0 - statusBarWindow.frame.origin.x;
+    CGFloat targetYInWindow = desiredScreenY - statusBarWindow.frame.origin.y;
+
+    CGRect targetFrame =
+        CGRectMake(targetXInWindow, targetYInWindow, screenBounds.size.width, kayokoPrefsHeightInPoints);
+
+    if ([kayokoView superview] != statusBarWindow) {
+        [kayokoView removeFromSuperview];
+        [statusBarWindow addSubview:kayokoView];
+    }
+
+    [statusBarWindow insertSubview:kayokoBackdropView belowSubview:kayokoView];
+
+    [kayokoView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin];
+    [[kayokoView superview] bringSubviewToFront:kayokoView];
+
+    if (!animated) {
+        [kayokoView setFrame:targetFrame];
+        return;
+    }
+
+    NSNumber *durationNumber = userInfo[UIKeyboardAnimationDurationUserInfoKey];
+    NSNumber *curveNumber = userInfo[UIKeyboardAnimationCurveUserInfoKey];
+    NSTimeInterval duration = durationNumber ? [durationNumber doubleValue] : 0.25;
+
+    UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState;
+    if (curveNumber) {
+        options |= ((UIViewAnimationOptions)([curveNumber integerValue] << 16));
+    } else {
+        options |= UIViewAnimationOptionCurveEaseInOut;
+    }
+
+    [UIView animateWithDuration:duration
+        delay:0
+        options:options
+        animations:^{
+          [kayokoView setFrame:targetFrame];
+        }
+        completion:nil];
+}
+
+@interface KayokoCoreKeyboardObserver : NSObject
+@end
+
+@implementation KayokoCoreKeyboardObserver
+
+- (void)animateKayokoToY:(CGFloat)targetY withKeyboardNotification:(NSNotification *)notification {
+    if (!kayokoView || [kayokoView isHidden]) {
+        return;
+    }
+
+    NSDictionary *userInfo = [notification userInfo] ?: @{};
+    NSNumber *durationNumber = userInfo[UIKeyboardAnimationDurationUserInfoKey];
+    NSNumber *curveNumber = userInfo[UIKeyboardAnimationCurveUserInfoKey];
+
+    NSTimeInterval duration = durationNumber ? [durationNumber doubleValue] : 0.25;
+    UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState;
+    if (curveNumber) {
+        options |= ((UIViewAnimationOptions)([curveNumber integerValue] << 16));
+    } else {
+        options |= UIViewAnimationOptionCurveEaseInOut;
+    }
+
+    CGRect frame = [kayokoView frame];
+    frame.origin.y = targetY;
+
+    if ([kayokoView superview]) {
+        [[kayokoView superview] bringSubviewToFront:kayokoView];
+    }
+
+    [UIView animateWithDuration:duration
+        delay:0
+        options:options
+        animations:^{
+          [kayokoView setFrame:frame];
+        }
+        completion:nil];
+}
+
+- (void)keyboardWillShow:(NSNotification *)notification {
+    NSDictionary *userInfo = [notification userInfo] ?: @{};
+    if (userInfo[UIKeyboardIsLocalUserInfoKey] && ![userInfo[UIKeyboardIsLocalUserInfoKey] boolValue]) {
+        return;
+    }
+
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGRect keyboardEndFrame = CGRectZero;
+    NSValue *keyboardFrameValue = userInfo[UIKeyboardFrameEndUserInfoKey];
+    if (keyboardFrameValue) {
+        keyboardEndFrame = [keyboardFrameValue CGRectValue];
+    }
+
+    CGFloat baseY = bounds.size.height - kayokoPrefsHeightInPoints;
+    CGFloat keyboardTopY = keyboardEndFrame.origin.y;
+    if (keyboardTopY <= 0 || keyboardTopY > bounds.size.height) {
+        // 键盘 frame 不可信时不移动（避免跳动）。
+        return;
+    }
+
+    CGFloat targetScreenY = keyboardTopY - kayokoPrefsHeightInPoints;
+    if (targetScreenY < 0) {
+        targetScreenY = 0;
+    }
+    if (targetScreenY > baseY) {
+        targetScreenY = baseY;
+    }
+
+    kayokoDesiredScreenY = targetScreenY;
+    UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+    KayokoUpdateFrameInStatusBarWindow(statusBarWindow, YES, [notification userInfo] ?: @{});
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification {
+    NSDictionary *userInfo = [notification userInfo] ?: @{};
+    if (userInfo[UIKeyboardIsLocalUserInfoKey] && ![userInfo[UIKeyboardIsLocalUserInfoKey] boolValue]) {
+        return;
+    }
+
+    BOOL kayokoHadFocus = (kayokoView && ![kayokoView isHidden] && KayokoViewContainsFirstResponder(kayokoView));
+
+    kayokoDesiredScreenY = KayokoBaseScreenY();
+    UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+    KayokoUpdateFrameInStatusBarWindow(statusBarWindow, YES, userInfo);
+
+    // 如果键盘是由 Kayoko 内置搜索等输入触发的，键盘收起后把焦点还给 App 的输入框。
+    if (kayokoHadFocus) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                               (CFStringRef)kNotificationKeyHelperRestoreFirstResponder, nil, nil,
+                                               YES);
+        });
+    }
+}
+
+@end
 
 /**
  * Sets up the history view.
@@ -71,13 +335,34 @@ static void (*orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow *self, SEL
 static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
     orig_UIStatusBarWindow_initWithFrame(self, _cmd, frame);
 
+    // 初始化时默认贴底（屏幕坐标系）。
+    if (kayokoDesiredScreenY < 0) {
+        kayokoDesiredScreenY = KayokoBaseScreenY();
+    }
+
     if (!kayokoView) {
-        CGRect bounds = [[UIScreen mainScreen] bounds];
-        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
-                                                                  bounds.size.width, kayokoPrefsHeightInPoints)];
+        CGRect screenBounds = [[UIScreen mainScreen] bounds];
+        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, 0, screenBounds.size.width, kayokoPrefsHeightInPoints)];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        [kayokoView setAlwaysShowFavoritesOnShow:kayokoPrefsAlwaysShowFavoritesOnShow];
+        [kayokoView setShowRecordedTimeInHistory:kayokoPrefsShowRecordedTimeInHistory];
+        [kayokoView setShowRecordedTimeInFavorites:kayokoPrefsShowRecordedTimeInFavorites];
         [kayokoView setHidden:YES];
         [self addSubview:kayokoView];
+    }
+
+    KayokoEnsureBackdropInStatusBarWindow((UIWindow *)self);
+
+    KayokoUpdateFrameInStatusBarWindow((UIWindow *)self, NO, nil);
+}
+
+static void (*orig_UIStatusBarWindow_setFrame)(UIStatusBarWindow *self, SEL _cmd, CGRect frame);
+static void override_UIStatusBarWindow_setFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
+    orig_UIStatusBarWindow_setFrame(self, _cmd, frame);
+
+    // statusBarWindow 在键盘/编辑时可能会被系统移动；同步更新 Kayoko 的 frame 以保持屏幕位置不变。
+    if (kayokoView && [kayokoView superview] == self) {
+        KayokoUpdateFrameInStatusBarWindow((UIWindow *)self, NO, nil);
     }
 }
 
@@ -89,6 +374,7 @@ static void kayokoPasteWillStart() { isInPasteProgress = YES; }
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
 static void _kayokoCopy() {
+    NSLog(@"[Kayoko_tweak] Received distributed notification for pasteboard change");
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
     if (isInPasteProgress) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -103,15 +389,14 @@ static void _kayokoCopy() {
     lastCopyFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
-        static SystemSoundID soundID;
+        static AVAudioPlayer *audioPlayer;
         dispatch_once(&onceToken, ^{
-          AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)
-                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")],
-              &soundID);
+          NSURL *soundURL = [NSURL fileURLWithPath:jbroot(
+                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")];
+          audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:nil];
+          [audioPlayer prepareToPlay];
         });
-        AudioServicesPlaySystemSound(soundID);
+        [audioPlayer play];
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
@@ -129,6 +414,12 @@ static void kayokoCopy() {
  */
 static void show() {
     if ([kayokoView isHidden]) {
+
+        if (kayokoDesiredScreenY < 0) {
+            kayokoDesiredScreenY = KayokoBaseScreenY();
+        }
+        UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+        KayokoUpdateFrameInStatusBarWindow(statusBarWindow, NO, nil);
 
         [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
 
@@ -171,11 +462,25 @@ static void show() {
     }
 }
 
+static void showHistory(){
+    kayokoView.alwaysShowFavoritesOnShow = NO;
+    show();
+}
+
+static void showFavourite(){
+    kayokoView.alwaysShowFavoritesOnShow = YES;
+    show();
+}
+
 /**
  * Hides the history.
  */
 static void hide() {
-    if (![kayokoView isHidden]) {
+    if (kayokoBackdropView) {
+        [kayokoBackdropView setHidden:YES];
+    }
+
+    if (kayokoView && ![kayokoView isHidden]) {
         [kayokoView hide];
     }
 }
@@ -195,9 +500,10 @@ static void reload() {
  * Loads the user's preferences.
  */
 static void load_preferences() {
-    kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
-
-    [kayokoPreferences registerDefaults:@{
+    NSString *preferencesPath =
+        jbroot([NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]);
+    NSDictionary *storedPreferences = [NSDictionary dictionaryWithContentsOfFile:preferencesPath] ?: @{};
+    NSDictionary *defaultPreferences = @{
         kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
         kPreferenceKeyActivationMethod : @(kPreferenceKeyActivationMethodDefaultValue),
         kPreferenceKeyMaximumHistoryAmount : @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
@@ -205,23 +511,43 @@ static void load_preferences() {
         kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
+        kPreferenceKeyAlwaysShowFavoritesOnShow : @(kPreferenceKeyAlwaysShowFavoritesOnShowDefaultValue),
+        kPreferenceKeyShowRecordedTime : @(kPreferenceKeyShowRecordedTimeDefaultValue),
+        kPreferenceKeyShowRecordedTimeInHistory : @(kPreferenceKeyShowRecordedTimeInHistoryDefaultValue),
+        kPreferenceKeyShowRecordedTimeInFavorites : @(kPreferenceKeyShowRecordedTimeInFavoritesDefaultValue),
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
         kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
-    }];
+    };
 
-    kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    NSMutableDictionary *effectivePreferences = [defaultPreferences mutableCopy];
+    [effectivePreferences addEntriesFromDictionary:storedPreferences];
+
+    kayokoPrefsEnabled = [effectivePreferences[kPreferenceKeyEnabled] boolValue];
     kayokoHelperPrefsActivationMethod =
-        [[kayokoPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
+        [effectivePreferences[kPreferenceKeyActivationMethod] unsignedIntegerValue];
     kayokoPrefsMaximumHistoryAmount =
-        [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
-    kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
-    kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
-    kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
-    kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
-    kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
-    kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
-    kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
+        [effectivePreferences[kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
+    kayokoPrefsSaveText = [effectivePreferences[kPreferenceKeySaveText] boolValue];
+    kayokoPrefsSaveImages = [effectivePreferences[kPreferenceKeySaveImages] boolValue];
+    kayokoPrefsAutomaticallyPaste = [effectivePreferences[kPreferenceKeyAutomaticallyPaste] boolValue];
+    kayokoPrefsDisablePasteTips = [effectivePreferences[kPreferenceKeyDisablePasteTips] boolValue];
+    kayokoPrefsAlwaysShowFavoritesOnShow =
+        [effectivePreferences[kPreferenceKeyAlwaysShowFavoritesOnShow] boolValue];
+    NSNumber *legacyShowRecordedTimeValue = effectivePreferences[kPreferenceKeyShowRecordedTime];
+    NSNumber *showRecordedTimeInHistoryValue = effectivePreferences[kPreferenceKeyShowRecordedTimeInHistory];
+    NSNumber *showRecordedTimeInFavoritesValue = effectivePreferences[kPreferenceKeyShowRecordedTimeInFavorites];
+    kayokoPrefsShowRecordedTimeInHistory =
+        showRecordedTimeInHistoryValue ? [showRecordedTimeInHistoryValue boolValue]
+                                       : (legacyShowRecordedTimeValue ? [legacyShowRecordedTimeValue boolValue]
+                                                                      : kPreferenceKeyShowRecordedTimeInHistoryDefaultValue);
+    kayokoPrefsShowRecordedTimeInFavorites =
+        showRecordedTimeInFavoritesValue ? [showRecordedTimeInFavoritesValue boolValue]
+                                         : (legacyShowRecordedTimeValue ? [legacyShowRecordedTimeValue boolValue]
+                                                                        : kPreferenceKeyShowRecordedTimeInFavoritesDefaultValue);
+    kayokoPrefsPlaySoundEffects = [effectivePreferences[kPreferenceKeyPlaySoundEffects] boolValue];
+    kayokoPrefsPlayHapticFeedback = [effectivePreferences[kPreferenceKeyPlayHapticFeedback] boolValue];
+    kayokoPrefsHeightInPoints = [effectivePreferences[kPreferenceKeyHeightInPoints] doubleValue];
 
     [[PasteboardManager sharedInstance] preparePasteboardQueue];
     [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
@@ -232,11 +558,21 @@ static void load_preferences() {
     if (kayokoView) {
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
-        CGRect bounds = [[UIScreen mainScreen] bounds];
-        CGRect newFrame =
-            CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
-        [kayokoView setFrame:newFrame];
+        [kayokoView setAlwaysShowFavoritesOnShow:kayokoPrefsAlwaysShowFavoritesOnShow];
+        [kayokoView setShowRecordedTimeInHistory:kayokoPrefsShowRecordedTimeInHistory];
+        [kayokoView setShowRecordedTimeInFavorites:kayokoPrefsShowRecordedTimeInFavorites];
+        [kayokoView reload];
+        kayokoDesiredScreenY = KayokoBaseScreenY();
+        UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+        KayokoUpdateFrameInStatusBarWindow(statusBarWindow, NO, nil);
     }
+}
+
+static void kayokoPreferencesDidReload(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                                             const void *object, CFDictionaryRef userInfo) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            load_preferences();
+        });
 }
 
 #pragma mark - Sound effects
@@ -249,15 +585,14 @@ static void kayokoPaste() {
     lastPasteFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
-        static SystemSoundID soundID;
+        static AVAudioPlayer *audioPlayer;
         dispatch_once(&onceToken, ^{
-          AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)
-                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")],
-              &soundID);
+          NSURL *soundURL = [NSURL fileURLWithPath:jbroot(
+                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")];
+          audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:nil];
+          [audioPlayer prepareToPlay];
         });
-        AudioServicesPlaySystemSound(soundID);
+        [audioPlayer play];
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
@@ -293,6 +628,21 @@ __attribute((constructor)) static void initialize() {
         MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:),
                         (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
+        MSHookMessageEx(statusBarWindowCls, @selector(setFrame:), (IMP)&override_UIStatusBarWindow_setFrame,
+                (IMP *)&orig_UIStatusBarWindow_setFrame);
+
+                // Kayoko 自带下拉搜索会弹键盘：键盘出现时把 KayokoView 上移到键盘上方，避免被盖住看起来像“消失”。
+                static KayokoCoreKeyboardObserver *keyboardObserver;
+                keyboardObserver = [[KayokoCoreKeyboardObserver alloc] init];
+                [[NSNotificationCenter defaultCenter] addObserver:keyboardObserver
+                                                                                                 selector:@selector(keyboardWillShow:)
+                                                                                                         name:UIKeyboardWillShowNotification
+                                                                                                     object:nil];
+                [[NSNotificationCenter defaultCenter] addObserver:keyboardObserver
+                                                                                                 selector:@selector(keyboardWillHide:)
+                                                                                                         name:UIKeyboardWillHideNotification
+                                                                                                     object:nil];
+
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
             CFSTR("com.apple.pasteboard.notify.changed"), NULL,
@@ -300,6 +650,18 @@ __attribute((constructor)) static void initialize() {
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
             (CFStringRef)kNotificationKeyCoreShow, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
+            (CFStringRef)kNotificationKeyCoreShowDev, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)showHistory,
+            (CFStringRef)kNotificationKeyCopyVaultHistoryShow, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)showFavourite,
+            (CFStringRef)kNotificationKeyCopyVaultFavouriteShow, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
@@ -310,7 +672,7 @@ __attribute((constructor)) static void initialize() {
             (CFStringRef)kNotificationKeyCoreReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPreferencesDidReload,
             (CFStringRef)kNotificationKeyPreferencesReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
@@ -340,7 +702,7 @@ __attribute((constructor)) static void initialize() {
 
         EnableKayokoDisablePasteTips();
         CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPreferencesDidReload,
             (CFStringRef)kNotificationKeyPreferencesReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 

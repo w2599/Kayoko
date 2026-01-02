@@ -11,7 +11,6 @@
 
 OBJC_EXTERN KayokoView *kayokoView;
 
-OBJC_EXTERN NSUserDefaults *kayokoPreferences;
 OBJC_EXTERN BOOL kayokoPrefsEnabled;
 OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
 
@@ -20,6 +19,8 @@ OBJC_EXTERN BOOL kayokoPrefsSaveText;
 OBJC_EXTERN BOOL kayokoPrefsSaveImages;
 OBJC_EXTERN BOOL kayokoPrefsAutomaticallyPaste;
 OBJC_EXTERN BOOL kayokoPrefsDisablePasteTips;
+OBJC_EXTERN BOOL kayokoPrefsShowRecordedTimeInHistory;
+OBJC_EXTERN BOOL kayokoPrefsShowRecordedTimeInFavorites;
 OBJC_EXTERN BOOL kayokoPrefsPlaySoundEffects;
 OBJC_EXTERN BOOL kayokoPrefsPlayHapticFeedback;
 OBJC_EXTERN CGFloat kayokoPrefsHeightInPoints;

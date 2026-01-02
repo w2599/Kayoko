@@ -13,10 +13,11 @@
 #import "PreferenceKeys.h"
 #import "StringUtil.h"
 
-#import <libroot.h>
+#import <roothide.h>
 
 @implementation PasteboardManager {
     dispatch_queue_t _queue;
+    BOOL _didEnsureResourcesExist;
 }
 
 /**
@@ -35,16 +36,25 @@
     static NSString *kHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
+            kHistoryPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.plist");
     });
     return kHistoryPath;
+}
+
++ (NSString *)favoritesPath {
+        static NSString *kFavoritesPath = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            kFavoritesPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/favorites.plist");
+        });
+        return kFavoritesPath;
 }
 
 + (NSString *)historyImagesPath {
     static NSString *kHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryImagesPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/codes.aurora.kayoko/images/");
+      kHistoryImagesPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/images/");
     });
     return kHistoryImagesPath;
 }
@@ -54,7 +64,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
       kLocalizationBundle =
-          [NSBundle bundleWithPath:JBROOT_PATH_NSSTRING(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+          [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
     });
     return kLocalizationBundle;
 }
@@ -66,6 +76,7 @@
     self = [super init];
     if (self) {
         _fileManager = [NSFileManager defaultManager];
+        _didEnsureResourcesExist = NO;
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
         } else {
@@ -123,7 +134,8 @@
                     PasteboardItem *item =
                         [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                               andContent:string
-                                                          withImageNamed:nil];
+                                                          withImageNamed:nil
+                                                                  remark:nil];
                     [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
                 }
             }
@@ -155,7 +167,8 @@
                 PasteboardItem *item =
                     [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                           andContent:imageName
-                                                      withImageNamed:imageName];
+                                                      withImageNamed:imageName
+                                                      remark:nil];
                 [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
             }
         }
@@ -178,14 +191,15 @@
     // Remove duplicates.
     [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:NO];
 
-    NSMutableDictionary *json = [self getJson];
     NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
 
     [history insertObject:@{
         kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
         kItemKeyContent : [item content] ?: @"",
         kItemKeyImageName : [item imageName] ?: @"",
-        kItemKeyHasLink : @([item hasLink])
+        kItemKeyRemark : [item remark] ?: @"",
+        kItemKeyHasLink : @([item hasLink]),
+        kItemKeyRecordedAt : @([item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970])
     }
                   atIndex:0];
 
@@ -194,9 +208,7 @@
         [history removeLastObject];
     }
 
-    json[historyKey] = history;
-
-    [self setJsonFromDictionary:json];
+    [self setItems:history forHistoryWithKey:historyKey];
 }
 
 /**
@@ -209,8 +221,7 @@
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
-    NSMutableDictionary *json = [self getJson];
-    NSMutableArray *history = json[historyKey];
+    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
 
     for (NSDictionary *dictionary in history) {
         @autoreleasepool {
@@ -230,9 +241,34 @@
         }
     }
 
-    json[historyKey] = history;
+    [self setItems:history forHistoryWithKey:historyKey];
+}
 
-    [self setJsonFromDictionary:json];
+- (void)updateRemark:(NSString *)remark
+             forItem:(PasteboardItem *)item
+      inHistoryWithKey:(NSString *)historyKey {
+        NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
+
+    if (!history || !item) {
+        return;
+    }
+
+    NSString *safeRemark = remark ?: @"";
+
+    for (NSUInteger index = 0; index < [history count]; index++) {
+        NSDictionary *dictionary = history[index];
+        PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
+
+        if ([[historyItem content] isEqualToString:[item content]]) {
+            NSMutableDictionary *updatedDictionary = [dictionary mutableCopy];
+            updatedDictionary[kItemKeyRemark] = safeRemark;
+            history[index] = updatedDictionary;
+            [item setRemark:safeRemark];
+            break;
+        }
+    }
+
+    [self setItems:history forHistoryWithKey:historyKey];
 }
 
 - (void)updatePasteboardWithItem:(PasteboardItem *)item
@@ -269,9 +305,15 @@
     }
 
     // The pasteboard updates with the given item, which triggers an update event.
-    // Therefore we remove the given item to prevent duplicates.
-    [_pasteboard changeCount];
-    [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:YES];
+    // For history items, we intentionally allow that event and remove the original item so the re-added one
+    // bubbles to the top without duplicates.
+    // For favorites, we do NOT want this pasteboard write to create a history entry.
+    NSUInteger newChangeCount = [_pasteboard changeCount];
+    if ([historyKey isEqualToString:kHistoryKeyHistory]) {
+        [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:YES];
+    } else {
+        _lastChangeCount = newChangeCount;
+    }
 
     // Automatic paste should not occur for asynchronous operations.
     if ([self automaticallyPaste] && shouldAutoPaste) {
@@ -288,8 +330,40 @@
  * @return The history's items.
  */
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
-    NSDictionary *json = [self getJson];
-    return json[historyKey] ?: [[NSMutableArray alloc] init];
+    [self ensureResourcesExist];
+
+    NSPropertyListFormat format = NSPropertyListBinaryFormat_v1_0;
+    NSData *plistData = [NSData dataWithContentsOfFile:[self pathForHistoryWithKey:historyKey]];
+    NSMutableArray *items = [NSPropertyListSerialization propertyListWithData:plistData
+                                                                      options:NSPropertyListMutableContainers
+                                                                       format:&format
+                                                                        error:nil];
+    if (![items isKindOfClass:[NSMutableArray class]]) {
+        items = [[NSMutableArray alloc] init];
+    }
+
+    return items;
+}
+
+- (NSString *)pathForHistoryWithKey:(NSString *)historyKey {
+    if ([historyKey isEqualToString:kHistoryKeyFavorites]) {
+        return [PasteboardManager favoritesPath];
+    }
+
+    return [PasteboardManager historyPath];
+}
+
+- (void)setItems:(NSArray *)items forHistoryWithKey:(NSString *)historyKey {
+    NSArray *safeItems = items ?: @[];
+
+    NSData *plistData = [NSPropertyListSerialization dataWithPropertyList:safeItems
+                                                                    format:NSPropertyListBinaryFormat_v1_0
+                                                                   options:0
+                                                                     error:nil];
+    [plistData writeToFile:[self pathForHistoryWithKey:historyKey] atomically:YES];
+
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
 }
 
 /**
@@ -316,39 +390,13 @@
 }
 
 /**
- * Creates and returns a dictionary from the json containing the histories.
- *
- * @return The dictionary.
- */
-- (NSMutableDictionary *)getJson {
-    [self ensureResourcesExist];
-
-    NSData *jsonData = [NSData dataWithContentsOfFile:[PasteboardManager historyPath]];
-    NSMutableDictionary *json = [NSJSONSerialization JSONObjectWithData:jsonData
-                                                                options:NSJSONReadingMutableContainers
-                                                                  error:nil];
-
-    return json;
-}
-
-/**
- * Stores the contents from a dictionary to a json file.
- *
- * @param dictionary The dictionary from which to save the contents from.
- */
-- (void)setJsonFromDictionary:(NSMutableDictionary *)dictionary {
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:NSJSONWritingPrettyPrinted error:nil];
-    [jsonData writeToFile:[PasteboardManager historyPath] atomically:YES];
-
-    // Tell the core to reload the history view.
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
-}
-
-/**
- * Creates the json for the histories and path for the images.
+ * Creates the plists for the histories and path for the images.
  */
 - (void)ensureResourcesExist {
+    if (_didEnsureResourcesExist) {
+        return;
+    }
+
     BOOL isDirectory;
     if (![_fileManager fileExistsAtPath:[PasteboardManager historyImagesPath] isDirectory:&isDirectory]) {
         [_fileManager createDirectoryAtPath:[PasteboardManager historyImagesPath]
@@ -357,12 +405,85 @@
                                       error:nil];
     }
 
-    if (![_fileManager fileExistsAtPath:[PasteboardManager historyPath]]) {
-        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:[[NSMutableDictionary alloc] init]
-                                                           options:NSJSONWritingPrettyPrinted
-                                                             error:nil];
-        [jsonData writeToFile:[PasteboardManager historyPath] options:NSDataWritingAtomic error:nil];
+    NSString *historyPath = [PasteboardManager historyPath];
+    NSString *favoritesPath = [PasteboardManager favoritesPath];
+    NSString *legacyHistoryJsonPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
+    NSString *legacyFavoritesJsonPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/favorites.json");
+
+    BOOL historyExists = [_fileManager fileExistsAtPath:historyPath];
+    BOOL favoritesExists = [_fileManager fileExistsAtPath:favoritesPath];
+
+    // Migrate legacy JSON formats:
+    // 1) history.json: { "history": [...], "favorites": [...] }
+    // 2) history.json: [...] and favorites.json: [...]
+    if (!historyExists || !favoritesExists) {
+        NSArray *legacyHistory = nil;
+        NSArray *legacyFavorites = nil;
+
+        if ([_fileManager fileExistsAtPath:legacyHistoryJsonPath]) {
+            NSData *legacyHistoryData = [NSData dataWithContentsOfFile:legacyHistoryJsonPath];
+            id legacyHistoryJson = [NSJSONSerialization JSONObjectWithData:legacyHistoryData options:0 error:nil];
+
+            if ([legacyHistoryJson isKindOfClass:[NSDictionary class]]) {
+                NSDictionary *legacyDictionary = (NSDictionary *)legacyHistoryJson;
+                id historyObject = legacyDictionary[kHistoryKeyHistory];
+                id favoritesObject = legacyDictionary[kHistoryKeyFavorites];
+
+                if ([historyObject isKindOfClass:[NSArray class]]) {
+                    legacyHistory = historyObject;
+                }
+                if ([favoritesObject isKindOfClass:[NSArray class]]) {
+                    legacyFavorites = favoritesObject;
+                }
+            } else if ([legacyHistoryJson isKindOfClass:[NSArray class]]) {
+                legacyHistory = legacyHistoryJson;
+            }
+        }
+
+        if ([_fileManager fileExistsAtPath:legacyFavoritesJsonPath]) {
+            NSData *legacyFavoritesData = [NSData dataWithContentsOfFile:legacyFavoritesJsonPath];
+            id legacyFavoritesJson = [NSJSONSerialization JSONObjectWithData:legacyFavoritesData options:0 error:nil];
+            if ([legacyFavoritesJson isKindOfClass:[NSArray class]]) {
+                legacyFavorites = legacyFavoritesJson;
+            }
+        }
+
+        if (!historyExists && legacyHistory) {
+            NSData *historyPlistData = [NSPropertyListSerialization dataWithPropertyList:legacyHistory
+                                                                                   format:NSPropertyListBinaryFormat_v1_0
+                                                                                  options:0
+                                                                                    error:nil];
+            [historyPlistData writeToFile:historyPath options:NSDataWritingAtomic error:nil];
+            historyExists = YES;
+        }
+
+        if (!favoritesExists && legacyFavorites) {
+            NSData *favoritesPlistData = [NSPropertyListSerialization dataWithPropertyList:legacyFavorites
+                                                                                     format:NSPropertyListBinaryFormat_v1_0
+                                                                                    options:0
+                                                                                      error:nil];
+            [favoritesPlistData writeToFile:favoritesPath options:NSDataWritingAtomic error:nil];
+            favoritesExists = YES;
+        }
     }
+
+    if (!historyExists) {
+        NSData *historyPlistData = [NSPropertyListSerialization dataWithPropertyList:@[]
+                                                                               format:NSPropertyListBinaryFormat_v1_0
+                                                                              options:0
+                                                                                error:nil];
+        [historyPlistData writeToFile:historyPath options:NSDataWritingAtomic error:nil];
+    }
+
+    if (!favoritesExists) {
+        NSData *favoritesPlistData = [NSPropertyListSerialization dataWithPropertyList:@[]
+                                                                                 format:NSPropertyListBinaryFormat_v1_0
+                                                                                options:0
+                                                                                  error:nil];
+        [favoritesPlistData writeToFile:favoritesPath options:NSDataWritingAtomic error:nil];
+    }
+
+    _didEnsureResourcesExist = YES;
 }
 
 @end

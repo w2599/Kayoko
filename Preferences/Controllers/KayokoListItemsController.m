@@ -6,9 +6,12 @@
 //
 
 #import "KayokoListItemsController.h"
+#import "KayokoPreferencesFileAccess.h"
+
+#import <roothide.h>
+
 #import "../NotificationKeys.h"
 #import "../PreferenceKeys.h"
-#import <Preferences/PSSpecifier.h>
 
 @implementation KayokoListItemsController {
     NSMutableSet *_selectedIndices;
@@ -22,20 +25,23 @@
         _selectedIndices = [NSMutableSet set];
     }
 
-    // Read current configuration value
-    id value = [self readPreferenceValue:self.specifier];
-    _currentOptions = [value integerValue];
-    if (_currentOptions == 0) {
-        _currentOptions = kPreferenceKeyActivationMethodDefaultValue;
-    }
+    // Read current configuration value (0 means "None")
+    id value = KayokoPreferenceValueForSpecifier(self.specifier);
+    _currentOptions = value ? [value integerValue] : kPreferenceKeyActivationMethodDefaultValue;
 
     // Initialize selected indices
     [_selectedIndices removeAllObjects];
     NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
-    for (NSUInteger i = 0; i < validValues.count; i++) {
-        NSNumber *value = validValues[i];
-        if (_currentOptions & [value integerValue]) {
-            [_selectedIndices addObject:@(i)];
+    NSUInteger noneIndex = [validValues indexOfObject:@0];
+    if (_currentOptions == 0 && noneIndex != NSNotFound) {
+        [_selectedIndices addObject:@(noneIndex)];
+    } else {
+        for (NSUInteger i = 0; i < validValues.count; i++) {
+            NSNumber *value = validValues[i];
+            NSInteger optionValue = [value integerValue];
+            if (optionValue != 0 && (_currentOptions & optionValue)) {
+                [_selectedIndices addObject:@(i)];
+            }
         }
     }
 }
@@ -45,31 +51,58 @@
 
     NSUInteger selectedIndex = indexPath.row;
 
+    NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
+    NSUInteger noneIndex = [validValues indexOfObject:@0];
+    BOOL selectedNone = (noneIndex != NSNotFound) && (selectedIndex == noneIndex);
+
     // Check if this option is already selected
     NSNumber *indexNumber = @(selectedIndex);
-    if ([_selectedIndices containsObject:indexNumber]) {
-        // If this is the last selected item, don't allow deselection
-        if (_selectedIndices.count > 1) {
-            [_selectedIndices removeObject:indexNumber];
+    if (selectedNone) {
+        if (![_selectedIndices containsObject:indexNumber]) {
+            // "None" is exclusive
+            [_selectedIndices removeAllObjects];
+            [_selectedIndices addObject:indexNumber];
         } else {
-            // If only one option is selected, keep it selected
+            // Keep at least one option selected
             [tableView reloadData];
             return;
         }
     } else {
-        [_selectedIndices addObject:indexNumber];
+        // If a regular option is selected while "None" is active, disable "None".
+        if (noneIndex != NSNotFound) {
+            [_selectedIndices removeObject:@(noneIndex)];
+        }
+
+        if ([_selectedIndices containsObject:indexNumber]) {
+            // If this is the last selected item, don't allow deselection
+            if (_selectedIndices.count > 1) {
+                [_selectedIndices removeObject:indexNumber];
+            } else {
+                // If only one option is selected, keep it selected
+                [tableView reloadData];
+                return;
+            }
+        } else {
+            [_selectedIndices addObject:indexNumber];
+        }
     }
 
     // Update options
     ActivationMethod newOptions = 0;
-    NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
-    for (NSNumber *index in _selectedIndices) {
-        NSNumber *value = validValues[[index integerValue]];
-        newOptions |= [value integerValue];
+    if (noneIndex != NSNotFound && [_selectedIndices containsObject:@(noneIndex)]) {
+        newOptions = 0;
+    } else {
+        for (NSNumber *index in _selectedIndices) {
+            NSNumber *value = validValues[[index integerValue]];
+            NSInteger optionValue = [value integerValue];
+            if (optionValue != 0) {
+                newOptions |= optionValue;
+            }
+        }
     }
 
     _currentOptions = newOptions;
-    [self setPreferenceValue:@(newOptions) specifier:self.specifier];
+    KayokoWritePreferenceValue([self.specifier propertyForKey:@"key"], @(newOptions));
     [(PSListController *)self.parentController reloadSpecifiers];
 
     // Post notification

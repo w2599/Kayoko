@@ -1,8 +1,8 @@
 "Kayoko" = "Kayoko";
-"History" = "历史记录";
-"history" = "历史记录";
-"Favorites" = "收藏夹";
-"favorites" = "收藏夹";
+"History" = "历史";
+"history" = "历史";
+"Favorites" = "收藏";
+"favorites" = "收藏";
 "Preview" = "预览";
 "This will clear your %@." = "这将清除你的 %@。";
 "Yes" = "是";
@@ -10,3 +10,9 @@
 "Copy" = "拷贝";
 "Paste" = "粘贴";
 "SpringBoard" = "主屏幕";
+"Search" = "搜索";
+"Remark" = "备注";
+"Edit remark" = "编辑备注";
+"Enter remark" = "输入备注";
+"Cancel" = "取消";
+"Save" = "保存";

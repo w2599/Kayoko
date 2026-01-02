@@ -1,5 +1,5 @@
 Package: codes.aurora.kayoko
-Name: Kayoko
+Name: Hello Kayoko
 Version: 2.0
 Architecture: iphoneos-arm
 Description: Clipboard manager for iOS.
@@ -7,3 +7,5 @@ Maintainer: Lessica <82flex@gmail.com>
 Author: Alexandra Aurora Göttlicher
 Section: Tweaks
 Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader, com.opa334.libsandy
+Icon: https://apt.002599.xyz/web/icon/codes.aurora.kayoko.png
+SileoDepiction: https://apt.002599.xyz/web/codes.aurora.kayoko

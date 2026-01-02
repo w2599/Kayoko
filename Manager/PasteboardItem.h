@@ -10,7 +10,9 @@
 static NSString *const kItemKeyBundleIdentifier = @"bundle_identifier";
 static NSString *const kItemKeyContent = @"content";
 static NSString *const kItemKeyImageName = @"image_name";
+static NSString *const kItemKeyRemark = @"remark";
 static NSString *const kItemKeyHasLink = @"has_link";
+static NSString *const kItemKeyRecordedAt = @"recorded_at";
 
 @interface PasteboardItem : NSObject
 
@@ -18,11 +20,14 @@ static NSString *const kItemKeyHasLink = @"has_link";
 @property(nonatomic, copy) NSString *displayName;
 @property(nonatomic, copy) NSString *content;
 @property(nonatomic, copy) NSString *imageName;
+@property(nonatomic, copy) NSString *remark;
 @property(nonatomic, assign) BOOL hasLink;
+@property(nonatomic, assign) NSTimeInterval recordedAt;
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
-                          withImageNamed:(NSString *)imageName;
+                          withImageNamed:(NSString *)imageName
+                                  remark:(NSString *)remark;
 + (PasteboardItem *)itemFromDictionary:(NSDictionary *)dictionary;
 
 @end

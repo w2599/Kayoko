@@ -6,15 +6,14 @@
 //
 
 #import "KayokoRootListController.h"
+#import "KayokoPreferencesFileAccess.h"
 
-#import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
 
-#import <libroot.h>
+#import <roothide.h>
 
 #import "../NotificationKeys.h"
 #import "../PreferenceKeys.h"
-#import "PasteboardManager.h"
 
 @implementation KayokoRootListController
 
@@ -38,14 +37,21 @@
  * @param specifier The specifier that was interacted with.
  */
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
-    [super setPreferenceValue:value specifier:specifier];
+    NSString *key = [specifier propertyForKey:@"key"];
+    KayokoWritePreferenceValue(key, value);
+
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
 
     // Prompt to respring for options that require one to apply changes.
-    if ([[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyEnabled] ||
-        [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod] ||
-        [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyAutomaticallyPaste]) {
+    if ([key isEqualToString:kPreferenceKeyEnabled] || [key isEqualToString:kPreferenceKeyActivationMethod] ||
+        [key isEqualToString:kPreferenceKeyAutomaticallyPaste]) {
         [self promptToRespring];
     }
+}
+
+- (id)readPreferenceValue:(PSSpecifier *)specifier {
+    return KayokoPreferenceValueForSpecifier(specifier);
 }
 
 /**
@@ -97,7 +103,7 @@
  */
 - (void)respring {
     NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:JBROOT_PATH_NSSTRING(@"/usr/bin/killall")];
+    [task setLaunchPath:jbroot(@"/usr/bin/killall")];
     [task setArguments:@[ @"backboardd" ]];
     [task launch];
 }
@@ -139,10 +145,7 @@
  * Resets the preferences.
  */
 - (void)resetPreferences {
-    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
-    for (NSString *key in [userDefaults dictionaryRepresentation]) {
-        [userDefaults removeObjectForKey:key];
-    }
+    [[NSFileManager defaultManager] removeItemAtPath:KayokoPreferencesPath() error:nil];
 
     [self reloadSpecifiers];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
@@ -189,12 +192,11 @@
             UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
             NSBundle *bundle = [NSBundle bundleForClass:[self class]];
             
-            // Get the current activation methods
-            NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
-            ActivationMethod currentOptions = [userDefaults integerForKey:kPreferenceKeyActivationMethod];
-            if (currentOptions == 0) {
-                currentOptions = kPreferenceKeyActivationMethodDefaultValue;
-            }
+            // Get the current activation methods (0 means "None")
+            NSDictionary *preferences = KayokoPreferencesDictionary();
+            id storedValue = preferences[kPreferenceKeyActivationMethod];
+            ActivationMethod currentOptions =
+                storedValue ? [storedValue unsignedIntegerValue] : kPreferenceKeyActivationMethodDefaultValue;
             
             // Get valid values and titles
             NSArray *validValues = [specifier propertyForKey:@"validValues"];
@@ -202,10 +204,15 @@
             
             // Find selected options
             NSMutableArray *selectedTitles = [NSMutableArray array];
-            for (NSUInteger i = 0; i < validValues.count; i++) {
-                NSNumber *value = validValues[i];
-                if (currentOptions & [value integerValue]) {
-                    [selectedTitles addObject:[bundle localizedStringForKey:validTitles[i] value:nil table:@"Root"]];
+            if (currentOptions == 0) {
+                [selectedTitles addObject:[bundle localizedStringForKey:@"None" value:nil table:@"Root"]];
+            } else {
+                for (NSUInteger i = 0; i < validValues.count; i++) {
+                    NSNumber *value = validValues[i];
+                    NSInteger optionValue = [value integerValue];
+                    if (optionValue != 0 && (currentOptions & optionValue)) {
+                        [selectedTitles addObject:[bundle localizedStringForKey:validTitles[i] value:nil table:@"Root"]];
+                    }
                 }
             }
             
@@ -223,7 +230,6 @@
                 NSString *format = [bundle localizedStringForKey:@"%@ and %d others" value:nil table:@"Root"];
                 detailText = [NSString stringWithFormat:format, selectedTitles[0], (int)selectedTitles.count - 1];
             } else {
-                // No options (shouldn't happen)
                 detailText = @"";
             }
             

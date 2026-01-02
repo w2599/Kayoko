@@ -80,9 +80,8 @@
 
 %group NoPasteAlerts16
 
-%hook SBAlertItem
-
-+ (void)activateAlertItem:(id)arg1 {
+%hook SBAlertItemsController
+-(void)activateAlertItem:(id)arg1{
     id alertItem = arg1;
     if ([alertItem isKindOfClass:NSClassFromString(@"SBUserNotificationAlert")]) {
         NSString *str = MSHookIvar<NSString *>(alertItem, "_alertSource");
@@ -94,14 +93,25 @@
             return;
         }
     }
-    %orig(alertItem);
+    %orig;
 }
 
 %end
 
 %end // NoPasteAlerts16
+/*
+%group gCFNotificationCenterPostNotification
+
+%hookf(void, CFNotificationCenterPostNotification, CFNotificationCenterRef center, CFStringRef name, const void *object, CFDictionaryRef userInfo, Boolean deliverImmediately) {
+    NSString *notiName = (__bridge NSString *)name;
+    NSLog(@"[----] %@", notiName);
+    %orig;
+}
+%end
+*/
 
 void EnableKayokoDisablePasteTips(void) {
+    // %init(gCFNotificationCenterPostNotification);
     %init(DruidUI);
     if (@available(iOS 16, *)) {
         %init(Pasteboard);
