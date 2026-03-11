@@ -318,6 +318,11 @@
         [actions addObject:linkAction];
     }
 
+      UIContextualAction *tokenAction = [self tokenSelectionActionForItem:item];
+      if (tokenAction) {
+        [actions addObject:tokenAction];
+      }
+
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 

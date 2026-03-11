@@ -94,10 +94,78 @@ static BOOL KayokoViewContainsFirstResponder(UIView *view) {
 
 static KayokoCoreBackdropTapHandler *kayokoBackdropTapHandler = nil;
 
+static CGRect KayokoScreenBoundsForWindow(UIWindow *statusBarWindow) {
+    CGRect screenBounds = CGRectZero;
+    if (statusBarWindow) {
+        screenBounds = [statusBarWindow convertRect:[statusBarWindow bounds] toWindow:nil];
+        screenBounds = CGRectStandardize(screenBounds);
+    }
+
+    if (CGRectIsEmpty(screenBounds) || screenBounds.size.width <= 0 || screenBounds.size.height <= 0) {
+        screenBounds = [[UIScreen mainScreen] bounds];
+    }
+
+    return screenBounds;
+}
+
+static CGFloat KayokoTopInsetForWindow(UIWindow *statusBarWindow) {
+    CGFloat topInset = 0;
+    if (statusBarWindow && [statusBarWindow respondsToSelector:@selector(safeAreaInsets)]) {
+        if (@available(iOS 11.0, *)) {
+            topInset = [statusBarWindow safeAreaInsets].top;
+        }
+    }
+
+    if (topInset <= 0) {
+        @try {
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            CGRect statusBarFrame = [[UIApplication sharedApplication] statusBarFrame];
+            #pragma clang diagnostic pop
+            if (statusBarFrame.size.height > 0) {
+                topInset = statusBarFrame.size.height;
+            }
+        } @catch (NSException *exception) {
+            // ignore
+        }
+    }
+
+    return topInset;
+}
+
+static CGFloat KayokoPanelHeightForWindow(UIWindow *statusBarWindow) {
+    CGRect screenBounds = KayokoScreenBoundsForWindow(statusBarWindow);
+    CGFloat availableHeight = screenBounds.size.height - KayokoTopInsetForWindow(statusBarWindow);
+    if (availableHeight <= 0) {
+        return 0;
+    }
+
+    return MIN(kayokoPrefsHeightInPoints, availableHeight);
+}
+
+static CGFloat KayokoPanelWidthForWindow(UIWindow *statusBarWindow) {
+    CGRect screenBounds = KayokoScreenBoundsForWindow(statusBarWindow);
+    CGFloat availableWidth = screenBounds.size.width;
+    if (availableWidth <= 0) {
+        return 0;
+    }
+
+    if (screenBounds.size.width > screenBounds.size.height) {
+        CGFloat insetWidth = availableWidth - 32.0;
+        if (insetWidth > 0) {
+            availableWidth = MIN(insetWidth, 560.0);
+        }
+    }
+
+    return availableWidth;
+}
+
 static CGRect KayokoBackdropFrameForWindow(UIWindow *statusBarWindow) {
-    CGRect screenBounds = [[UIScreen mainScreen] bounds];
-    return CGRectMake(0 - statusBarWindow.frame.origin.x, 0 - statusBarWindow.frame.origin.y,
-                      screenBounds.size.width, screenBounds.size.height);
+    if (!statusBarWindow) {
+        return CGRectZero;
+    }
+
+    return [statusBarWindow convertRect:KayokoScreenBoundsForWindow(statusBarWindow) fromWindow:nil];
 }
 
 static void KayokoEnsureBackdropInStatusBarWindow(UIWindow *statusBarWindow) {
@@ -136,10 +204,11 @@ static void KayokoEnsureBackdropInStatusBarWindow(UIWindow *statusBarWindow) {
 
 static CGFloat kayokoDesiredScreenY = -1;
 
-static CGFloat KayokoBaseScreenY(void) {
-    CGRect bounds = [[UIScreen mainScreen] bounds];
-    CGFloat baseY = bounds.size.height - kayokoPrefsHeightInPoints;
-    return baseY < 0 ? 0 : baseY;
+static CGFloat KayokoBaseScreenYForWindow(UIWindow *statusBarWindow) {
+    CGRect screenBounds = KayokoScreenBoundsForWindow(statusBarWindow);
+    CGFloat topBoundary = CGRectGetMinY(screenBounds) + KayokoTopInsetForWindow(statusBarWindow);
+    CGFloat baseY = CGRectGetMaxY(screenBounds) - KayokoPanelHeightForWindow(statusBarWindow);
+    return baseY < topBoundary ? topBoundary : baseY;
 }
 
 static void KayokoUpdateFrameInStatusBarWindow(UIWindow *statusBarWindow, BOOL animated, NSDictionary *userInfo) {
@@ -149,49 +218,26 @@ static void KayokoUpdateFrameInStatusBarWindow(UIWindow *statusBarWindow, BOOL a
 
     KayokoEnsureBackdropInStatusBarWindow(statusBarWindow);
 
-    CGRect screenBounds = [[UIScreen mainScreen] bounds];
-    CGFloat baseScreenY = KayokoBaseScreenY();
+    CGRect screenBounds = KayokoScreenBoundsForWindow(statusBarWindow);
+    CGFloat panelHeight = KayokoPanelHeightForWindow(statusBarWindow);
+    CGFloat panelWidth = KayokoPanelWidthForWindow(statusBarWindow);
+    CGFloat topBoundary = CGRectGetMinY(screenBounds) + KayokoTopInsetForWindow(statusBarWindow);
+    CGFloat baseScreenY = KayokoBaseScreenYForWindow(statusBarWindow);
     if (kayokoDesiredScreenY < 0) {
         kayokoDesiredScreenY = baseScreenY;
     }
 
     CGFloat desiredScreenY = kayokoDesiredScreenY;
-    
-    // Ensure the top of Kayoko doesn't overlap the system status bar / Dynamic Island.
-    CGFloat topInset = 0;
-    if (statusBarWindow && [statusBarWindow respondsToSelector:@selector(safeAreaInsets)]) {
-        if (@available(iOS 11.0, *)) {
-            topInset = [statusBarWindow safeAreaInsets].top;
-        }
-    }
-    // If safeAreaInsets isn't available or returns 0, fall back to application's statusBarFrame height.
-    if (topInset <= 0) {
-        @try {
-            #pragma clang diagnostic push
-            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            CGRect sbFrame = [[UIApplication sharedApplication] statusBarFrame];
-            #pragma clang diagnostic pop
-            if (sbFrame.size.height > 0) {
-                topInset = sbFrame.size.height;
-            }
-        } @catch (NSException *ex) {
-            // ignore
-        }
-    }
-    if (desiredScreenY < topInset) {
-        desiredScreenY = topInset;
+    if (desiredScreenY < topBoundary) {
+        desiredScreenY = topBoundary;
     }
     if (desiredScreenY > baseScreenY) {
         desiredScreenY = baseScreenY;
     }
 
-    // 把“屏幕坐标系的目标位置”换算到 statusBarWindow 的坐标系里。
-    // 当系统因为键盘/编辑状态移动 statusBarWindow 时，可避免 Kayoko 跟着飘走。
-    CGFloat targetXInWindow = 0 - statusBarWindow.frame.origin.x;
-    CGFloat targetYInWindow = desiredScreenY - statusBarWindow.frame.origin.y;
-
-    CGRect targetFrame =
-        CGRectMake(targetXInWindow, targetYInWindow, screenBounds.size.width, kayokoPrefsHeightInPoints);
+    CGRect targetFrameOnScreen = CGRectMake(CGRectGetMinX(screenBounds) + ((screenBounds.size.width - panelWidth) / 2.0),
+                                            desiredScreenY, panelWidth, panelHeight);
+    CGRect targetFrame = [statusBarWindow convertRect:targetFrameOnScreen fromWindow:nil];
 
     if ([kayokoView superview] != statusBarWindow) {
         [kayokoView removeFromSuperview];
@@ -200,7 +246,8 @@ static void KayokoUpdateFrameInStatusBarWindow(UIWindow *statusBarWindow, BOOL a
 
     [statusBarWindow insertSubview:kayokoBackdropView belowSubview:kayokoView];
 
-    [kayokoView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin];
+    [kayokoView setAutoresizingMask:UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin |
+                                   UIViewAutoresizingFlexibleTopMargin];
     [[kayokoView superview] bringSubviewToFront:kayokoView];
 
     if (!animated) {
@@ -272,30 +319,32 @@ static void KayokoUpdateFrameInStatusBarWindow(UIWindow *statusBarWindow, BOOL a
         return;
     }
 
-    CGRect bounds = [[UIScreen mainScreen] bounds];
+    UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+    CGRect screenBounds = KayokoScreenBoundsForWindow(statusBarWindow);
     CGRect keyboardEndFrame = CGRectZero;
     NSValue *keyboardFrameValue = userInfo[UIKeyboardFrameEndUserInfoKey];
     if (keyboardFrameValue) {
         keyboardEndFrame = [keyboardFrameValue CGRectValue];
     }
 
-    CGFloat baseY = bounds.size.height - kayokoPrefsHeightInPoints;
+    CGFloat panelHeight = KayokoPanelHeightForWindow(statusBarWindow);
+    CGFloat topBoundary = CGRectGetMinY(screenBounds) + KayokoTopInsetForWindow(statusBarWindow);
+    CGFloat baseY = KayokoBaseScreenYForWindow(statusBarWindow);
     CGFloat keyboardTopY = keyboardEndFrame.origin.y;
-    if (keyboardTopY <= 0 || keyboardTopY > bounds.size.height) {
+    if (panelHeight <= 0 || keyboardTopY <= CGRectGetMinY(screenBounds) || keyboardTopY > CGRectGetMaxY(screenBounds)) {
         // 键盘 frame 不可信时不移动（避免跳动）。
         return;
     }
 
-    CGFloat targetScreenY = keyboardTopY - kayokoPrefsHeightInPoints;
-    if (targetScreenY < 0) {
-        targetScreenY = 0;
+    CGFloat targetScreenY = keyboardTopY - panelHeight;
+    if (targetScreenY < topBoundary) {
+        targetScreenY = topBoundary;
     }
     if (targetScreenY > baseY) {
         targetScreenY = baseY;
     }
 
     kayokoDesiredScreenY = targetScreenY;
-    UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
     KayokoUpdateFrameInStatusBarWindow(statusBarWindow, YES, [notification userInfo] ?: @{});
 }
 
@@ -307,8 +356,8 @@ static void KayokoUpdateFrameInStatusBarWindow(UIWindow *statusBarWindow, BOOL a
 
     BOOL kayokoHadFocus = (kayokoView && ![kayokoView isHidden] && KayokoViewContainsFirstResponder(kayokoView));
 
-    kayokoDesiredScreenY = KayokoBaseScreenY();
     UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+    kayokoDesiredScreenY = KayokoBaseScreenYForWindow(statusBarWindow);
     KayokoUpdateFrameInStatusBarWindow(statusBarWindow, YES, userInfo);
 
     // 如果键盘是由 Kayoko 内置搜索等输入触发的，键盘收起后把焦点还给 App 的输入框。
@@ -337,12 +386,13 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 
     // 初始化时默认贴底（屏幕坐标系）。
     if (kayokoDesiredScreenY < 0) {
-        kayokoDesiredScreenY = KayokoBaseScreenY();
+        kayokoDesiredScreenY = KayokoBaseScreenYForWindow((UIWindow *)self);
     }
 
     if (!kayokoView) {
-        CGRect screenBounds = [[UIScreen mainScreen] bounds];
-        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, 0, screenBounds.size.width, kayokoPrefsHeightInPoints)];
+        CGFloat panelWidth = KayokoPanelWidthForWindow((UIWindow *)self);
+        CGFloat panelHeight = KayokoPanelHeightForWindow((UIWindow *)self);
+        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, 0, panelWidth, panelHeight)];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [kayokoView setAlwaysShowFavoritesOnShow:kayokoPrefsAlwaysShowFavoritesOnShow];
         [kayokoView setShowRecordedTimeInHistory:kayokoPrefsShowRecordedTimeInHistory];
@@ -414,11 +464,11 @@ static void kayokoCopy() {
  */
 static void show() {
     if ([kayokoView isHidden]) {
+        UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
 
         if (kayokoDesiredScreenY < 0) {
-            kayokoDesiredScreenY = KayokoBaseScreenY();
+            kayokoDesiredScreenY = KayokoBaseScreenYForWindow(statusBarWindow);
         }
-        UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
         KayokoUpdateFrameInStatusBarWindow(statusBarWindow, NO, nil);
 
         [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
@@ -562,8 +612,8 @@ static void load_preferences() {
         [kayokoView setShowRecordedTimeInHistory:kayokoPrefsShowRecordedTimeInHistory];
         [kayokoView setShowRecordedTimeInFavorites:kayokoPrefsShowRecordedTimeInFavorites];
         [kayokoView reload];
-        kayokoDesiredScreenY = KayokoBaseScreenY();
         UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
+        kayokoDesiredScreenY = KayokoBaseScreenYForWindow(statusBarWindow);
         KayokoUpdateFrameInStatusBarWindow(statusBarWindow, NO, nil);
     }
 }

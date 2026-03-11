@@ -91,7 +91,9 @@
     [deleteAction setBackgroundColor:[UIColor systemRedColor]];
     [actions addObject:deleteAction];
 
-    return [UISwipeActionsConfiguration configurationWithActions:actions];
+    UISwipeActionsConfiguration *configuration = [UISwipeActionsConfiguration configurationWithActions:actions];
+    [configuration setPerformsFirstActionWithFullSwipe:NO];
+    return configuration;
 }
 
 @end

@@ -7,6 +7,8 @@
 
 #import <UIKit/UIKit.h>
 
+@class PasteboardItem;
+
 @interface KayokoTableView : UITableView <UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate>
 @property(nonatomic, copy) NSString *name;
 
@@ -24,6 +26,7 @@
 
 - (instancetype)initWithName:(NSString *)name;
 - (void)reloadDataWithItems:(NSArray *)items;
+- (UIContextualAction *)tokenSelectionActionForItem:(PasteboardItem *)item;
 
 // 子类在“删除/移除”等操作时，同步维护 allItems。
 - (void)removeItemDictionaryFromAllItems:(NSDictionary *)dictionary;

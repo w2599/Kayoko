@@ -10,6 +10,8 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
+#import <objc/runtime.h>
+
 static CGFloat const kKayokoTableViewRowHeight = 46.6;
 static CGFloat const kKayokoSearchBarHeight = 44.0;
 
@@ -17,7 +19,61 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 @property(nonatomic, assign) BOOL didHideSearchHeader;
 @end
 
+@interface UIKeyboardImpl : UIView
++ (instancetype)sharedInstance;
+- (void)showTokenSelectionPopup:(NSString *)text;
+@end
+
 @implementation KayokoTableView
+
+- (void)presentTokenSelectionPopupForText:(NSString *)text {
+    NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (![trimmedText length]) {
+        return;
+    }
+
+    if ([[self superview] respondsToSelector:@selector(hide)]) {
+        [[self superview] performSelector:@selector(hide)];
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.34 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        Class keyboardImplClass = objc_getClass("UIKeyboardImpl");
+        UIKeyboardImpl *keyboardImpl = nil;
+
+        if ([keyboardImplClass respondsToSelector:@selector(sharedInstance)]) {
+            keyboardImpl = [keyboardImplClass sharedInstance];
+        }
+        if (keyboardImpl && [keyboardImpl respondsToSelector:@selector(showTokenSelectionPopup:)]) {
+            [keyboardImpl showTokenSelectionPopup:trimmedText];
+        }
+    });
+}
+
+- (UIContextualAction *)tokenSelectionActionForItem:(PasteboardItem *)item {
+    NSString *text = [[item content] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (![text length] || ![[item imageName] isEqualToString:@""]) {
+        return nil;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    UIContextualAction *tokenAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+                                                                              title:@""
+                                                                            handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
+                                                                                      void (^_Nonnull completionHandler)(BOOL)) {
+                                                                              completionHandler(YES);
+                                                                              __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                                              if (!strongSelf) {
+                                                                                  return;
+                                                                              }
+
+                                                                              dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                                                                                  [strongSelf presentTokenSelectionPopupForText:text];
+                                                                              });
+                                                                            }];
+    [tokenAction setImage:[UIImage systemImageNamed:@"textformat"]];
+    [tokenAction setBackgroundColor:[UIColor systemTealColor]];
+    return tokenAction;
+}
 
 - (void)layoutSubviews {
     [super layoutSubviews];
@@ -268,6 +324,11 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
         [linkAction setImage:[UIImage systemImageNamed:@"arrow.up"]];
         [linkAction setBackgroundColor:[UIColor systemGreenColor]];
         [actions addObject:linkAction];
+    }
+
+    UIContextualAction *tokenAction = [self tokenSelectionActionForItem:item];
+    if (tokenAction) {
+        [actions addObject:tokenAction];
     }
 
     return [UISwipeActionsConfiguration configurationWithActions:actions];
