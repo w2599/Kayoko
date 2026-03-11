@@ -267,7 +267,8 @@
                           }];
     [unfavoriteAction setImage:[UIImage systemImageNamed:@"heart.slash.fill"]];
     [unfavoriteAction setBackgroundColor:[UIColor systemPinkColor]];
-    [actions addObject:unfavoriteAction];
+    NSUInteger unfavoriteActionIndex = [actions count] > 0 ? 1 : 0;
+    [actions insertObject:unfavoriteAction atIndex:unfavoriteActionIndex];
 
     // Match base table behavior (copy/link actions), but ensure favorites content does not enter history.
     if ([self automaticallyPaste] || ![[item imageName] isEqualToString:@""]) {
@@ -318,10 +319,10 @@
         [actions addObject:linkAction];
     }
 
-      UIContextualAction *tokenAction = [self tokenSelectionActionForItem:item];
-      if (tokenAction) {
-        [actions addObject:tokenAction];
-      }
+    UIContextualAction *tokenAction = [self tokenSelectionActionForItem:item];
+    if (tokenAction) {
+        [actions insertObject:tokenAction atIndex:0];
+    }
 
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }

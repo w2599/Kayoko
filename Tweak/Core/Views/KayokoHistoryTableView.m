@@ -49,7 +49,8 @@
                           }];
     [favoriteAction setImage:[UIImage systemImageNamed:@"heart.fill"]];
     [favoriteAction setBackgroundColor:[UIColor systemPinkColor]];
-    [actions insertObject:favoriteAction atIndex:0];
+    NSUInteger favoriteActionIndex = [actions count] > 0 ? 1 : 0;
+    [actions insertObject:favoriteAction atIndex:favoriteActionIndex];
 
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }

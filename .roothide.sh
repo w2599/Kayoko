@@ -62,7 +62,7 @@ then
     export DEVELOPER_DIR="/Applications/Xcode-14.3.0.app/Contents/Developer"
 
 	export THEOS_PACKAGE_SCHEME=roothide
-    make package
+    make do
 
 	export THEOS_PACKAGE_SCHEME=rootless
 	cp -af ./Headers/libSandyKayoko_rootless.plist ./layout/Library/libSandy/Kayoko.plist

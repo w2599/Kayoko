@@ -328,7 +328,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 
     UIContextualAction *tokenAction = [self tokenSelectionActionForItem:item];
     if (tokenAction) {
-        [actions addObject:tokenAction];
+        [actions insertObject:tokenAction atIndex:0];
     }
 
     return [UISwipeActionsConfiguration configurationWithActions:actions];
