@@ -682,6 +682,14 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
                                                                                      animated:YES
                                                                                    completion:nil];
 #pragma clang diagnostic pop
+    // 防呆, 避免错误的图层上无法点击弹窗导致无法关闭
+    __weak UIAlertController *weakClearAlert = clearAlert;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIAlertController *strongAlert = weakClearAlert;
+        if (strongAlert && strongAlert.presentingViewController) {
+            [strongAlert dismissViewControllerAnimated:YES completion:nil];
+        }
+    });
 
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
 }

@@ -20,6 +20,7 @@
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
 #import "Views/KayokoView.h"
+#import <libSandy.h>
 
 #define kMinimumFeedbackInterval 0.6
 
@@ -550,9 +551,12 @@ static void reload() {
  * Loads the user's preferences.
  */
 static void load_preferences() {
-    NSString *preferencesPath =
-        jbroot([NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]);
+    NSString *preferencesPath = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier];
+    preferencesPath = jbroot(preferencesPath);
     NSDictionary *storedPreferences = [NSDictionary dictionaryWithContentsOfFile:preferencesPath] ?: @{};
+
+    libSandy_applyProfile("Kayoko");
+
     NSDictionary *defaultPreferences = @{
         kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
         kPreferenceKeyActivationMethod : @(kPreferenceKeyActivationMethodDefaultValue),
@@ -582,6 +586,10 @@ static void load_preferences() {
     kayokoPrefsSaveImages = [effectivePreferences[kPreferenceKeySaveImages] boolValue];
     kayokoPrefsAutomaticallyPaste = [effectivePreferences[kPreferenceKeyAutomaticallyPaste] boolValue];
     kayokoPrefsDisablePasteTips = [effectivePreferences[kPreferenceKeyDisablePasteTips] boolValue];
+    if (@available(iOS 16, *)) {
+        // iOS16以上默认禁用。
+        kayokoPrefsDisablePasteTips = YES;
+    }
     kayokoPrefsAlwaysShowFavoritesOnShow =
         [effectivePreferences[kPreferenceKeyAlwaysShowFavoritesOnShow] boolValue];
     NSNumber *legacyShowRecordedTimeValue = effectivePreferences[kPreferenceKeyShowRecordedTime];

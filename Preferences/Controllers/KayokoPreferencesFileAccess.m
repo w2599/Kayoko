@@ -8,7 +8,8 @@
 #import <roothide.h>
 
 NSString *KayokoPreferencesPath(void) {
-    return jbroot([NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]);
+    NSString *preferencesPath = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier];
+    return jbroot(preferencesPath);
 }
 
 NSDictionary *KayokoPreferencesDictionary(void) {

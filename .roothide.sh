@@ -39,6 +39,19 @@ echo "编译版本号为${versionSee}"
 if [ $1 -eq "0" ]
 then
     export package FINALPACKAGE=1
+	export THEOS_PACKAGE_SCHEME=rootless
+	cp -af ./Headers/libSandyKayoko_rootless.plist ./layout/Library/libSandy/Kayoko.plist
+	export THEOS_DEVICE_IP=192.168.31.158
+	export THEOS_DEVICE_PORT=54322
+
+	make do -j$(sysctl -n hw.physicalcpu)
+	cp -f ./packages/*.deb $HOME/Documents/GitHub/myTweaks/roothide/
+	exit
+fi
+
+if [ $1 -eq "10" ]
+then
+    export package FINALPACKAGE=1
 	export THEOS_PACKAGE_SCHEME=roothide
 
 	make do -j$(sysctl -n hw.physicalcpu)
@@ -62,7 +75,7 @@ then
     export DEVELOPER_DIR="/Applications/Xcode-14.3.0.app/Contents/Developer"
 
 	export THEOS_PACKAGE_SCHEME=roothide
-    make do
+    make package
 
 	export THEOS_PACKAGE_SCHEME=rootless
 	cp -af ./Headers/libSandyKayoko_rootless.plist ./layout/Library/libSandy/Kayoko.plist
