@@ -440,14 +440,15 @@ static void _kayokoCopy() {
     lastCopyFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
-        static AVAudioPlayer *audioPlayer;
+        static SystemSoundID copySoundID = 0;
         dispatch_once(&onceToken, ^{
-          NSURL *soundURL = [NSURL fileURLWithPath:jbroot(
+          CFURLRef soundURL = (__bridge CFURLRef)[NSURL fileURLWithPath:jbroot(
                                              @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")];
-          audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:nil];
-          [audioPlayer prepareToPlay];
+          AudioServicesCreateSystemSoundID(soundURL, &copySoundID);
         });
-        [audioPlayer play];
+        if (copySoundID != 0) {
+            AudioServicesPlaySystemSound(copySoundID);
+        }
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
@@ -643,14 +644,15 @@ static void kayokoPaste() {
     lastPasteFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
-        static AVAudioPlayer *audioPlayer;
+        static SystemSoundID pasteSoundID = 0;
         dispatch_once(&onceToken, ^{
-          NSURL *soundURL = [NSURL fileURLWithPath:jbroot(
+          CFURLRef soundURL = (__bridge CFURLRef)[NSURL fileURLWithPath:jbroot(
                                              @"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")];
-          audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:nil];
-          [audioPlayer prepareToPlay];
+          AudioServicesCreateSystemSoundID(soundURL, &pasteSoundID);
         });
-        [audioPlayer play];
+        if (pasteSoundID != 0) {
+            AudioServicesPlaySystemSound(pasteSoundID);
+        }
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
