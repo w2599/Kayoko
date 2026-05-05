@@ -71,11 +71,11 @@ fi
 if [ $1 -eq "2" ]
 then
 	export package FINALPACKAGE=1
-    export TWEAK_OBF=1
-    export DEVELOPER_DIR="/Applications/Xcode-14.3.0.app/Contents/Developer"
 
 	export THEOS_PACKAGE_SCHEME=roothide
     make package
+
+	make clean
 
 	export THEOS_PACKAGE_SCHEME=rootless
 	cp -af ./Headers/libSandyKayoko_rootless.plist ./layout/Library/libSandy/Kayoko.plist

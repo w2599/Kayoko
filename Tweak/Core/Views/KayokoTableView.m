@@ -22,6 +22,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 @interface UIKeyboardImpl : UIView
 + (instancetype)sharedInstance;
 - (void)showTokenSelectionPopup:(NSString *)text;
+- (void)showImageTokenSelectionPopup:(UIImage *)image;
 @end
 
 @implementation KayokoTableView
@@ -49,9 +50,39 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
     });
 }
 
+- (void)presentTokenSelectionPopupForImage:(UIImage *)image {
+    if (!image) {
+        return;
+    }
+
+    if ([[self superview] respondsToSelector:@selector(hide)]) {
+        [[self superview] performSelector:@selector(hide)];
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.34 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        Class keyboardImplClass = objc_getClass("UIKeyboardImpl");
+        UIKeyboardImpl *keyboardImpl = nil;
+
+        if ([keyboardImplClass respondsToSelector:@selector(sharedInstance)]) {
+            keyboardImpl = [keyboardImplClass sharedInstance];
+        }
+        if (keyboardImpl && [keyboardImpl respondsToSelector:@selector(showImageTokenSelectionPopup:)]) {
+            [keyboardImpl showImageTokenSelectionPopup:image];
+        }
+    });
+}
+
 - (UIContextualAction *)tokenSelectionActionForItem:(PasteboardItem *)item {
     NSString *text = [[item content] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (![text length] || ![[item imageName] isEqualToString:@""]) {
+    BOOL hasImage = ![[item imageName] isEqualToString:@""];
+    UIImage *image = nil;
+
+    if (hasImage) {
+        image = [[PasteboardManager sharedInstance] getImageForItem:item];
+        if (!image) {
+            return nil;
+        }
+    } else if (![text length]) {
         return nil;
     }
 
@@ -67,10 +98,14 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
                                                                               }
 
                                                                               dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                                                                                  [strongSelf presentTokenSelectionPopupForText:text];
+                                                                                  if (hasImage) {
+                                                                                      [strongSelf presentTokenSelectionPopupForImage:image];
+                                                                                  } else {
+                                                                                      [strongSelf presentTokenSelectionPopupForText:text];
+                                                                                  }
                                                                               });
                                                                             }];
-    [tokenAction setImage:[UIImage systemImageNamed:@"textformat"]];
+    [tokenAction setImage:[UIImage systemImageNamed:(hasImage ? @"photo.on.rectangle" : @"textformat")]];
     [tokenAction setBackgroundColor:[UIColor systemTealColor]];
     return tokenAction;
 }
