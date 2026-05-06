@@ -99,24 +99,54 @@
     }
 }
 
-- (void)pullPasteboardChanges {
+- (BOOL)pullPasteboardChanges {
+    __block BOOL didSaveAnyItem = NO;
+
     if (@available(iOS 16, *)) {
-        dispatch_async(_queue, ^{
-          [self _reallyPullPasteboardChanges];
-        });
+        if (_queue) {
+            dispatch_sync(_queue, ^{
+              didSaveAnyItem = [self _reallyPullPasteboardChanges];
+            });
+        } else {
+            didSaveAnyItem = [self _reallyPullPasteboardChanges];
+        }
     } else {
-        [self _reallyPullPasteboardChanges];
+        didSaveAnyItem = [self _reallyPullPasteboardChanges];
     }
+
+    return didSaveAnyItem;
+}
+
+- (void)logDebugInfo {
+    NSArray *pasteboardTypes = [_pasteboard pasteboardTypes];
+    for (NSString *type in pasteboardTypes) {
+        NSLog(@"[----]type: %@", type);
+    }
+    NSLog(@"[----] ");
+
+    NSArray *items = [_pasteboard items];
+    for (id item in items) {
+        NSLog(@"[----]item: %@", item);
+    }
+    NSLog(@"[----] ");
+    NSLog(@"[----] hasURLs: %@ ", [_pasteboard hasURLs] ? @"YES" : @"NO");
+    NSLog(@"[----] hasStrings: %@ ", [_pasteboard hasStrings] ? @"YES" : @"NO");
+    NSLog(@"[----] hasImages: %@ \n\n", [_pasteboard hasImages] ? @"YES" : @"NO");
 }
 
 /**
  * Pulls new changes from the pasteboard.
  */
-- (void)_reallyPullPasteboardChanges {
+- (BOOL)_reallyPullPasteboardChanges {
     // Return if the pasteboard is empty.
+
+    // [self logDebugInfo];
+
     if ([_pasteboard changeCount] == _lastChangeCount || (![_pasteboard hasStrings] && ![_pasteboard hasImages])) {
-        return;
+        return NO;
     }
+
+    BOOL didSaveAnyItem = NO;
 
     [self ensureResourcesExist];
 
@@ -136,7 +166,9 @@
                                                               andContent:string
                                                           withImageNamed:nil
                                                                   remark:nil];
-                    [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
+                    if ([self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory]) {
+                        didSaveAnyItem = YES;
+                    }
                 }
             }
         }
@@ -169,12 +201,16 @@
                                                           andContent:imageName
                                                       withImageNamed:imageName
                                                       remark:nil];
-                [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
+                if ([self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory]) {
+                    didSaveAnyItem = YES;
+                }
             }
         }
     }
 
     _lastChangeCount = [_pasteboard changeCount];
+
+    return didSaveAnyItem;
 }
 
 /**
@@ -183,9 +219,13 @@
  * @param item The item to save.
  * @param historyKey The key for the history which to save to.
  */
-- (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
-    if ([[item content] isEqualToString:@""]) {
-        return;
+- (BOOL)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
+    NSString *content = [item content] ?: @"";
+    NSString *imageName = [item imageName] ?: @"";
+    NSString *trimmedContent = [content stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+    if (imageName.length < 1 && trimmedContent.length < 1) {
+        return NO;
     }
 
     // Remove duplicates.
@@ -209,6 +249,8 @@
     }
 
     [self setItems:history forHistoryWithKey:historyKey];
+
+    return YES;
 }
 
 /**
@@ -293,6 +335,7 @@
 - (void)_reallyUpdatePasteboardWithItem:(PasteboardItem *)item
                      fromHistoryWithKey:(NSString *)historyKey
                         shouldAutoPaste:(BOOL)shouldAutoPaste {
+    self.shouldIgnoreNextPasteboardChange = YES;
     [_pasteboard setString:@""];
 
     if (![[item imageName] isEqualToString:@""]) {

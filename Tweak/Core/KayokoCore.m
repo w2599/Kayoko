@@ -426,11 +426,14 @@ static void kayokoPasteWillStart() { isInPasteProgress = YES; }
  */
 static void _kayokoCopy() {
     NSLog(@"[Kayoko_tweak] Received distributed notification for pasteboard change");
-    [[PasteboardManager sharedInstance] pullPasteboardChanges];
+    BOOL didSaveAnyItem = [[PasteboardManager sharedInstance] pullPasteboardChanges];
     if (isInPasteProgress) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
           isInPasteProgress = NO;
         });
+        return;
+    }
+    if (!didSaveAnyItem) {
         return;
     }
     NSTimeInterval now = CACurrentMediaTime();
@@ -456,6 +459,13 @@ static void _kayokoCopy() {
 }
 
 static void kayokoCopy() {
+    PasteboardManager *manager = [PasteboardManager sharedInstance];
+    if (manager.shouldIgnoreNextPasteboardChange) {
+        manager.shouldIgnoreNextPasteboardChange = NO;
+        return;
+    }
+
+    // NSLog(@"[----] kayokoCopy");
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
       _kayokoCopy();
     });
@@ -468,9 +478,7 @@ static void show() {
     if ([kayokoView isHidden]) {
         UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
 
-        if (kayokoDesiredScreenY < 0) {
-            kayokoDesiredScreenY = KayokoBaseScreenYForWindow(statusBarWindow);
-        }
+        kayokoDesiredScreenY = KayokoBaseScreenYForWindow(statusBarWindow);
         KayokoUpdateFrameInStatusBarWindow(statusBarWindow, NO, nil);
 
         [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
