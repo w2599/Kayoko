@@ -160,6 +160,16 @@
 			<key>default</key>
 			<false/>
 			<key>key</key>
+			<string>IgnoreRemoteReplication</string>
+			<key>label</key>
+			<string>Ignore Remote Replication</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>key</key>
 			<string>AlwaysShowFavoritesOnShow</string>
 			<key>label</key>
 			<string>Always Show Favorites</string>

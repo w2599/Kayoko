@@ -18,6 +18,7 @@
 "Edit Menu" = "编辑菜单";
 "Automatically Paste" = "自动粘贴";
 "Disable Paste Tips" = "禁用粘贴提示";
+"Ignore Remote Replication" = "忽略远程复制";
 "Always Show Favorites" = "始终显示收藏";
 "Favorites Sort Order" = "收藏排序";
 "No favorites yet." = "还没有收藏内容。";

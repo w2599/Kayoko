@@ -36,7 +36,7 @@ sed -i '' "s/^\(Version:\s*\).*/\1 ${versionSee}/" control
 echo "编译版本号为${versionSee}"
 
 
-if [ $1 -eq "0" ]
+if [ $1 -eq "0" ] || [ $1 -eq "10" ]
 then
     export package FINALPACKAGE=1
 	export THEOS_PACKAGE_SCHEME=roothide

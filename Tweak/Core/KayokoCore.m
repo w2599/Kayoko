@@ -11,6 +11,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
+#import <os/lock.h>
 
 #import <HBLog.h>
 #import <roothide.h>
@@ -35,6 +36,7 @@ BOOL kayokoPrefsSaveText = NO;
 BOOL kayokoPrefsSaveImages = NO;
 BOOL kayokoPrefsAutomaticallyPaste = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
+BOOL kayokoPrefsIgnoreRemoteReplication = NO;
 BOOL kayokoPrefsAlwaysShowFavoritesOnShow = NO;
 BOOL kayokoPrefsShowRecordedTimeInHistory = NO;
 BOOL kayokoPrefsShowRecordedTimeInFavorites = NO;
@@ -49,8 +51,6 @@ static NSTimeInterval lastPasteFeedbackOccurred = 0;
 static NSTimeInterval lastCopyFeedbackOccurred = 0;
 
 static void hide(void);
-static void kayokoPreferencesDidReload(CFNotificationCenterRef center, void *observer, CFStringRef name,
-                                       const void *object, CFDictionaryRef userInfo);
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -425,49 +425,78 @@ static void kayokoPasteWillStart() { isInPasteProgress = YES; }
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
 static void _kayokoCopy() {
-    NSLog(@"[Kayoko_tweak] Received distributed notification for pasteboard change");
-    BOOL didSaveAnyItem = [[PasteboardManager sharedInstance] pullPasteboardChanges];
-    if (isInPasteProgress) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-          isInPasteProgress = NO;
-        });
-        return;
-    }
-    if (!didSaveAnyItem) {
-        return;
-    }
-    NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastCopyFeedbackOccurred) < kMinimumFeedbackInterval) {
-        return;
-    }
-    lastCopyFeedbackOccurred = now;
-    if (kayokoPrefsPlaySoundEffects) {
-        static dispatch_once_t onceToken;
-        static SystemSoundID copySoundID = 0;
-        dispatch_once(&onceToken, ^{
-          CFURLRef soundURL = (__bridge CFURLRef)[NSURL fileURLWithPath:jbroot(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")];
-          AudioServicesCreateSystemSoundID(soundURL, &copySoundID);
-        });
-        if (copySoundID != 0) {
-            AudioServicesPlaySystemSound(copySoundID);
+    NSLog(@"[----] [Kayoko] Copying ...");
+    [[PasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
+        NSLog(@"[----] [Kayoko] didSaveAnyItem: %d", didSaveAnyItem);
+        if (isInPasteProgress) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+              isInPasteProgress = NO;
+            });
+            return;
         }
+        if (!didSaveAnyItem) {
+            return;
+        }
+        NSTimeInterval now = CACurrentMediaTime();
+        if (fabs(now - lastCopyFeedbackOccurred) < kMinimumFeedbackInterval) {
+            return;
+        }
+        lastCopyFeedbackOccurred = now;
+        if (kayokoPrefsPlaySoundEffects) {
+            static dispatch_once_t onceToken;
+            static SystemSoundID copySoundID = 0;
+            dispatch_once(&onceToken, ^{
+              CFURLRef soundURL = (__bridge CFURLRef)[NSURL fileURLWithPath:jbroot(
+                                                 @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")];
+              AudioServicesCreateSystemSoundID(soundURL, &copySoundID);
+            });
+            if (copySoundID != 0) {
+                AudioServicesPlaySystemSound(copySoundID);
+            }
+        }
+        if (kayokoPrefsPlayHapticFeedback) {
+            AudioServicesPlaySystemSound(1519);
+        }
+    }];
+}
+
+static BOOL limitedCallback(CFTimeInterval interval) {
+    static CFTimeInterval lastTime = 0;
+    static os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
+    CFTimeInterval now = CACurrentMediaTime();
+    os_unfair_lock_lock(&lock);
+    BOOL limited = (now - lastTime) < interval;
+    if (!limited) {
+        lastTime = now;
     }
-    if (kayokoPrefsPlayHapticFeedback) {
-        AudioServicesPlaySystemSound(1519);
-    }
+    os_unfair_lock_unlock(&lock);
+    return limited;
 }
 
 static void kayokoCopy() {
-    PasteboardManager *manager = [PasteboardManager sharedInstance];
-    if (manager.shouldIgnoreNextPasteboardChange) {
-        manager.shouldIgnoreNextPasteboardChange = NO;
+    if (limitedCallback(0.1)) {
+        NSLog(@"[----] [kayoko]: 频率过高，已限制");
         return;
     }
 
     // NSLog(@"[----] kayokoCopy");
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-      _kayokoCopy();
+        if (kayokoPrefsIgnoreRemoteReplication) {
+            BOOL isRemote = [[UIPasteboard generalPasteboard] containsPasteboardTypes:@[@"com.apple.is-remote-clipboard"]];
+            if (isRemote) {
+                NSLog(@"[----] [kayoko]: 检测到远程复制，忽略此次粘贴板变更");
+                return;
+            }
+        }
+
+        // 从macOS远程复制文件时会有com.apple.icns类型
+        BOOL isRemoteFile = [[UIPasteboard generalPasteboard] containsPasteboardTypes:@[@"com.apple.icns"]];
+        if (isRemoteFile) {
+            NSLog(@"[----] [kayoko]: 检测到远程文件，忽略此次粘贴板变更");
+            return;
+        }
+
+        _kayokoCopy();
     });
 }
 
@@ -574,6 +603,7 @@ static void load_preferences() {
         kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
+        kPreferenceKeyIgnoreRemoteReplication : @(kPreferenceKeyIgnoreRemoteReplicationDefaultValue),
         kPreferenceKeyAlwaysShowFavoritesOnShow : @(kPreferenceKeyAlwaysShowFavoritesOnShowDefaultValue),
         kPreferenceKeyShowRecordedTime : @(kPreferenceKeyShowRecordedTimeDefaultValue),
         kPreferenceKeyShowRecordedTimeInHistory : @(kPreferenceKeyShowRecordedTimeInHistoryDefaultValue),
@@ -595,6 +625,7 @@ static void load_preferences() {
     kayokoPrefsSaveImages = [effectivePreferences[kPreferenceKeySaveImages] boolValue];
     kayokoPrefsAutomaticallyPaste = [effectivePreferences[kPreferenceKeyAutomaticallyPaste] boolValue];
     kayokoPrefsDisablePasteTips = [effectivePreferences[kPreferenceKeyDisablePasteTips] boolValue];
+    kayokoPrefsIgnoreRemoteReplication = [effectivePreferences[kPreferenceKeyIgnoreRemoteReplication] boolValue];
     if (@available(iOS 16, *)) {
         // iOS16以上默认禁用。
         kayokoPrefsDisablePasteTips = YES;

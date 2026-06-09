@@ -69,6 +69,23 @@
     return kLocalizationBundle;
 }
 
+- (void)logDebugInfo {
+    NSArray *pasteboardTypes = [_pasteboard pasteboardTypes];
+    for (NSString *type in pasteboardTypes) {
+        NSLog(@"[----]type: %@", type);
+    }
+    NSLog(@"[----] ");
+
+    NSArray *items = [_pasteboard items];
+    for (id item in items) {
+        NSLog(@"[----]item: %@", item);
+    }
+    NSLog(@"[----] ");
+    NSLog(@"[----] hasURLs: %@ ", [_pasteboard hasURLs] ? @"YES" : @"NO");
+    NSLog(@"[----] hasStrings: %@ ", [_pasteboard hasStrings] ? @"YES" : @"NO");
+    NSLog(@"[----] hasImages: %@ \n\n", [_pasteboard hasImages] ? @"YES" : @"NO");
+}
+
 /**
  * Creates the manager using the shared instance.
  */
@@ -94,123 +111,81 @@
 }
 
 - (void)preparePasteboardQueue {
-    if (@available(iOS 16, *)) {
-        _queue = dispatch_queue_create("codes.aurora.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
-    }
-}
-
-- (BOOL)pullPasteboardChanges {
-    __block BOOL didSaveAnyItem = NO;
-
-    if (@available(iOS 16, *)) {
-        if (_queue) {
-            dispatch_sync(_queue, ^{
-              didSaveAnyItem = [self _reallyPullPasteboardChanges];
-            });
-        } else {
-            didSaveAnyItem = [self _reallyPullPasteboardChanges];
-        }
-    } else {
-        didSaveAnyItem = [self _reallyPullPasteboardChanges];
-    }
-
-    return didSaveAnyItem;
-}
-
-- (void)logDebugInfo {
-    NSArray *pasteboardTypes = [_pasteboard pasteboardTypes];
-    for (NSString *type in pasteboardTypes) {
-        NSLog(@"[----]type: %@", type);
-    }
-    NSLog(@"[----] ");
-
-    NSArray *items = [_pasteboard items];
-    for (id item in items) {
-        NSLog(@"[----]item: %@", item);
-    }
-    NSLog(@"[----] ");
-    NSLog(@"[----] hasURLs: %@ ", [_pasteboard hasURLs] ? @"YES" : @"NO");
-    NSLog(@"[----] hasStrings: %@ ", [_pasteboard hasStrings] ? @"YES" : @"NO");
-    NSLog(@"[----] hasImages: %@ \n\n", [_pasteboard hasImages] ? @"YES" : @"NO");
+    _queue = dispatch_queue_create("codes.aurora.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
 }
 
 /**
  * Pulls new changes from the pasteboard.
  */
-- (BOOL)_reallyPullPasteboardChanges {
-    // Return if the pasteboard is empty.
+- (void)pullPasteboardChangesWithCompletion:(void (^)(BOOL didSaveAnyItem))completion {
 
-    // [self logDebugInfo];
+    NSInteger currentCount = [_pasteboard changeCount];
+    if (currentCount == _lastChangeCount) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+    _lastChangeCount = currentCount;
 
-    if ([_pasteboard changeCount] == _lastChangeCount || (![_pasteboard hasStrings] && ![_pasteboard hasImages])) {
-        return NO;
+    BOOL didSaveText = [self saveText] && ![_pasteboard hasImages] && [_pasteboard hasStrings];
+    BOOL didSaveImages = [self saveImages] && [_pasteboard hasImages];
+
+    if (!didSaveText && !didSaveImages) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
     }
 
-    BOOL didSaveAnyItem = NO;
-
     [self ensureResourcesExist];
+    dispatch_async(_queue, ^{
+        NSArray *strings = didSaveText ? [[_pasteboard strings] copy] : nil;
+        NSArray *images = didSaveImages ? [[_pasteboard images] copy] : nil;
 
-    if ([self saveText]) {
-        // Don't pull strings if the pasteboard contains images.
-        // For example: When copying an image from the web we only want the image, without the string.
-        if (!([_pasteboard hasStrings] && [_pasteboard hasImages])) {
-            for (NSString *string in [_pasteboard strings]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *bundleIdentifier = [[[UIApplication sharedApplication] _accessibilityFrontMostApplication] bundleIdentifier] ?: @"com.apple.springboard";
+            BOOL didSaveAnyItem = NO;
+            for (NSString *string in strings) {
                 @autoreleasepool {
-                    // The core only runs on the SpringBoard process, thus we can't use mainbundle to get the process'
-                    // bundle identifier. However, we can get it by using UIApplication/SpringBoard
-                    // front-most-application.
-                    SBApplication *frontMostApplication =
-                        [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-                    PasteboardItem *item =
-                        [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
-                                                              andContent:string
-                                                          withImageNamed:nil
-                                                                  remark:nil];
+                    PasteboardItem *item = [[PasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
+                                                                                 andContent:string
+                                                                             withImageNamed:nil
+                                                                                     remark:nil];
                     if ([self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory]) {
                         didSaveAnyItem = YES;
                     }
                 }
             }
-        }
-    }
+            for (UIImage *image in images) {
+                @autoreleasepool {
+                    NSString *imageName = [StringUtil getRandomStringWithLength:32];
 
-    if ([self saveImages]) {
-        for (UIImage *image in [_pasteboard images]) {
-            @autoreleasepool {
-                NSString *imageName = [StringUtil getRandomStringWithLength:32];
+                    // Only save as PNG if the image has an alpha channel to save storage space.
+                    if ([ImageUtil imageHasAlpha:image]) {
+                        imageName = [imageName stringByAppendingString:@".png"];
+                        NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+                        [UIImagePNGRepresentation([ImageUtil getRotatedImageFromImage:image]) writeToFile:filePath atomically:YES];
+                    } else {
+                        imageName = [imageName stringByAppendingString:@".jpg"];
+                        NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+                        [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
+                    }
 
-                // Only save as PNG if the image has an alpha channel to save storage space.
-                if ([ImageUtil imageHasAlpha:image]) {
-                    imageName = [imageName stringByAppendingString:@".png"];
-                    NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
-                    [UIImagePNGRepresentation([ImageUtil getRotatedImageFromImage:image]) writeToFile:filePath
-                                                                                           atomically:YES];
-                } else {
-                    imageName = [imageName stringByAppendingString:@".jpg"];
-                    NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
-                    [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
-                }
-
-                // See the above loop.
-                SBApplication *frontMostApplication =
-                    [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-                PasteboardItem *item =
-                    [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
-                                                          andContent:imageName
-                                                      withImageNamed:imageName
-                                                      remark:nil];
-                if ([self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory]) {
-                    didSaveAnyItem = YES;
+                    PasteboardItem *item = [[PasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
+                                                                                 andContent:imageName
+                                                                             withImageNamed:imageName
+                                                                                     remark:nil];
+                    if ([self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory]) {
+                        didSaveAnyItem = YES;
+                    }
                 }
             }
-        }
-    }
-
-    _lastChangeCount = [_pasteboard changeCount];
-
-    return didSaveAnyItem;
+            if (completion) {
+                completion(didSaveAnyItem);
+            }
+        });
+    });
 }
 
 /**
@@ -335,9 +310,6 @@
 - (void)_reallyUpdatePasteboardWithItem:(PasteboardItem *)item
                      fromHistoryWithKey:(NSString *)historyKey
                         shouldAutoPaste:(BOOL)shouldAutoPaste {
-    self.shouldIgnoreNextPasteboardChange = YES;
-    [_pasteboard setString:@""];
-
     if (![[item imageName] isEqualToString:@""]) {
         NSString *filePath =
             [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
@@ -347,15 +319,17 @@
         [_pasteboard setString:[item content]];
     }
 
-    // The pasteboard updates with the given item, which triggers an update event.
-    // For history items, we intentionally allow that event and remove the original item so the re-added one
-    // bubbles to the top without duplicates.
-    // For favorites, we do NOT want this pasteboard write to create a history entry.
     NSUInteger newChangeCount = [_pasteboard changeCount];
+    _lastChangeCount = newChangeCount;
+
     if ([historyKey isEqualToString:kHistoryKeyHistory]) {
-        [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:YES];
-    } else {
-        _lastChangeCount = newChangeCount;
+        SBApplication *frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+        PasteboardItem *updatedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                                                              andContent:[item content]
+                                                              withImageNamed:[item imageName]
+                                                              remark:[item remark]];
+        [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:NO];
+        [self addPasteboardItem:updatedItem toHistoryWithKey:historyKey];
     }
 
     // Automatic paste should not occur for asynchronous operations.
