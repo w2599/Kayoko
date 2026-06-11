@@ -29,6 +29,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 + (NSString *)historyPath;
 + (NSString *)favoritesPath;
 + (NSString *)historyImagesPath;
++ (NSString *)pendingAutoPasteItemPath;
 + (NSBundle *)localizationBundle;
 
 - (void)pullPasteboardChangesWithCompletion:(void (^)(BOOL didSaveAnyItem))completion;
@@ -46,6 +47,9 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)setItems:(NSArray *)items forHistoryWithKey:(NSString *)historyKey;
 - (PasteboardItem *)getLatestHistoryItem;
+- (PasteboardItem *)getPendingAutoPasteItem;
+- (void)setPendingAutoPasteItem:(PasteboardItem *)item;
+- (void)clearPendingAutoPasteItem;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;
 
 @end

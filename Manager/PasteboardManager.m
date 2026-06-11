@@ -59,6 +59,15 @@
     return kHistoryImagesPath;
 }
 
++ (NSString *)pendingAutoPasteItemPath {
+        static NSString *kPendingAutoPasteItemPath = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            kPendingAutoPasteItemPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/pending-auto-paste-item.plist");
+        });
+        return kPendingAutoPasteItemPath;
+}
+
 + (NSBundle *)localizationBundle {
     static NSBundle *kLocalizationBundle = nil;
     static dispatch_once_t onceToken;
@@ -322,6 +331,12 @@
     NSUInteger newChangeCount = [_pasteboard changeCount];
     _lastChangeCount = newChangeCount;
 
+    if (shouldAutoPaste) {
+        [self setPendingAutoPasteItem:item];
+    } else {
+        [self clearPendingAutoPasteItem];
+    }
+
     if ([historyKey isEqualToString:kHistoryKeyHistory]) {
         SBApplication *frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
         PasteboardItem *updatedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
@@ -391,6 +406,42 @@
 - (PasteboardItem *)getLatestHistoryItem {
     NSArray *history = [self getItemsFromHistoryWithKey:kHistoryKeyHistory];
     return [PasteboardItem itemFromDictionary:[history firstObject] ?: nil];
+}
+
+- (PasteboardItem *)getPendingAutoPasteItem {
+    [self ensureResourcesExist];
+
+    NSDictionary *dictionary = [NSDictionary dictionaryWithContentsOfFile:[PasteboardManager pendingAutoPasteItemPath]];
+    if (![dictionary isKindOfClass:[NSDictionary class]]) {
+        return nil;
+    }
+
+    return [PasteboardItem itemFromDictionary:dictionary];
+}
+
+- (void)setPendingAutoPasteItem:(PasteboardItem *)item {
+    [self ensureResourcesExist];
+
+    if (!item) {
+        [self clearPendingAutoPasteItem];
+        return;
+    }
+
+    NSDictionary *dictionary = @{
+        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
+        kItemKeyContent : [item content] ?: @"",
+        kItemKeyImageName : [item imageName] ?: @"",
+        kItemKeyRemark : [item remark] ?: @"",
+        kItemKeyHasLink : @([item hasLink]),
+        kItemKeyRecordedAt : @([item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970])
+    };
+
+    [dictionary writeToFile:[PasteboardManager pendingAutoPasteItemPath] atomically:YES];
+}
+
+- (void)clearPendingAutoPasteItem {
+    [self ensureResourcesExist];
+    [_fileManager removeItemAtPath:[PasteboardManager pendingAutoPasteItemPath] error:nil];
 }
 
 /**

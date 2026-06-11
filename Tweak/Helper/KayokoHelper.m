@@ -418,7 +418,7 @@ static void kayokoPaste() {
         return;
     }
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
       // 先把焦点还给 App 的输入框（覆盖：用户点 Kayoko 搜索结果时键盘未消失的情况）。
       UIResponder *responder = kayokoLastTextInputResponder;
       if (responder && ![responder isFirstResponder] && [responder respondsToSelector:@selector(becomeFirstResponder)]) {
@@ -434,16 +434,22 @@ static void kayokoPaste() {
       // Get the latest copied item if the pasteboard cleared itself.
       // The pasteboard clears itself after inactivity.
       if (![pasteboard string] && ![pasteboard image]) {
-          PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
+          PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+          PasteboardItem *item = [pasteboardManager getPendingAutoPasteItem];
+          if (!item) {
+              item = [pasteboardManager getLatestHistoryItem];
+          }
           if (!item) {
               return;
           }
 
           if (![[item imageName] isEqualToString:@""]) {
-              [pasteboard setImage:[[PasteboardManager sharedInstance] getImageForItem:item]];
+              [pasteboard setImage:[pasteboardManager getImageForItem:item]];
           } else {
               [pasteboard setString:[item content]];
           }
+
+          [pasteboardManager clearPendingAutoPasteItem];
       }
 
       // 给一次 runloop，让 becomeFirstResponder 的切换更稳。
