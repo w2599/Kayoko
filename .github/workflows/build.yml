@@ -6,15 +6,30 @@ on:
     branches:
       - release
 
+permissions:
+  contents: write
+
 env:
   VERSION: 1.0
   FINALPACKAGE: 1
   HOMEBREW_NO_AUTO_UPDATE: 1
   HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+  THEOS: ${{ github.workspace }}/theos
 
 jobs:
   build:
+    name: Build (${{ matrix.build_variant }})
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build_variant: legacy
+            env_script: devkit/env.sh
+          - build_variant: rootless
+            env_script: devkit/rootless.sh
+          - build_variant: roothide
+            env_script: devkit/roothide.sh
 
     steps:
     - name: Setup Xcode
@@ -22,66 +37,76 @@ jobs:
       with:
         xcode-version: '15.4'
 
-    - name: Setup Environment
-      run: |
-        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-        echo "THEOS_IGNORE_PARALLEL_BUILDING_NOTICE=yes" >> $HOME/.theosrc
-
-    - name: Setup Theos
-      run: |
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/OwnGoalStudio/theos/refs/heads/master/bin/install-theos)"
-        $THEOS/bin/install-sdk iPhoneOS16.5 || true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Setup Environment (RootHide)
-      run: |
-        echo "THEOS=$HOME/theos-roothide" >> $GITHUB_ENV
-
-    - name: Setup Theos (RootHide)
-      run: |
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/OwnGoalStudio/theos-roothide/refs/heads/master/bin/install-theos)"
-        $THEOS/bin/install-sdk iPhoneOS16.5 || true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Build (arm)
+    - name: Setup Environment
       run: |
-        source devkit/env.sh
-        make package
+        echo "$THEOS/bin" >> "$GITHUB_PATH"
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "THEOS_IGNORE_PARALLEL_BUILDING_NOTICE=yes" >> $HOME/.theosrc
 
-    - name: Build (arm64)
-      run: |
-        source devkit/rootless.sh
-        make package
+    - name: Checkout Theos (RootHide)
+      uses: actions/checkout@v4
+      with:
+        repository: roothide/theos
+        ref: legacy-roothide
+        path: theos
+        submodules: recursive
 
-    - name: Build (arm64e)
+    - name: Install iOS SDK
       run: |
-        source devkit/roothide.sh
+        cd "$THEOS"
+        ./bin/install-sdk iPhoneOS16.5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Package
+      run: |
+        source "${{ matrix.env_script }}"
+        export THEOS="$GITHUB_WORKSPACE/theos"
         make package
 
     - name: Collect dSYMs
       run: |
         find .theos/obj -name "*.dSYM" -exec cp -r {} ./packages/ \;
-        VERSION=$(grep '^Version:' .theos/_/DEBIAN/control | awk '{print $2}')
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Upload dSYMs
       uses: actions/upload-artifact@v4
       with:
-        name: symbols-${{ env.VERSION }}
+        name: symbols-${{ matrix.build_variant }}
         path: |
           ./packages/*.dSYM
+        if-no-files-found: warn
 
     - name: Upload Packages
       uses: actions/upload-artifact@v4
       with:
-        name: packages-${{ env.VERSION }}
+        name: packages-${{ matrix.build_variant }}
         path: |
           ./packages/*.deb
+        if-no-files-found: error
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Extract Version
+      run: |
+        VERSION=$(grep '^Version:' control | awk '{print $2}')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Download Packages
+      uses: actions/download-artifact@v4
+      with:
+        pattern: packages-*
+        path: release-packages
+        merge-multiple: true
 
     - name: Release
       uses: softprops/action-gh-release@v2
@@ -90,4 +115,4 @@ jobs:
         draft: true
         prerelease: false
         files: |
-          ./packages/*.deb
+          release-packages/*.deb
