@@ -55,6 +55,9 @@ OBJC_EXTERN void EnableKayokoActivationDictation(void);
 @interface UIKeyboardLayoutStar : UIKeyboardLayout
 @end
 
+@interface UIKBInputBackdropView : UIView
+@end
+
 @interface UISystemKeyboardDockController : NSObject
 @end
 

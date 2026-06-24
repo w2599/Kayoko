@@ -217,6 +217,16 @@ static void override_UIKeyboardLayoutStar_didMoveToWindow(UIKeyboardLayoutStar *
                                          (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
 }
 
+/**
+ * Hides the history when they keyboard was dismissed, if the history is already visible.
+ */
+static void (*orig_UIKBInputBackdropView_didMoveToWindow)(UIKBInputBackdropView *self, SEL _cmd);
+static void override_UIKBInputBackdropView_didMoveToWindow(UIKBInputBackdropView *self, SEL _cmd) {
+    orig_UIKBInputBackdropView_didMoveToWindow(self, _cmd);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
+}
+
 #pragma mark - UIKeyboardImpl class hooks
 
 /**
@@ -569,6 +579,9 @@ __attribute((constructor)) static void initialize() {
     MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow),
                     (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow,
                     (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
+    MSHookMessageEx(objc_getClass("UIKBInputBackdropView"), @selector(didMoveToWindow),
+                    (IMP)&override_UIKBInputBackdropView_didMoveToWindow,
+                    (IMP *)&orig_UIKBInputBackdropView_didMoveToWindow);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:),
                     (IMP)&override_UIKeyboardImpl_applicationDidBecomeActive,
                     (IMP *)&orig_UIKeyboardImpl_applicationDidBecomeActive);
