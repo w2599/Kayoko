@@ -1,9 +1,9 @@
 #import <HBLog.h>
-#import <objc/runtime.h>
 #import <substrate.h>
 
 @import Foundation;
 @import UIKit;
+#include <math.h>
 
 #import "KayokoHelper.h"
 #import "NotificationKeys.h"
@@ -11,7 +11,96 @@
 
 #define ITEM_ID "codes.aurora.kayoko.globe"
 
-static char kKayokoSwipeUpGestureRecognizerKey;
+static BOOL kayokoSwipeUpTracking = NO;
+static BOOL kayokoSwipeUpDidTrigger = NO;
+static CGPoint kayokoSwipeUpStartPoint = CGPointZero;
+
+static UIInputSetHostView *kayokoFindInputSetHostView(UIView *view) {
+    if ([view isKindOfClass:NSClassFromString(@"UIInputSetHostView")]) {
+        return (UIInputSetHostView *)view;
+    }
+
+    for (UIView *subview in view.subviews) {
+        UIInputSetHostView *hostView = kayokoFindInputSetHostView(subview);
+        if (hostView) {
+            return hostView;
+        }
+    }
+
+    return nil;
+}
+
+static BOOL kayokoPointIsInsideInputSetHostView(UIWindow *window, CGPoint point) {
+    UIInputSetHostView *hostView = kayokoFindInputSetHostView(window);
+    if (!hostView || !hostView.window) {
+        return NO;
+    }
+
+    CGRect hostFrame = [hostView convertRect:hostView.bounds toView:window];
+    return CGRectContainsPoint(hostFrame, point);
+}
+
+static void kayokoResetSwipeUpTracking(void) {
+    kayokoSwipeUpTracking = NO;
+    kayokoSwipeUpDidTrigger = NO;
+    kayokoSwipeUpStartPoint = CGPointZero;
+}
+
+static void kayokoShowKayoko(void) {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
+}
+
+static void kayokoHandleSwipeUpLocation(CGPoint location) {
+    if (!kayokoSwipeUpTracking || kayokoSwipeUpDidTrigger) {
+        return;
+    }
+
+    CGFloat deltaX = location.x - kayokoSwipeUpStartPoint.x;
+    CGFloat deltaY = location.y - kayokoSwipeUpStartPoint.y;
+    if (deltaY <= -70.0 && fabs(deltaX) <= 120.0) {
+        kayokoSwipeUpDidTrigger = YES;
+        kayokoShowKayoko();
+    }
+}
+
+static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event) {
+    if (event.type != UIEventTypeTouches) {
+        return;
+    }
+
+    NSSet<UITouch *> *touches = [event allTouches];
+    if (touches.count != 1) {
+        kayokoResetSwipeUpTracking();
+        return;
+    }
+
+    UITouch *touch = [touches anyObject];
+    if (touch.window != window) {
+        return;
+    }
+
+    CGPoint location = [touch locationInView:window];
+    switch (touch.phase) {
+        case UITouchPhaseBegan:
+            kayokoSwipeUpTracking = kayokoPointIsInsideInputSetHostView(window, location);
+            kayokoSwipeUpDidTrigger = NO;
+            kayokoSwipeUpStartPoint = location;
+            break;
+        case UITouchPhaseMoved:
+            kayokoHandleSwipeUpLocation(location);
+            break;
+        case UITouchPhaseEnded:
+            kayokoHandleSwipeUpLocation(location);
+            kayokoResetSwipeUpTracking();
+            break;
+        case UITouchPhaseCancelled:
+            kayokoResetSwipeUpTracking();
+            break;
+        default:
+            break;
+    }
+}
 
 @interface UIInputSwitcherItem : NSObject
 @property(nonatomic, copy) NSString *identifier;
@@ -125,36 +214,11 @@ static char kKayokoSwipeUpGestureRecognizerKey;
 
 %group KayokoActivationSwipeUp
 
-%hook UIInputSetHostView
+%hook UIRemoteKeyboardWindow
 
-- (void)didMoveToWindow {
+- (void)sendEvent:(UIEvent *)event {
+    kayokoTrackSwipeUpInKeyboardWindow(self, event);
     %orig;
-
-    if (!self.window) {
-        return;
-    }
-
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey);
-    if (recognizer) {
-        return;
-    }
-
-    recognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(kayoko_handleSwipeUpGesture:)];
-    recognizer.direction = UISwipeGestureRecognizerDirectionUp;
-    recognizer.numberOfTouchesRequired = 1;
-    recognizer.cancelsTouchesInView = NO;
-    [self addGestureRecognizer:recognizer];
-    objc_setAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey, recognizer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-}
-
-%new
-- (void)kayoko_handleSwipeUpGesture:(UISwipeGestureRecognizer *)recognizer {
-    if (recognizer.state != UIGestureRecognizerStateRecognized) {
-        return;
-    }
-
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
 }
 
 %end
