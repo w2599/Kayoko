@@ -1,4 +1,5 @@
 #import <HBLog.h>
+#import <objc/runtime.h>
 #import <substrate.h>
 
 @import Foundation;
@@ -9,6 +10,8 @@
 #import "PasteboardManager.h"
 
 #define ITEM_ID "codes.aurora.kayoko.globe"
+
+static char kKayokoSwipeUpGestureRecognizerKey;
 
 @interface UIInputSwitcherItem : NSObject
 @property(nonatomic, copy) NSString *identifier;
@@ -120,6 +123,44 @@
 
 %end // KayokoActivationDictation
 
+%group KayokoActivationSwipeUp
+
+%hook UIInputSetHostView
+
+- (void)didMoveToWindow {
+    %orig;
+
+    if (!self.window) {
+        return;
+    }
+
+    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey);
+    if (recognizer) {
+        return;
+    }
+
+    recognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(kayoko_handleSwipeUpGesture:)];
+    recognizer.direction = UISwipeGestureRecognizerDirectionUp;
+    recognizer.numberOfTouchesRequired = 1;
+    recognizer.cancelsTouchesInView = NO;
+    [self addGestureRecognizer:recognizer];
+    objc_setAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey, recognizer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (void)kayoko_handleSwipeUpGesture:(UISwipeGestureRecognizer *)recognizer {
+    if (recognizer.state != UIGestureRecognizerStateRecognized) {
+        return;
+    }
+
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
+}
+
+%end
+
+%end // KayokoActivationSwipeUp
+
 
 void EnableKayokoActivationGlobe(void) {
     %init(KayokoActivationGlobe);
@@ -127,4 +168,8 @@ void EnableKayokoActivationGlobe(void) {
 
 void EnableKayokoActivationDictation(void) {
     %init(KayokoActivationDictation);
+}
+
+void EnableKayokoActivationSwipeUp(void) {
+    %init(KayokoActivationSwipeUp);
 }

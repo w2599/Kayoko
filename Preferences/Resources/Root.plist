@@ -133,6 +133,7 @@
 				<integer>2</integer>
 				<integer>4</integer>
 				<integer>8</integer>
+				<integer>16</integer>
 			</array>
 			<key>validTitles</key>
 			<array>
@@ -140,6 +141,7 @@
 				<string>Dictation Key</string>
 				<string>Input Switcher</string>
 				<string>Edit Menu</string>
+				<string>One-Finger Swipe Up</string>
 			</array>
 		</dict>
 		<dict>

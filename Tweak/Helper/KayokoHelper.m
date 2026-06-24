@@ -554,6 +554,11 @@ __attribute((constructor)) static void initialize() {
         EnableKayokoActivationGlobe();
     }
 
+    // One-Finger Swipe Up
+    if (kayokoHelperPrefsActivationMethod & kActivationMethodSwipeUp) {
+        EnableKayokoActivationSwipeUp();
+    }
+
     // Callout Bar
     if (kayokoHelperPrefsActivationMethod & kActivationMethodCalloutBar) {
         class_addMethod(NSClassFromString(@"UIResponder"), NSSelectorFromString(kayokoSelectorName),

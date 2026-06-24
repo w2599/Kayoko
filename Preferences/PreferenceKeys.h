@@ -11,7 +11,8 @@ typedef NS_OPTIONS(NSUInteger, ActivationMethod) {
     kActivationMethodPredictionBar = 1 << 0,
     kActivationMethodDictationKey = 1 << 1,
     kActivationMethodInputSwitcher = 1 << 2,
-    kActivationMethodCalloutBar = 1 << 3
+    kActivationMethodCalloutBar = 1 << 3,
+    kActivationMethodSwipeUp = 1 << 4
 };
 
 static NSString *const kPreferencesIdentifier = @"codes.aurora.kayoko.preferences";
