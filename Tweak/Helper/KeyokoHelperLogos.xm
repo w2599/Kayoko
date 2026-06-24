@@ -1,4 +1,5 @@
 #import <HBLog.h>
+#import <objc/runtime.h>
 #import <substrate.h>
 
 @import Foundation;
@@ -14,31 +15,13 @@
 static BOOL kayokoSwipeUpTracking = NO;
 static BOOL kayokoSwipeUpDidTrigger = NO;
 static CGPoint kayokoSwipeUpStartPoint = CGPointZero;
-
-static UIInputSetHostView *kayokoFindInputSetHostView(UIView *view) {
-    if ([view isKindOfClass:NSClassFromString(@"UIInputSetHostView")]) {
-        return (UIInputSetHostView *)view;
-    }
-
-    for (UIView *subview in view.subviews) {
-        UIInputSetHostView *hostView = kayokoFindInputSetHostView(subview);
-        if (hostView) {
-            return hostView;
-        }
-    }
-
-    return nil;
-}
-
-static BOOL kayokoPointIsInsideInputSetHostView(UIWindow *window, CGPoint point) {
-    UIInputSetHostView *hostView = kayokoFindInputSetHostView(window);
-    if (!hostView || !hostView.window) {
-        return NO;
-    }
-
-    CGRect hostFrame = [hostView convertRect:hostView.bounds toView:window];
-    return CGRectContainsPoint(hostFrame, point);
-}
+static NSTimeInterval kayokoSwipeUpStartTimestamp = 0;
+static char kKayokoSwipeUpGestureRecognizerKey;
+static CGFloat const kKayokoSwipeUpMinimumVerticalDistance = 120.0;
+static CGFloat const kKayokoSwipeUpMaximumHorizontalDistance = 80.0;
+static CGFloat const kKayokoSwipeUpMinimumVerticalDominance = 1.5;
+static CGFloat const kKayokoSwipeUpMinimumVerticalVelocity = 350.0;
+static NSTimeInterval const kKayokoSwipeUpMaximumDuration = 0.5;
 
 static BOOL kayokoPointIsInsideWindow(UIWindow *window, CGPoint point) {
     return CGRectContainsPoint(window.bounds, point);
@@ -48,6 +31,7 @@ static void kayokoResetSwipeUpTracking(void) {
     kayokoSwipeUpTracking = NO;
     kayokoSwipeUpDidTrigger = NO;
     kayokoSwipeUpStartPoint = CGPointZero;
+    kayokoSwipeUpStartTimestamp = 0;
 }
 
 static void kayokoShowKayoko(void) {
@@ -55,20 +39,31 @@ static void kayokoShowKayoko(void) {
                                          (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
 }
 
-static void kayokoHandleSwipeUpLocation(CGPoint location) {
+static void kayokoHandleSwipeUpLocation(CGPoint location, NSTimeInterval timestamp) {
     if (!kayokoSwipeUpTracking || kayokoSwipeUpDidTrigger) {
         return;
     }
 
     CGFloat deltaX = location.x - kayokoSwipeUpStartPoint.x;
     CGFloat deltaY = location.y - kayokoSwipeUpStartPoint.y;
-    if (deltaY <= -70.0 && fabs(deltaX) <= 120.0) {
+    CGFloat absDeltaX = fabs(deltaX);
+    CGFloat absDeltaY = fabs(deltaY);
+    NSTimeInterval duration = timestamp - kayokoSwipeUpStartTimestamp;
+    if (duration <= 0 || duration > kKayokoSwipeUpMaximumDuration) {
+        return;
+    }
+
+    CGFloat verticalVelocity = absDeltaY / duration;
+    if (deltaY <= -kKayokoSwipeUpMinimumVerticalDistance &&
+        absDeltaX <= kKayokoSwipeUpMaximumHorizontalDistance &&
+        absDeltaY >= absDeltaX * kKayokoSwipeUpMinimumVerticalDominance &&
+        verticalVelocity >= kKayokoSwipeUpMinimumVerticalVelocity) {
         kayokoSwipeUpDidTrigger = YES;
         kayokoShowKayoko();
     }
 }
 
-static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event, BOOL requiresInputSetHostView) {
+static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event) {
     if (event.type != UIEventTypeTouches) {
         return;
     }
@@ -87,16 +82,16 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event,
     CGPoint location = [touch locationInView:window];
     switch (touch.phase) {
         case UITouchPhaseBegan:
-            kayokoSwipeUpTracking = requiresInputSetHostView ? kayokoPointIsInsideInputSetHostView(window, location)
-                                                             : kayokoPointIsInsideWindow(window, location);
+            kayokoSwipeUpTracking = kayokoPointIsInsideWindow(window, location);
             kayokoSwipeUpDidTrigger = NO;
             kayokoSwipeUpStartPoint = location;
+            kayokoSwipeUpStartTimestamp = touch.timestamp;
             break;
         case UITouchPhaseMoved:
-            kayokoHandleSwipeUpLocation(location);
+            kayokoHandleSwipeUpLocation(location, touch.timestamp);
             break;
         case UITouchPhaseEnded:
-            kayokoHandleSwipeUpLocation(location);
+            kayokoHandleSwipeUpLocation(location, touch.timestamp);
             kayokoResetSwipeUpTracking();
             break;
         case UITouchPhaseCancelled:
@@ -219,11 +214,35 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event,
 
 %group KayokoActivationSwipeUp
 
-%hook UIRemoteKeyboardWindow
+%hook UIInputSetHostView
 
-- (void)sendEvent:(UIEvent *)event {
-    kayokoTrackSwipeUpInKeyboardWindow(self, event, YES);
+- (void)didMoveToWindow {
     %orig;
+
+    if (!self.window) {
+        return;
+    }
+
+    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey);
+    if (recognizer) {
+        return;
+    }
+
+    recognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(kayoko_handleSwipeUpGesture:)];
+    recognizer.direction = UISwipeGestureRecognizerDirectionUp;
+    recognizer.numberOfTouchesRequired = 1;
+    recognizer.cancelsTouchesInView = NO;
+    [self addGestureRecognizer:recognizer];
+    objc_setAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey, recognizer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (void)kayoko_handleSwipeUpGesture:(UISwipeGestureRecognizer *)recognizer {
+    if (recognizer.state != UIGestureRecognizerStateRecognized) {
+        return;
+    }
+
+    kayokoShowKayoko();
 }
 
 %end
@@ -235,7 +254,7 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event,
 %hook _UIHostedWindow
 
 - (void)sendEvent:(UIEvent *)event {
-    kayokoTrackSwipeUpInKeyboardWindow(self, event, NO);
+    kayokoTrackSwipeUpInKeyboardWindow(self, event);
     %orig;
 }
 

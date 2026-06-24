@@ -60,13 +60,7 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 @interface UIKBInputBackdropView : UIView
 @end
 
-@interface UIInputSetContainerView : UIView
-@end
-
 @interface UIInputSetHostView : UIView
-@end
-
-@interface UIRemoteKeyboardWindow : UIWindow
 @end
 
 @interface _UIHostedWindow : UIWindow
