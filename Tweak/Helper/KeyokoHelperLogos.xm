@@ -40,6 +40,10 @@ static BOOL kayokoPointIsInsideInputSetHostView(UIWindow *window, CGPoint point)
     return CGRectContainsPoint(hostFrame, point);
 }
 
+static BOOL kayokoPointIsInsideWindow(UIWindow *window, CGPoint point) {
+    return CGRectContainsPoint(window.bounds, point);
+}
+
 static void kayokoResetSwipeUpTracking(void) {
     kayokoSwipeUpTracking = NO;
     kayokoSwipeUpDidTrigger = NO;
@@ -64,7 +68,7 @@ static void kayokoHandleSwipeUpLocation(CGPoint location) {
     }
 }
 
-static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event) {
+static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event, BOOL requiresInputSetHostView) {
     if (event.type != UIEventTypeTouches) {
         return;
     }
@@ -83,7 +87,8 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event)
     CGPoint location = [touch locationInView:window];
     switch (touch.phase) {
         case UITouchPhaseBegan:
-            kayokoSwipeUpTracking = kayokoPointIsInsideInputSetHostView(window, location);
+            kayokoSwipeUpTracking = requiresInputSetHostView ? kayokoPointIsInsideInputSetHostView(window, location)
+                                                             : kayokoPointIsInsideWindow(window, location);
             kayokoSwipeUpDidTrigger = NO;
             kayokoSwipeUpStartPoint = location;
             break;
@@ -217,13 +222,26 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event)
 %hook UIRemoteKeyboardWindow
 
 - (void)sendEvent:(UIEvent *)event {
-    kayokoTrackSwipeUpInKeyboardWindow(self, event);
+    kayokoTrackSwipeUpInKeyboardWindow(self, event, YES);
     %orig;
 }
 
 %end
 
 %end // KayokoActivationSwipeUp
+
+%group KayokoActivationSwipeUpKeyboardExtension
+
+%hook _UIHostedWindow
+
+- (void)sendEvent:(UIEvent *)event {
+    kayokoTrackSwipeUpInKeyboardWindow(self, event, NO);
+    %orig;
+}
+
+%end
+
+%end // KayokoActivationSwipeUpKeyboardExtension
 
 
 void EnableKayokoActivationGlobe(void) {
@@ -236,4 +254,8 @@ void EnableKayokoActivationDictation(void) {
 
 void EnableKayokoActivationSwipeUp(void) {
     %init(KayokoActivationSwipeUp);
+}
+
+void EnableKayokoActivationSwipeUpForKeyboardExtension(void) {
+    %init(KayokoActivationSwipeUpKeyboardExtension);
 }

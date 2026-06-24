@@ -19,6 +19,7 @@ OBJC_EXTERN NSString *const kayokoSelectorSignature;
 OBJC_EXTERN void EnableKayokoActivationGlobe(void);
 OBJC_EXTERN void EnableKayokoActivationDictation(void);
 OBJC_EXTERN void EnableKayokoActivationSwipeUp(void);
+OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 
 @interface TIKeyboardCandidate : NSObject
 @end
@@ -66,6 +67,9 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUp(void);
 @end
 
 @interface UIRemoteKeyboardWindow : UIWindow
+@end
+
+@interface _UIHostedWindow : UIWindow
 @end
 
 @interface UISystemKeyboardDockController : NSObject

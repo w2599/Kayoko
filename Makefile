@@ -3,7 +3,7 @@ export ARCHS := arm64 arm64e
 export TARGET := iphone:clang:16.5:14.0
 export GO_EASY_ON_ME := 1
 
-INSTALL_TARGET_PROCESSES := SpringBoard Preferences druid pasted
+INSTALL_TARGET_PROCESSES := backboardd druid pasted
 
 SUBPROJECTS += Tweak/Core
 SUBPROJECTS += Tweak/Helper

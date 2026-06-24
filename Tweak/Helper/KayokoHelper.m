@@ -32,6 +32,7 @@ static BOOL applicationIsInForeground = YES;
 
 static TIAutocorrectionList *kayokoCreateAutocorrectionList(void);
 static void kayokoPaste(void);
+static BOOL kayokoIsKeyboardExtensionProcess(void);
 
 #pragma mark - UIKeyboardAutocorrectionController class hooks
 
@@ -471,6 +472,20 @@ static void load_preferences() {
 
 #pragma mark - Constructor
 
+static BOOL kayokoIsKeyboardExtensionProcess() {
+    NSBundle *mainBundle = [NSBundle mainBundle];
+    NSString *bundlePath = [mainBundle bundlePath];
+    BOOL isPluginBundle = [[bundlePath pathExtension] isEqualToString:@"appex"] ||
+                          [bundlePath rangeOfString:@"/PlugIns/"].location != NSNotFound;
+    if (!isPluginBundle) {
+        return NO;
+    }
+
+    NSDictionary *extensionInfo = [[mainBundle infoDictionary] objectForKey:@"NSExtension"];
+    NSString *extensionPointIdentifier = [extensionInfo objectForKey:@"NSExtensionPointIdentifier"];
+    return [extensionPointIdentifier isEqualToString:@"com.apple.keyboard-service"];
+}
+
 /**
  * Initializes the helper.
  *
@@ -491,6 +506,7 @@ __attribute((constructor)) static void initialize() {
 
     NSString *processName = [[NSProcessInfo processInfo] processName];
     BOOL isSpringBoard = [@"SpringBoard" isEqualToString:processName];
+    BOOL isKeyboardExtension = kayokoIsKeyboardExtensionProcess();
 
     BOOL shouldLoad = NO;
     NSArray *args = [[objc_getClass("NSProcessInfo") processInfo] arguments];
@@ -504,15 +520,22 @@ __attribute((constructor)) static void initialize() {
             BOOL isFileProvider = [[processName lowercaseString] rangeOfString:@"fileprovider"].location != NSNotFound;
             BOOL skip = [processName isEqualToString:@"AdSheet"] || [processName isEqualToString:@"CoreAuthUI"] ||
                         [processName isEqualToString:@"InCallService"] ||
-                        [processName isEqualToString:@"MessagesNotificationViewService"] ||
-                        [executablePath rangeOfString:@".appex/"].location != NSNotFound;
-            if ((!isFileProvider && isApplication && !skip) || isSpringBoard) {
+                        [processName isEqualToString:@"MessagesNotificationViewService"];
+            if (((!isFileProvider && isApplication && !skip) || isSpringBoard) &&
+                ([executablePath rangeOfString:@".appex/"].location == NSNotFound || isKeyboardExtension)) {
                 shouldLoad = YES;
             }
         }
     }
 
     if (!shouldLoad) {
+        return;
+    }
+
+    if (isKeyboardExtension) {
+        if (kayokoHelperPrefsActivationMethod & kActivationMethodSwipeUp) {
+            EnableKayokoActivationSwipeUpForKeyboardExtension();
+        }
         return;
     }
 
