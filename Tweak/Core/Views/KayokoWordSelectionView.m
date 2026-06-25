@@ -9,9 +9,9 @@
 
 static CGFloat const kKayokoWordSelectionHorizontalInset = 16;
 static CGFloat const kKayokoWordSelectionTopInset = 12;
-static CGFloat const kKayokoWordSelectionTokenSpacing = 8;
-static CGFloat const kKayokoWordSelectionLineSpacing = 8;
-static CGFloat const kKayokoWordSelectionTokenHeight = 30;
+static CGFloat const kKayokoWordSelectionTokenSpacing = 9;
+static CGFloat const kKayokoWordSelectionLineSpacing = 9;
+static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 
 @interface KayokoWordSelectionView () <UIGestureRecognizerDelegate>
 @property(nonatomic, strong) UIScrollView *scrollView;
@@ -41,7 +41,7 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
         [self setSelectionAnchorIndex:NSNotFound];
 
         [self setScrollView:[[UIScrollView alloc] init]];
-        [[self scrollView] setAlwaysBounceVertical:YES];
+        [[self scrollView] setAlwaysBounceVertical:NO];
         [[self scrollView] setBackgroundColor:[UIColor clearColor]];
         [self addSubview:[self scrollView]];
 
@@ -55,6 +55,11 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
 
         [self setContentView:[[UIView alloc] init]];
         [[self scrollView] addSubview:[self contentView]];
+
+        UITapGestureRecognizer *tapGesture =
+            [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)];
+        [tapGesture setDelegate:self];
+        [[self contentView] addGestureRecognizer:tapGesture];
 
         UIPanGestureRecognizer *selectionGesture =
             [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleSelectionGesture:)];
@@ -77,12 +82,12 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
         NSDictionary *token = [self tokens][index];
         [button setTag:index];
         [button setTitle:token[@"text"] forState:UIControlStateNormal];
-        [[button titleLabel] setFont:[UIFont systemFontOfSize:15 weight:UIFontWeightRegular]];
+        [[button titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightRegular]];
         [[button titleLabel] setLineBreakMode:NSLineBreakByTruncatingMiddle];
-        [button setContentEdgeInsets:UIEdgeInsetsMake(0, 9, 0, 9)];
-        [[button layer] setCornerRadius:6];
+        [button setContentEdgeInsets:UIEdgeInsetsMake(0, 11, 0, 11)];
+        [button setUserInteractionEnabled:NO];
+        [[button layer] setCornerRadius:7];
         [[button layer] setBorderWidth:0.5];
-        [button addTarget:self action:@selector(handleTokenButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
         [[self contentView] addSubview:button];
         [[self tokenButtons] addObject:button];
     }
@@ -116,7 +121,8 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
     CGFloat x = kKayokoWordSelectionHorizontalInset;
     CGFloat y = kKayokoWordSelectionTopInset;
 
-    for (UIButton *button in [self tokenButtons]) {
+    for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
+        UIButton *button = [self tokenButtons][index];
         CGSize size = [button sizeThatFits:CGSizeMake(availableWidth, kKayokoWordSelectionTokenHeight)];
         CGFloat buttonWidth = MIN(MAX(ceil(size.width), kKayokoWordSelectionTokenHeight), availableWidth);
 
@@ -128,6 +134,11 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
 
         [button setFrame:CGRectMake(x, y, buttonWidth, kKayokoWordSelectionTokenHeight)];
         x += buttonWidth + kKayokoWordSelectionTokenSpacing;
+
+        if ([self tokens][index][@"line_break_after"] && index + 1 < [[self tokenButtons] count]) {
+            x = kKayokoWordSelectionHorizontalInset;
+            y += kKayokoWordSelectionTokenHeight + kKayokoWordSelectionLineSpacing;
+        }
     }
 
     CGFloat contentHeight = [[self tokenButtons] count] > 0
@@ -135,6 +146,10 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
                                 : kKayokoWordSelectionTopInset;
     [[self contentView] setFrame:CGRectMake(0, 0, CGRectGetWidth([self bounds]), contentHeight)];
     [[self scrollView] setContentSize:CGSizeMake(CGRectGetWidth([self bounds]), contentHeight)];
+
+    BOOL scrollable = contentHeight > CGRectGetHeight([self bounds]) + 0.5;
+    [[self scrollView] setBounces:scrollable];
+    [[self scrollView] setAlwaysBounceVertical:scrollable];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
@@ -142,8 +157,11 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
     [self updateButtonStyles];
 }
 
-- (void)handleTokenButtonPressed:(UIButton *)button {
-    [self toggleTokenAtIndex:[button tag]];
+- (void)handleTapGesture:(UITapGestureRecognizer *)gesture {
+    NSUInteger tokenIndex = [self tokenIndexAtPoint:[gesture locationInView:[self contentView]]];
+    if (tokenIndex != NSNotFound) {
+        [self toggleTokenAtIndex:tokenIndex];
+    }
 }
 
 - (void)handleSelectionGesture:(UIPanGestureRecognizer *)gesture {
@@ -160,12 +178,10 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
         [self setSelectionGestureOriginalIndexes:[[self selectedTokenIndexes] mutableCopy]];
         [self setHasCustomSelection:YES];
         [[self scrollView] setScrollEnabled:NO];
-        [self applySelectionGestureThroughIndex:tokenIndex];
         return;
     }
 
-    if (([gesture state] == UIGestureRecognizerStateChanged || [gesture state] == UIGestureRecognizerStateEnded) &&
-        tokenIndex != NSNotFound) {
+    if ([gesture state] == UIGestureRecognizerStateChanged && tokenIndex != NSNotFound) {
         [self applySelectionGestureThroughIndex:tokenIndex];
     }
 
@@ -178,17 +194,22 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    CGPoint location = [gestureRecognizer locationInView:[self contentView]];
+
+    if ([gestureRecognizer isKindOfClass:[UITapGestureRecognizer class]]) {
+        return [self tokenIndexAtPoint:location] != NSNotFound;
+    }
+
     if (![gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
         return YES;
     }
 
-    CGPoint location = [gestureRecognizer locationInView:[self contentView]];
-    if ([self tokenIndexAtPoint:location] == NSNotFound) {
+    if ([self tokenIndexForSelectionLocation:location] == NSNotFound) {
         return NO;
     }
 
     CGPoint velocity = [(UIPanGestureRecognizer *)gestureRecognizer velocityInView:self];
-    if (fabs(velocity.y) > fabs(velocity.x) * 1.2) {
+    if (fabs(velocity.y) > fabs(velocity.x) * 1.5) {
         return NO;
     }
 
@@ -319,6 +340,50 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
     }
 
     NSMutableArray<NSDictionary *> *tokens = [[NSMutableArray alloc] init];
+    __block NSUInteger cursor = 0;
+    __block NSUInteger previousSentenceLastTokenIndex = NSNotFound;
+    __block BOOL foundSentence = NO;
+
+    [text enumerateSubstringsInRange:NSMakeRange(0, [text length])
+                             options:NSStringEnumerationBySentences
+                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange,
+                                        NSRange enclosingRange, BOOL *_Nonnull stop) {
+                            foundSentence = YES;
+
+                            if (substringRange.location > cursor) {
+                                NSRange gapRange = NSMakeRange(cursor, substringRange.location - cursor);
+                                [tokens addObjectsFromArray:[self detectedTokensForText:text inRange:gapRange]];
+                            }
+
+                            NSArray<NSDictionary *> *sentenceTokens =
+                                [self detectedTokensForText:text inRange:substringRange];
+                            if ([sentenceTokens count] > 0) {
+                                if (previousSentenceLastTokenIndex != NSNotFound) {
+                                    [self markTokenForLineBreakAtIndex:previousSentenceLastTokenIndex
+                                                              inTokens:tokens];
+                                }
+
+                                [tokens addObjectsFromArray:sentenceTokens];
+                                previousSentenceLastTokenIndex = [tokens count] - 1;
+                            }
+
+                            cursor = NSMaxRange(substringRange);
+                          }];
+
+    if (!foundSentence) {
+        return [self detectedTokensForText:text inRange:NSMakeRange(0, [text length])];
+    }
+
+    if (cursor < [text length]) {
+        NSRange remainingRange = NSMakeRange(cursor, [text length] - cursor);
+        [tokens addObjectsFromArray:[self detectedTokensForText:text inRange:remainingRange]];
+    }
+
+    return tokens;
+}
+
++ (NSArray<NSDictionary *> *)detectedTokensForText:(NSString *)text inRange:(NSRange)textRange {
+    NSMutableArray<NSDictionary *> *tokens = [[NSMutableArray alloc] init];
     NSMutableArray<NSTextCheckingResult *> *detectedResults = [[NSMutableArray alloc] init];
     NSDataDetector *detector =
         [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber |
@@ -326,7 +391,7 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
                                         error:nil];
     [detector enumerateMatchesInString:text
                                options:0
-                                 range:NSMakeRange(0, [text length])
+                                 range:textRange
                             usingBlock:^(NSTextCheckingResult *_Nullable result, NSMatchingFlags flags, BOOL *stop) {
                               if ([result range].length > 0) {
                                   [detectedResults addObject:result];
@@ -343,10 +408,10 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
       return NSOrderedSame;
     }];
 
-    NSUInteger cursor = 0;
+    NSUInteger cursor = textRange.location;
     for (NSTextCheckingResult *result in detectedResults) {
         NSRange range = [result range];
-        if (range.location < cursor || NSMaxRange(range) > [text length]) {
+        if (range.location < cursor || NSMaxRange(range) > NSMaxRange(textRange)) {
             continue;
         }
 
@@ -359,12 +424,22 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 30;
         cursor = NSMaxRange(range);
     }
 
-    if (cursor < [text length]) {
-        NSRange remainingRange = NSMakeRange(cursor, [text length] - cursor);
+    if (cursor < NSMaxRange(textRange)) {
+        NSRange remainingRange = NSMakeRange(cursor, NSMaxRange(textRange) - cursor);
         [tokens addObjectsFromArray:[self wordTokensForText:text inRange:remainingRange]];
     }
 
     return tokens;
+}
+
++ (void)markTokenForLineBreakAtIndex:(NSUInteger)index inTokens:(NSMutableArray<NSDictionary *> *)tokens {
+    if (index >= [tokens count]) {
+        return;
+    }
+
+    NSMutableDictionary *token = [tokens[index] mutableCopy];
+    token[@"line_break_after"] = @YES;
+    tokens[index] = token;
 }
 
 + (NSArray<NSDictionary *> *)wordTokensForText:(NSString *)text inRange:(NSRange)range {
