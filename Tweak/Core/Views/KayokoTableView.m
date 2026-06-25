@@ -26,6 +26,7 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 
     if (self) {
         [self setName:name];
+        [self setHistoryKey:kHistoryKeyHistory];
         [self setDelegate:self];
         [self setDataSource:self];
         [self setBackgroundColor:[UIColor clearColor]];
@@ -90,9 +91,10 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 
     NSDictionary *dictionary = [self items][[indexPath row]];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-    [[PasteboardManager sharedInstance] updatePasteboardWithItem:item
-                                              fromHistoryWithKey:kHistoryKeyHistory
-                                                 shouldAutoPaste:YES];
+    [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
+                                                                  historyItem:item
+                                                           fromHistoryWithKey:[self historyKey]
+                                                              shouldAutoPaste:YES];
 
     [[self superview] performSelector:@selector(hide)];
 }

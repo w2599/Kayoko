@@ -12,7 +12,6 @@
 #import "KayokoHistoryTableView.h"
 #import "KayokoPreviewView.h"
 #import "KayokoWordSelectionView.h"
-#import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import <rootless.h>
@@ -166,6 +165,7 @@
                                                                                      localizedStringForKey:@"Favorites"
                                                                                                      value:nil
                                                                                                      table:@"Tweak"]]];
+        [[self favoritesTableView] setHistoryKey:kHistoryKeyFavorites];
         [[self favoritesTableView] setHidden:YES];
         [self addSubview:[self favoritesTableView]];
 
@@ -514,13 +514,19 @@
     }
 
     NSString *text = [[self previewView] selectedText];
-    [[UIPasteboard generalPasteboard] setString:text];
 
     if ([self automaticallyPaste]) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-          CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                               (CFStringRef)kNotificationKeyHelperPaste, nil, nil, YES);
-        });
+        PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[_previewItem bundleIdentifier]
+                                                                             andContent:text
+                                                                         withImageNamed:@""];
+        NSString *historyKey =
+            _previewSourceTableView == [self favoritesTableView] ? kHistoryKeyFavorites : kHistoryKeyHistory;
+        [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
+                                                                      historyItem:_previewItem
+                                                               fromHistoryWithKey:historyKey
+                                                                  shouldAutoPaste:YES];
+    } else {
+        [[UIPasteboard generalPasteboard] setString:text];
     }
 
     [[self previewView] reset];
