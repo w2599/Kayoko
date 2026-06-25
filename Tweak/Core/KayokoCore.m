@@ -59,6 +59,22 @@ static NSTimeInterval lastCopyFeedbackOccurred = 0;
 - (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
 
+static void apply_preferences_to_view() {
+    if (!kayokoView) {
+        return;
+    }
+
+    [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
+    [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
+    [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
+
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGRect newFrame =
+        CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
+    [kayokoView setFrame:newFrame];
+}
+
 #pragma mark - UIStatusBarWindow class hooks
 
 /**
@@ -77,9 +93,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
         CGRect bounds = [[UIScreen mainScreen] bounds];
         kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
                                                                   bounds.size.width, kayokoPrefsHeightInPoints)];
-        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
-        [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
-        [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
+        apply_preferences_to_view();
         [kayokoView setHidden:YES];
         [self addSubview:kayokoView];
     }
@@ -237,16 +251,7 @@ static void load_preferences() {
     [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];
     [[PasteboardManager sharedInstance] setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
 
-    if (kayokoView) {
-        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
-        [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
-        [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
-        [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
-        CGRect bounds = [[UIScreen mainScreen] bounds];
-        CGRect newFrame =
-            CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
-        [kayokoView setFrame:newFrame];
-    }
+    apply_preferences_to_view();
 }
 
 #pragma mark - Sound effects
