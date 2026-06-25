@@ -31,6 +31,7 @@ NSUInteger kayokoHelperPrefsActivationMethod = 0;
 NSUInteger kayokoPrefsMaximumHistoryAmount = 0;
 BOOL kayokoPrefsSaveText = NO;
 BOOL kayokoPrefsSaveImages = NO;
+BOOL kayokoPrefsSwipeToSelectWords = NO;
 BOOL kayokoPrefsAutomaticallyPaste = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
 BOOL kayokoPrefsPlaySoundEffects = NO;
@@ -76,6 +77,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
         kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
                                                                   bounds.size.width, kayokoPrefsHeightInPoints)];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
         [kayokoView setHidden:YES];
         [self addSubview:kayokoView];
     }
@@ -203,6 +205,7 @@ static void load_preferences() {
         kPreferenceKeyMaximumHistoryAmount : @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
         kPreferenceKeySaveText : @(kPreferenceKeySaveTextDefaultValue),
         kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
+        kPreferenceKeySwipeToSelectWords : @(kPreferenceKeySwipeToSelectWordsDefaultValue),
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
@@ -217,6 +220,7 @@ static void load_preferences() {
         [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
     kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
+    kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
@@ -231,6 +235,7 @@ static void load_preferences() {
 
     if (kayokoView) {
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
         [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
         CGRect bounds = [[UIScreen mainScreen] bounds];
         CGRect newFrame =

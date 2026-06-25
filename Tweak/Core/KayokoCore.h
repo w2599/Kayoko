@@ -18,6 +18,7 @@ OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
 OBJC_EXTERN NSUInteger kayokoPrefsMaximumHistoryAmount;
 OBJC_EXTERN BOOL kayokoPrefsSaveText;
 OBJC_EXTERN BOOL kayokoPrefsSaveImages;
+OBJC_EXTERN BOOL kayokoPrefsSwipeToSelectWords;
 OBJC_EXTERN BOOL kayokoPrefsAutomaticallyPaste;
 OBJC_EXTERN BOOL kayokoPrefsDisablePasteTips;
 OBJC_EXTERN BOOL kayokoPrefsPlaySoundEffects;

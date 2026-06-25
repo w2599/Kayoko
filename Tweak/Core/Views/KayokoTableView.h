@@ -13,4 +13,5 @@
 @property(nonatomic, assign) BOOL automaticallyPaste;
 - (instancetype)initWithName:(NSString *)name;
 - (void)reloadDataWithItems:(NSArray *)items;
+- (void)notifyContentStateChanged;
 @end

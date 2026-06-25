@@ -175,4 +175,12 @@
     [self reloadData];
 }
 
+- (void)notifyContentStateChanged {
+    SEL selector = NSSelectorFromString(@"updateContentState");
+    UIView *superview = [self superview];
+    if ([superview respondsToSelector:selector]) {
+        ((void (*)(id, SEL))[superview methodForSelector:selector])(superview, selector);
+    }
+}
+
 @end
