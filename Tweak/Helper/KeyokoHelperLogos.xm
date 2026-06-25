@@ -22,9 +22,26 @@ static CGFloat const kKayokoSwipeUpMaximumHorizontalDistance = 80.0;
 static CGFloat const kKayokoSwipeUpMinimumVerticalDominance = 1.5;
 static CGFloat const kKayokoSwipeUpMinimumVerticalVelocity = 350.0;
 static NSTimeInterval const kKayokoSwipeUpMaximumDuration = 0.5;
+static CGFloat const kKayokoSwipeUpAdditionalBottomSafetyInset = 32.0;
 
-static BOOL kayokoPointIsInsideWindow(UIWindow *window, CGPoint point) {
-    return CGRectContainsPoint(window.bounds, point);
+static CGRect kayokoSwipeAllowedBoundsForView(UIView *view) {
+    UIEdgeInsets safeAreaInsets = view.safeAreaInsets;
+    safeAreaInsets.bottom += kKayokoSwipeUpAdditionalBottomSafetyInset;
+    CGRect allowedBounds = UIEdgeInsetsInsetRect(view.bounds, safeAreaInsets);
+    if (CGRectGetWidth(allowedBounds) <= 0 || CGRectGetHeight(allowedBounds) <= 0) {
+        return CGRectNull;
+    }
+
+    return allowedBounds;
+}
+
+static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
+    CGRect allowedBounds = kayokoSwipeAllowedBoundsForView(view);
+    if (CGRectIsNull(allowedBounds)) {
+        return NO;
+    }
+
+    return CGRectContainsPoint(allowedBounds, point);
 }
 
 static void kayokoResetSwipeUpTracking(void) {
@@ -109,7 +126,7 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event)
     CGPoint location = [touch locationInView:window];
     switch (touch.phase) {
         case UITouchPhaseBegan:
-            kayokoSwipeUpTracking = kayokoPointIsInsideWindow(window, location);
+            kayokoSwipeUpTracking = kayokoPointIsInsideAllowedSwipeRegion(window, location);
             kayokoSwipeUpDidTrigger = NO;
             kayokoSwipeUpStartPoint = location;
             kayokoSwipeUpStartTimestamp = touch.timestamp;
@@ -259,8 +276,18 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event)
     recognizer.direction = UISwipeGestureRecognizerDirectionUp;
     recognizer.numberOfTouchesRequired = 1;
     recognizer.cancelsTouchesInView = NO;
+    recognizer.delegate = (id<UIGestureRecognizerDelegate>)self;
     [self addGestureRecognizer:recognizer];
     objc_setAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey, recognizer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    if (gestureRecognizer != objc_getAssociatedObject(self, &kKayokoSwipeUpGestureRecognizerKey)) {
+        return YES;
+    }
+
+    return kayokoPointIsInsideAllowedSwipeRegion(self, [touch locationInView:self]);
 }
 
 %new
