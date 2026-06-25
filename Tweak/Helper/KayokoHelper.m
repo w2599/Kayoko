@@ -241,7 +241,7 @@ static void override_UIKBInputBackdropView_didMoveToWindow(UIKBInputBackdropView
 static BOOL override_UIKeyboardImpl_shouldShowDictationKey(UIKeyboardImpl *self, SEL _cmd) { return YES; }
 
 /**
- * Notes that the app became active.
+ * Notes that the app will become active.
  *
  * Knowing that, we can prevent pasting from happening in apps that became inactive.
  */
@@ -252,13 +252,24 @@ static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *s
 }
 
 /**
- * Notes that the app became inactive.
+ * Notes that the app will resign active.
  *
  * @see applicationDidBecomeActive why to save the state of an app.
  */
 static void (*orig_UIKeyboardImpl_applicationWillResignActive)(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive);
 static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive) {
     orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
+    applicationIsInForeground = NO;
+}
+
+/**
+ * Notes that the app will suspend.
+ *
+ * @see applicationDidBecomeActive why to save the state of an app.
+ */
+static void (*orig_UIKeyboardImpl_applicationWillSuspend)(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend);
+static void override_UIKeyboardImpl_applicationWillSuspend(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend) {
+    orig_UIKeyboardImpl_applicationWillSuspend(self, _cmd, willSuspend);
     applicationIsInForeground = NO;
 }
 
@@ -462,6 +473,11 @@ static void kayokoPaste() {
 
 @implementation KayokoKeyboardObserver
 
+- (void)windowDidResignKey:(NSNotification *)notification {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
+}
+
 - (void)keyboardWillHide:(NSNotification *)notification {
     NSDictionary *userInfo = [notification userInfo];
     BOOL isLocalKeyboard = [userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
@@ -652,6 +668,9 @@ __attribute((constructor)) static void initialize() {
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:),
                     (IMP)&override_UIKeyboardImpl_applicationWillResignActive,
                     (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
+    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillSuspend:),
+                    (IMP)&override_UIKeyboardImpl_applicationWillSuspend,
+                    (IMP *)&orig_UIKeyboardImpl_applicationWillSuspend);
 
     if (kayokoHelperPrefsAutomaticallyPaste) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
@@ -661,6 +680,11 @@ __attribute((constructor)) static void initialize() {
 
     static KayokoKeyboardObserver *observer;
     observer = [[KayokoKeyboardObserver alloc] init];
+
+    [[NSNotificationCenter defaultCenter] addObserver:observer
+                                             selector:@selector(windowDidResignKey:)
+                                                 name:UIWindowDidResignKeyNotification
+                                               object:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:observer
                                              selector:@selector(keyboardWillHide:)
