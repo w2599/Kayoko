@@ -34,9 +34,36 @@ static void kayokoResetSwipeUpTracking(void) {
     kayokoSwipeUpStartTimestamp = 0;
 }
 
-static void kayokoShowKayoko(void) {
+static id kayokoSharedApplication(void) {
+    Class applicationClass = NSClassFromString(@"UIApplication");
+    SEL sharedApplicationSelector = NSSelectorFromString(@"sharedApplication");
+    if (![applicationClass respondsToSelector:sharedApplicationSelector]) {
+        return nil;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    return [applicationClass performSelector:sharedApplicationSelector];
+#pragma clang diagnostic pop
+}
+
+static void kayokoCancelAllTouches(void) {
+    id application = kayokoSharedApplication();
+    SEL cancelAllTouchesSelector = NSSelectorFromString(@"_cancelAllTouches");
+    if (![application respondsToSelector:cancelAllTouchesSelector]) {
+        return;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    [application performSelector:cancelAllTouchesSelector];
+#pragma clang diagnostic pop
+}
+
+static void kayokoShowKayokoAndCancelTouches(void) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
+    kayokoCancelAllTouches();
 }
 
 static void kayokoHandleSwipeUpLocation(CGPoint location, NSTimeInterval timestamp) {
@@ -59,7 +86,7 @@ static void kayokoHandleSwipeUpLocation(CGPoint location, NSTimeInterval timesta
         absDeltaY >= absDeltaX * kKayokoSwipeUpMinimumVerticalDominance &&
         verticalVelocity >= kKayokoSwipeUpMinimumVerticalVelocity) {
         kayokoSwipeUpDidTrigger = YES;
-        kayokoShowKayoko();
+        kayokoShowKayokoAndCancelTouches();
     }
 }
 
@@ -242,7 +269,7 @@ static void kayokoTrackSwipeUpInKeyboardWindow(UIWindow *window, UIEvent *event)
         return;
     }
 
-    kayokoShowKayoko();
+    kayokoShowKayokoAndCancelTouches();
 }
 
 %end
