@@ -11,6 +11,7 @@
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic, strong) NSArray *items;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) NSUInteger previewLineCount;
 - (instancetype)initWithName:(NSString *)name;
 - (void)reloadDataWithItems:(NSArray *)items;
 - (void)notifyContentStateChanged;

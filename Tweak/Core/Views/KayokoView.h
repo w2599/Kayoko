@@ -50,6 +50,7 @@ static CGFloat const kTitleLabelLeadingInset = 64;
 @property(nonatomic, strong) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
+@property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)show;

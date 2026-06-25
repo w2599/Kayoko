@@ -419,6 +419,12 @@
     [[self clearButton] setAlpha:enabled ? 1.0 : 0.35];
 }
 
+- (void)setPreviewLineCount:(NSUInteger)previewLineCount {
+    _previewLineCount = previewLineCount;
+    [[self historyTableView] setPreviewLineCount:previewLineCount];
+    [[self favoritesTableView] setPreviewLineCount:previewLineCount];
+}
+
 - (void)updateContentState {
     if (![self isShowingClearConfirmation] && [[self previewView] isHidden]) {
         UIView *viewToHide = [self activeHistoryContentView];

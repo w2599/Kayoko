@@ -72,24 +72,58 @@
                                                          table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes"
-                                                                                      value:nil
-                                                                                      table:@"Root"]
-                                                        style:UIAlertActionStyleDestructive
-                                                      handler:^(UIAlertAction *action) {
-                                                        [self respring];
-                                                      }];
+    UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
+                                                                                          value:nil
+                                                                                          table:@"Root"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            [self respring];
+                                                          }];
 
-    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No"
-                                                                                     value:nil
-                                                                                     table:@"Root"]
-                                                       style:UIAlertActionStyleCancel
-                                                     handler:nil];
+    UIAlertAction *notNowAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Not Now"
+                                                                                        value:nil
+                                                                                        table:@"Root"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
 
-    [resetAlert addAction:yesAction];
-    [resetAlert addAction:noAction];
+    [resetAlert addAction:respringAction];
+    [resetAlert addAction:notNowAction];
 
     [self presentViewController:resetAlert animated:YES completion:nil];
+}
+
+/**
+ * Prompts the user before manually respringing.
+ */
+- (void)respringPrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *respringAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:
+                                             @"Respringing will restart SpringBoard and close all apps. Unsaved work may be lost."
+                                                         value:nil
+                                                         table:@"Root"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
+                                                                                          value:nil
+                                                                                          table:@"Root"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            [self respring];
+                                                          }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                        value:nil
+                                                                                        table:@"Root"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [respringAlert addAction:respringAction];
+    [respringAlert addAction:cancelAction];
+
+    [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
 /**
@@ -115,22 +149,22 @@
                                                          table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes"
-                                                                                      value:nil
-                                                                                      table:@"Root"]
-                                                        style:UIAlertActionStyleDestructive
-                                                      handler:^(UIAlertAction *action) {
-                                                        [self resetPreferences];
-                                                      }];
+    UIAlertAction *resetAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Reset"
+                                                                                       value:nil
+                                                                                       table:@"Root"]
+                                                         style:UIAlertActionStyleDestructive
+                                                       handler:^(UIAlertAction *action) {
+                                                         [self resetPreferences];
+                                                       }];
 
-    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No"
-                                                                                     value:nil
-                                                                                     table:@"Root"]
-                                                       style:UIAlertActionStyleCancel
-                                                     handler:nil];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                        value:nil
+                                                                                        table:@"Root"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
 
-    [resetAlert addAction:yesAction];
-    [resetAlert addAction:noAction];
+    [resetAlert addAction:resetAction];
+    [resetAlert addAction:cancelAction];
 
     [self presentViewController:resetAlert animated:YES completion:nil];
 }

@@ -23,6 +23,7 @@ OBJC_EXTERN BOOL kayokoPrefsAutomaticallyPaste;
 OBJC_EXTERN BOOL kayokoPrefsDisablePasteTips;
 OBJC_EXTERN BOOL kayokoPrefsPlaySoundEffects;
 OBJC_EXTERN BOOL kayokoPrefsPlayHapticFeedback;
+OBJC_EXTERN NSUInteger kayokoPrefsPreviewLineCount;
 OBJC_EXTERN CGFloat kayokoPrefsHeightInPoints;
 
 OBJC_EXTERN void EnableKayokoDisablePasteTips(void);

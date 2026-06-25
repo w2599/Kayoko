@@ -36,6 +36,7 @@ BOOL kayokoPrefsAutomaticallyPaste = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
 BOOL kayokoPrefsPlaySoundEffects = NO;
 BOOL kayokoPrefsPlayHapticFeedback = NO;
+NSUInteger kayokoPrefsPreviewLineCount = 1;
 
 CGFloat kayokoPrefsHeightInPoints = 420;
 
@@ -78,6 +79,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
                                                                   bounds.size.width, kayokoPrefsHeightInPoints)];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
+        [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
         [kayokoView setHidden:YES];
         [self addSubview:kayokoView];
     }
@@ -210,6 +212,7 @@ static void load_preferences() {
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
         kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
+        kPreferenceKeyPreviewLineCount : @(kPreferenceKeyPreviewLineCountDefaultValue),
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
     }];
 
@@ -225,6 +228,7 @@ static void load_preferences() {
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
+    kayokoPrefsPreviewLineCount = [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
     [[PasteboardManager sharedInstance] preparePasteboardQueue];
@@ -236,6 +240,7 @@ static void load_preferences() {
     if (kayokoView) {
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
+        [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
         [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
         CGRect bounds = [[UIScreen mainScreen] bounds];
         CGRect newFrame =

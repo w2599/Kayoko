@@ -27,6 +27,7 @@ static NSString *const kPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
 static NSString *const kPreferenceKeyDisablePasteTips = @"DisablePasteTips";
 static NSString *const kPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
 static NSString *const kPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
+static NSString *const kPreferenceKeyPreviewLineCount = @"PreviewLineCount";
 static NSString *const kPreferenceKeyHeightInPoints = @"HeightInPoints";
 
 static BOOL const kPreferenceKeyEnabledDefaultValue = YES;
@@ -39,4 +40,5 @@ static BOOL const kPreferenceKeyAutomaticallyPasteDefaultValue = YES;
 static BOOL const kPreferenceKeyDisablePasteTipsDefaultValue = NO;
 static BOOL const kPreferenceKeyPlaySoundEffectsDefaultValue = YES;
 static BOOL const kPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
+static NSUInteger const kPreferenceKeyPreviewLineCountDefaultValue = 1;
 static CGFloat const kPreferenceKeyHeightInPointsDefaultValue = 420;
