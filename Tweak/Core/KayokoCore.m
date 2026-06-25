@@ -8,6 +8,7 @@
 #import "KayokoCore.h"
 
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 
@@ -44,6 +45,9 @@ static BOOL isInPasteProgress = NO;
 
 static NSTimeInterval lastPasteFeedbackOccurred = 0;
 static NSTimeInterval lastCopyFeedbackOccurred = 0;
+
+static AVAudioPlayer *copySoundPlayer = nil;
+static AVAudioPlayer *pasteSoundPlayer = nil;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -103,6 +107,39 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 
 static void kayokoPasteWillStart() { isInPasteProgress = YES; }
 
+static AVAudioPlayer *kayokoAudioPlayerForSound(NSString *soundName) {
+    NSError *error = nil;
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient
+                                     withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                                           error:&error];
+    if (error) {
+        HBLogDebug(@"Kayoko: Failed to configure audio session: %@", error);
+    }
+
+    NSString *relativeSoundPath =
+        [NSString stringWithFormat:@"/Library/PreferenceBundles/KayokoPreferences.bundle/%@.aiff", soundName];
+    NSString *soundPath = JBROOT_PATH_NSSTRING(relativeSoundPath);
+    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:soundPath]
+                                                                    error:&error];
+    if (error) {
+        HBLogDebug(@"Kayoko: Failed to load %@ sound: %@", soundName, error);
+        return nil;
+    }
+
+    [player prepareToPlay];
+    return player;
+}
+
+static AVAudioPlayer *kayokoPlayFeedbackSound(AVAudioPlayer *player, NSString *soundName) {
+    if (!player) {
+        player = kayokoAudioPlayerForSound(soundName);
+    }
+
+    [player setCurrentTime:0];
+    [player play];
+    return player;
+}
+
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
@@ -120,16 +157,7 @@ static void _kayokoCopy() {
     }
     lastCopyFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
-        static dispatch_once_t onceToken;
-        static SystemSoundID soundID;
-        dispatch_once(&onceToken, ^{
-          AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)
-                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")],
-              &soundID);
-        });
-        AudioServicesPlaySystemSound(soundID);
+        copySoundPlayer = kayokoPlayFeedbackSound(copySoundPlayer, @"Copy");
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
@@ -263,16 +291,7 @@ static void kayokoPaste() {
     }
     lastPasteFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
-        static dispatch_once_t onceToken;
-        static SystemSoundID soundID;
-        dispatch_once(&onceToken, ^{
-          AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)
-                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")],
-              &soundID);
-        });
-        AudioServicesPlaySystemSound(soundID);
+        pasteSoundPlayer = kayokoPlayFeedbackSound(pasteSoundPlayer, @"Paste");
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);

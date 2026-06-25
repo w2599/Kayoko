@@ -390,6 +390,35 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
     });
 }
 
+static BOOL kayokoApplicationHasActiveKeyWindow(UIApplication *application) {
+    if (!application || [application applicationState] != UIApplicationStateActive) {
+        return NO;
+    }
+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in [application connectedScenes]) {
+            if ([scene activationState] != UISceneActivationStateForegroundActive ||
+                ![scene isKindOfClass:[UIWindowScene class]]) {
+                continue;
+            }
+
+            for (UIWindow *window in [(UIWindowScene *)scene windows]) {
+                if ([window isKeyWindow]) {
+                    return YES;
+                }
+            }
+        }
+
+        return NO;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    UIWindow *keyWindow = [application keyWindow];
+#pragma clang diagnostic pop
+    return keyWindow && [keyWindow isKeyWindow];
+}
+
 #pragma mark - Notification callbacks
 
 /**
@@ -397,6 +426,11 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
  */
 static void kayokoPaste() {
     if (!applicationIsInForeground) {
+        return;
+    }
+
+    UIApplication *application = [UIApplication sharedApplication];
+    if (!kayokoApplicationHasActiveKeyWindow(application)) {
         return;
     }
 
@@ -420,7 +454,7 @@ static void kayokoPaste() {
         }
     }
 
-    [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+    [application sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
 }
 
 @interface KayokoKeyboardObserver : NSObject
@@ -531,6 +565,8 @@ __attribute((constructor)) static void initialize() {
     if (!shouldLoad) {
         return;
     }
+
+    applicationIsInForeground = [[UIApplication sharedApplication] applicationState] == UIApplicationStateActive;
 
     if (isKeyboardExtension) {
         if (kayokoHelperPrefsActivationMethod & kActivationMethodSwipeUp) {
