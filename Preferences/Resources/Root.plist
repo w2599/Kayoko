@@ -107,6 +107,12 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
 			<false/>

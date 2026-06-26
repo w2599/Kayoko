@@ -5,6 +5,7 @@
 "Save Text" = "保存文本";
 "Save Images" = "保存图像";
 "Swipe to Select Words" = "滑动选词";
+"When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection." = "开启后，长按历史记录或收藏中的文本条目即可进入滑动选词模式。轻点词语可选中，然后在词语间滑动来扩展或缩小选区。";
 "Behaviors" = "行为";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "Activation Method" = "激活方法";
