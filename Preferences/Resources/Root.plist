@@ -296,7 +296,7 @@
 			<key>isSegmented</key>
 			<false/>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.height.reload</string>
 		</dict>
 
 		<dict>
