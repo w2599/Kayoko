@@ -18,6 +18,7 @@
 @implementation PasteboardManager {
     dispatch_queue_t _queue;
     BOOL _didEnsureResourcesExist;
+    NSCache *_historyImageCache;
 }
 
 /**
@@ -103,6 +104,8 @@
     if (self) {
         _fileManager = [NSFileManager defaultManager];
         _didEnsureResourcesExist = NO;
+        _historyImageCache = [[NSCache alloc] init];
+        [_historyImageCache setCountLimit:64];
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
         } else {
@@ -259,6 +262,7 @@
                 if (![[item imageName] isEqualToString:@""] && shouldRemoveImage) {
                     NSString *filePath =
                         [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+                    [_historyImageCache removeObjectForKey:[item imageName]];
                     [_fileManager removeItemAtPath:filePath error:nil];
                 }
 
@@ -452,9 +456,24 @@
  * @return The image.
  */
 - (UIImage *)getImageForItem:(PasteboardItem *)item {
+    NSString *imageName = [item imageName] ?: @"";
+    if (![imageName length]) {
+        return nil;
+    }
+
+    UIImage *cachedImage = [_historyImageCache objectForKey:imageName];
+    if (cachedImage) {
+        return cachedImage;
+    }
+
     NSData *imageData = [_fileManager
-        contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
-    return [UIImage imageWithData:imageData];
+        contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName]];
+    UIImage *image = [UIImage imageWithData:imageData];
+    if (image) {
+        [_historyImageCache setObject:image forKey:imageName];
+    }
+
+    return image;
 }
 
 /**

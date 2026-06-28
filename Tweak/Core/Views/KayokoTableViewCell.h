@@ -19,6 +19,7 @@
                       andItem:(PasteboardItem *)item
               showRecordedTime:(BOOL)showRecordedTime
               reuseIdentifier:(NSString *)reuseIdentifier;
+- (void)configureWithItem:(PasteboardItem *)item showRecordedTime:(BOOL)showRecordedTime;
 @end
 
 @interface UIImage (Private)

@@ -17,6 +17,8 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 
 @interface KayokoTableView ()
 @property(nonatomic, assign) BOOL didHideSearchHeader;
+@property(nonatomic, copy) NSArray *preparedCells;
+@property(nonatomic, assign) NSUInteger prewarmGeneration;
 @end
 
 @interface UIKeyboardImpl : UIView
@@ -26,6 +28,86 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 @end
 
 @implementation KayokoTableView
+
+- (void)setItems:(NSArray *)items {
+    _items = [items copy] ?: @[];
+    [self setPrewarmGeneration:([self prewarmGeneration] + 1)];
+
+    NSMutableArray *preparedCells = [[NSMutableArray alloc] initWithCapacity:[_items count]];
+    for (NSUInteger index = 0; index < [_items count]; index++) {
+        [preparedCells addObject:[NSNull null]];
+    }
+
+    [self setPreparedCells:preparedCells];
+}
+
+- (KayokoTableViewCell *)preparedCellForRow:(NSUInteger)row {
+    if (row >= [[self preparedCells] count]) {
+        return nil;
+    }
+
+    id preparedCell = [self preparedCells][row];
+    return [preparedCell isKindOfClass:[KayokoTableViewCell class]] ? preparedCell : nil;
+}
+
+- (KayokoTableViewCell *)buildPreparedCellForRow:(NSUInteger)row {
+    if (row >= [[self items] count]) {
+        return nil;
+    }
+
+    NSDictionary *dictionary = [self items][row];
+    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+    KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                                                   andItem:item
+                                                          showRecordedTime:[self showRecordedTime]
+                                                            reuseIdentifier:@"KayokoTableViewCell"];
+    UILongPressGestureRecognizer *gesture =
+        [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPressGestureRecognizer:)];
+    [cell addGestureRecognizer:gesture];
+
+    NSMutableArray *preparedCells = [[[self preparedCells] mutableCopy] ?: [[NSMutableArray alloc] init] mutableCopy];
+    if (row < [preparedCells count]) {
+        preparedCells[row] = cell;
+        [self setPreparedCells:preparedCells];
+    }
+
+    return cell;
+}
+
+- (void)prewarmCellsFromRow:(NSUInteger)startRow generation:(NSUInteger)generation {
+    if (generation != [self prewarmGeneration]) {
+        return;
+    }
+
+    NSUInteger itemCount = [[self items] count];
+    if (startRow >= itemCount) {
+        return;
+    }
+
+    NSUInteger batchSize = 8;
+    NSUInteger endRow = MIN(itemCount, startRow + batchSize);
+    for (NSUInteger row = startRow; row < endRow; row++) {
+        if (![self preparedCellForRow:row]) {
+            [self buildPreparedCellForRow:row];
+        }
+    }
+
+    if (endRow < itemCount) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self prewarmCellsFromRow:endRow generation:generation];
+        });
+    }
+}
+
+- (void)schedulePreparedCellPrewarming {
+    NSUInteger generation = [self prewarmGeneration];
+    NSUInteger visibleRows = (NSUInteger)ceil(MAX(0, [self bounds].size.height) / MAX(1.0, [self rowHeight])) + 2;
+    NSUInteger startRow = MIN([[self items] count], visibleRows);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self prewarmCellsFromRow:startRow generation:generation];
+    });
+}
 
 - (void)presentTokenSelectionPopupForText:(NSString *)text {
     NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -248,15 +330,12 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
     NSDictionary *dictionary = [self items][[indexPath row]];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
-    KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
-                                                                   andItem:item
-                                    showRecordedTime:[self showRecordedTime]
-                                                           reuseIdentifier:@"KayokoTableViewCell"];
+    KayokoTableViewCell *cell = [self preparedCellForRow:[indexPath row]];
+    if (!cell) {
+        cell = [self buildPreparedCellForRow:[indexPath row]];
+    }
 
-    // Add long press gesture recognizer to preview the cell's content.
-    UILongPressGestureRecognizer *gesture =
-        [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPressGestureRecognizer:)];
-    [cell addGestureRecognizer:gesture];
+    [cell configureWithItem:item showRecordedTime:[self showRecordedTime]];
 
     return cell;
 }
@@ -406,6 +485,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 
     [self setItems:safeItems];
     [self reloadData];
+    [self schedulePreparedCellPrewarming];
 
     // 允许再次“下拉出现”。
     [self setDidHideSearchHeader:NO];
