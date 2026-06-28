@@ -27,23 +27,28 @@
                             title:@""
                           handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                     void (^_Nonnull completionHandler)(BOOL)) {
-                            [self
-                                performBatchUpdates:^{
-                                  [self deleteRowsAtIndexPaths:@[ indexPath ]
-                                              withRowAnimation:UITableViewRowAnimationRight];
-                                  NSMutableArray *items = [[self items] mutableCopy];
-                                  [items removeObjectAtIndex:[indexPath row]];
-                                  [self setItems:items];
-                                }
-                                completion:^(BOOL finished) {
-                                  [[PasteboardManager sharedInstance] addPasteboardItem:item
-                                                                       toHistoryWithKey:kHistoryKeyHistory];
-                                  [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                                                        fromHistoryWithKey:kHistoryKeyFavorites
-                                                                         shouldRemoveImage:NO];
+                            [[PasteboardManager sharedInstance]
+                                movePasteboardItem:item
+                                fromHistoryWithKey:kHistoryKeyFavorites
+                                  toHistoryWithKey:kHistoryKeyHistory
+                                        completion:^(BOOL success) {
+                                          if (!success || [indexPath row] >= [[self items] count]) {
+                                              completionHandler(success);
+                                              return;
+                                          }
+                                          [self
+                                              performBatchUpdates:^{
+                                                [self deleteRowsAtIndexPaths:@[ indexPath ]
+                                                            withRowAnimation:UITableViewRowAnimationRight];
+                                                NSMutableArray *items = [[self items] mutableCopy];
+                                                [items removeObjectAtIndex:[indexPath row]];
+                                                [self setItems:items];
+                                              }
+                                              completion:^(BOOL finished) {
                                   [self notifyContentStateChanged];
                                   completionHandler(YES);
                                 }];
+                                        }];
                           }];
     [unfavoriteAction setImage:[UIImage systemImageNamed:@"heart.slash.fill"]];
     [unfavoriteAction setBackgroundColor:[UIColor systemPinkColor]];
@@ -68,21 +73,28 @@
                             title:@""
                           handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                     void (^_Nonnull completionHandler)(BOOL)) {
-                            [self
-                                performBatchUpdates:^{
-                                  [self deleteRowsAtIndexPaths:@[ indexPath ]
-                                              withRowAnimation:UITableViewRowAnimationLeft];
-                                  NSMutableArray *items = [[self items] mutableCopy];
-                                  [items removeObjectAtIndex:[indexPath row]];
-                                  [self setItems:items];
-                                }
-                                completion:^(BOOL finished) {
-                                  [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                                                        fromHistoryWithKey:kHistoryKeyFavorites
-                                                                         shouldRemoveImage:YES];
+                            [[PasteboardManager sharedInstance]
+                                removePasteboardItem:item
+                                  fromHistoryWithKey:kHistoryKeyFavorites
+                                   shouldRemoveImage:YES
+                                          completion:^(BOOL success) {
+                                            if (!success || [indexPath row] >= [[self items] count]) {
+                                                completionHandler(success);
+                                                return;
+                                            }
+                                            [self
+                                                performBatchUpdates:^{
+                                                  [self deleteRowsAtIndexPaths:@[ indexPath ]
+                                                              withRowAnimation:UITableViewRowAnimationLeft];
+                                                  NSMutableArray *items = [[self items] mutableCopy];
+                                                  [items removeObjectAtIndex:[indexPath row]];
+                                                  [self setItems:items];
+                                                }
+                                                completion:^(BOOL finished) {
                                   [self notifyContentStateChanged];
                                   completionHandler(YES);
                                 }];
+                                          }];
                           }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];
     [deleteAction setBackgroundColor:[UIColor systemRedColor]];

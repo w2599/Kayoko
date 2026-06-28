@@ -30,6 +30,11 @@ NS_ASSUME_NONNULL_BEGIN
                    inHistoryKey:(NSString *)historyKey
                           limit:(NSUInteger)limit
                           error:(NSError **)error;
+- (BOOL)moveItemDictionary:(NSDictionary *)dictionary
+            fromHistoryKey:(NSString *)sourceHistoryKey
+              toHistoryKey:(NSString *)destinationHistoryKey
+          destinationLimit:(NSUInteger)destinationLimit
+                     error:(NSError **)error;
 - (BOOL)removeItemDictionary:(NSDictionary *)dictionary
               fromHistoryKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage

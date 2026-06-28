@@ -252,6 +252,60 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     [self postHistoryChangedNotification];
 }
 
+- (void)removePasteboardItem:(PasteboardItem *)item
+          fromHistoryWithKey:(NSString *)historyKey
+           shouldRemoveImage:(BOOL)shouldRemoveImage
+                  completion:(void (^)(BOOL success))completion {
+    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    [self performHistoryAsync:^{
+      NSError *error = nil;
+      BOOL success = [[self historyStoreOnHistoryQueue] removeItemDictionary:dictionary
+                                                              fromHistoryKey:historyKey
+                                                           shouldRemoveImage:shouldRemoveImage
+                                                                       error:&error];
+      if (!success) {
+          NSLog(@"Kayoko: Failed to remove history item: %@", error);
+      }
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (success) {
+            [self postHistoryChangedNotification];
+        }
+        if (completion) {
+            completion(success);
+        }
+      });
+    }];
+}
+
+- (void)movePasteboardItem:(PasteboardItem *)item
+        fromHistoryWithKey:(NSString *)sourceHistoryKey
+          toHistoryWithKey:(NSString *)destinationHistoryKey
+                completion:(void (^)(BOOL success))completion {
+    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSUInteger destinationLimit = [self limitForHistoryKey:destinationHistoryKey];
+    [self performHistoryAsync:^{
+      NSError *error = nil;
+      BOOL success = [[self historyStoreOnHistoryQueue] moveItemDictionary:dictionary
+                                                            fromHistoryKey:sourceHistoryKey
+                                                              toHistoryKey:destinationHistoryKey
+                                                          destinationLimit:destinationLimit
+                                                                     error:&error];
+      if (!success) {
+          NSLog(@"Kayoko: Failed to move history item: %@", error);
+      }
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (success) {
+            [self postHistoryChangedNotification];
+        }
+        if (completion) {
+            completion(success);
+        }
+      });
+    }];
+}
+
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                                         completion:(void (^)(BOOL success))completion {

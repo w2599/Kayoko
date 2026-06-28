@@ -121,6 +121,53 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return [self upsertItemDictionary:dictionary inHistoryKey:historyKey limit:limit error:error];
 }
 
+- (BOOL)moveItemDictionary:(NSDictionary *)dictionary
+            fromHistoryKey:(NSString *)sourceHistoryKey
+              toHistoryKey:(NSString *)destinationHistoryKey
+          destinationLimit:(NSUInteger)destinationLimit
+                     error:(NSError **)error {
+    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    if ([content length] == 0 || [sourceHistoryKey length] == 0 || [destinationHistoryKey length] == 0) {
+        return YES;
+    }
+
+    if ([sourceHistoryKey isEqualToString:destinationHistoryKey]) {
+        return [self upsertItemDictionary:dictionary
+                             inHistoryKey:destinationHistoryKey
+                                    limit:destinationLimit
+                                    error:error];
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    BOOL success = [self upsertItemDictionaryWithoutTransaction:dictionary
+                                                   inHistoryKey:destinationHistoryKey
+                                                          error:error];
+    if (success) {
+        success = [self trimHistoryKey:destinationHistoryKey toLimit:destinationLimit error:error];
+    }
+    if (success) {
+        NSInteger deletedCount = 0;
+        success = [self executeStatement:@"DELETE FROM history_items WHERE history_key = ? AND content = ?"
+                                bindings:@[ sourceHistoryKey, content ]
+                                 changes:&deletedCount
+                                   error:error];
+        if (success && deletedCount == 0) {
+            [self populateError:error code:SQLITE_NOTFOUND message:@"History item not found"];
+            success = NO;
+        }
+    }
+
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
 - (BOOL)removeItemDictionary:(NSDictionary *)dictionary
               fromHistoryKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
@@ -135,9 +182,15 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
         return NO;
     }
 
+    NSInteger deletedCount = 0;
     BOOL success = [self executeStatement:@"DELETE FROM history_items WHERE history_key = ? AND content = ?"
                                  bindings:@[ historyKey, content ]
+                                  changes:&deletedCount
                                     error:error];
+    if (success && deletedCount == 0) {
+        [self populateError:error code:SQLITE_NOTFOUND message:@"History item not found"];
+        success = NO;
+    }
     if (success && shouldRemoveImage && [imageName length] > 0) {
         success = [self removeImageIfUnreferenced:imageName error:error];
     }
@@ -496,6 +549,13 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
 }
 
 - (BOOL)executeStatement:(NSString *)statement bindings:(NSArray *)bindings error:(NSError **)error {
+    return [self executeStatement:statement bindings:bindings changes:NULL error:error];
+}
+
+- (BOOL)executeStatement:(NSString *)statement
+                bindings:(NSArray *)bindings
+                 changes:(NSInteger *)changes
+                   error:(NSError **)error {
     sqlite3_stmt *compiledStatement = NULL;
     if (![self prepareStatement:[statement UTF8String] statement:&compiledStatement error:error]) {
         return NO;
@@ -508,6 +568,9 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     if (result != SQLITE_DONE && result != SQLITE_ROW) {
         [self populateError:error code:result message:statement];
         return NO;
+    }
+    if (changes) {
+        *changes = sqlite3_changes(_database);
     }
     return YES;
 }

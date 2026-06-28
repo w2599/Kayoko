@@ -44,6 +44,14 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage;
+- (void)removePasteboardItem:(PasteboardItem *)item
+          fromHistoryWithKey:(NSString *)historyKey
+           shouldRemoveImage:(BOOL)shouldRemoveImage
+                  completion:(void (^)(BOOL success))completion;
+- (void)movePasteboardItem:(PasteboardItem *)item
+        fromHistoryWithKey:(NSString *)sourceHistoryKey
+          toHistoryWithKey:(NSString *)destinationHistoryKey
+                completion:(void (^)(BOOL success))completion;
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                                         completion:(void (^)(BOOL success))completion;
