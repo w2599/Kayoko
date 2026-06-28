@@ -5,11 +5,8 @@ KayokoHelper_FILES += KayokoHelperLogos.xm
 KayokoHelper_FILES += KayokoMenu.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 
-ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
-KayokoHelper_FILES += ../../libroot/dyn.c
-endif
-
 KayokoHelper_CFLAGS += -fobjc-arc
+KayokoHelper_CFLAGS += -DDISABLE_ROOTLESS_COMPAT_WARNING
 KayokoHelper_CFLAGS += -I../../Headers
 KayokoHelper_CFLAGS += -I../../Preferences
 KayokoHelper_CFLAGS += -I../../Manager
@@ -26,7 +23,7 @@ endif
 endif
 
 KayokoHelper_FRAMEWORKS += UIKit
-KayokoHelper_LIBRARIES += sandy
+KayokoHelper_LIBRARIES += sandy sqlite3
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk

@@ -7,13 +7,13 @@
 
 #import "KayokoCore.h"
 
-#import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 
 #import <HBLog.h>
-#import <libroot.h>
+#import <roothide.h>
 #import <substrate.h>
 
 #import "NotificationKeys.h"
@@ -116,7 +116,8 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
     if (!kayokoView) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
         UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[self bounds]];
-        [outsideDismissOverlayView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+        [outsideDismissOverlayView
+            setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
         [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.18]];
         [outsideDismissOverlayView setAlpha:0];
         [outsideDismissOverlayView setHidden:YES];
@@ -147,9 +148,9 @@ static AVAudioPlayer *kayokoAudioPlayerForSound(NSString *soundName) {
 
     NSString *relativeSoundPath =
         [NSString stringWithFormat:@"/Library/PreferenceBundles/KayokoPreferences.bundle/%@.aiff", soundName];
-    NSString *soundPath = JBROOT_PATH_NSSTRING(relativeSoundPath);
+    NSString *soundPath = jbroot(relativeSoundPath);
     AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:soundPath]
-                                                                    error:&error];
+                                                                   error:&error];
     if (error) {
         HBLogDebug(@"Kayoko: Failed to load %@ sound: %@", soundName, error);
         return nil;
@@ -297,12 +298,12 @@ static void load_preferences() {
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
     kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
-    kayokoPrefsDismissOnOutsideTouch =
-        [[kayokoPreferences objectForKey:kPreferenceKeyDismissOnOutsideTouch] boolValue];
+    kayokoPrefsDismissOnOutsideTouch = [[kayokoPreferences objectForKey:kPreferenceKeyDismissOnOutsideTouch] boolValue];
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
-    kayokoPrefsPreviewLineCount = [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
+    kayokoPrefsPreviewLineCount =
+        [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
@@ -377,8 +378,8 @@ __attribute((constructor)) static void initialize() {
             statusBarWindowCls = objc_getClass("SBStatusBarWindow");
         }
 
-        MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:),
-                        (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
+        MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:), (IMP)&override_UIStatusBarWindow_initWithFrame,
+                        (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
@@ -389,8 +390,16 @@ __attribute((constructor)) static void initialize() {
             (CFStringRef)kNotificationKeyCoreShow, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
+            (CFStringRef)kLegacyNotificationKeyCoreShow, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
             (CFStringRef)kNotificationKeyCoreHide, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
+            (CFStringRef)kLegacyNotificationKeyCoreHide, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)reload,

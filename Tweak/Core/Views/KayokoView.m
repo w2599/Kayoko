@@ -14,7 +14,6 @@
 #import "KayokoWordSelectionView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
-#import <rootless.h>
 
 @implementation KayokoView
 

@@ -83,24 +83,31 @@
 			<string>Maximum Amount</string>
 		</dict>
 		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
+			<key>cellClass</key>
+			<string>KayokoStepSliderCell</string>
 			<key>default</key>
-			<real>200</real>
+			<integer>200</integer>
 			<key>defaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>MaximumHistoryAmount</string>
-			<key>min</key>
-			<real>50</real>
-			<key>max</key>
-			<real>500</real>
-			<key>showValue</key>
+			<key>stepValues</key>
+			<array>
+				<integer>50</integer>
+				<integer>100</integer>
+				<integer>200</integer>
+				<integer>300</integer>
+				<integer>500</integer>
+				<integer>1000</integer>
+				<integer>2000</integer>
+				<integer>3000</integer>
+				<integer>4000</integer>
+				<integer>5000</integer>
+			</array>
+			<key>isContinuous</key>
 			<true/>
-			<key>isSegmented</key>
-			<true/>
-			<key>segmentCount</key>
-			<real>9</real>
+			<key>valueLabelWidth</key>
+			<integer>58</integer>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>

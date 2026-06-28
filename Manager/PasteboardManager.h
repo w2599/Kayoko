@@ -27,6 +27,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)preparePasteboardQueue;
 
 + (NSString *)historyPath;
++ (NSString *)historyDatabasePath;
 + (NSString *)historyImagesPath;
 + (NSBundle *)localizationBundle;
 
