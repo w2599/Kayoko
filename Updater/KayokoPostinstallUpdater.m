@@ -10,6 +10,8 @@
 #import <roothide.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
+static NSUInteger const kKayokoMobileUserID = 501;
+static NSUInteger const kKayokoMobileGroupID = 501;
 
 @implementation KayokoPostinstallUpdater
 
@@ -18,7 +20,25 @@ static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.8
     KayokoHistoryMigrator *migrator =
         [[KayokoHistoryMigrator alloc] initWithHistoryStore:store
                                            migrationSources:[KayokoHistoryMigrator defaultMigrationSources]];
-    return [migrator migrateIfNeededWithError:error];
+    NSError *migrationError = nil;
+    BOOL migrated = [migrator migrateIfNeededWithError:&migrationError];
+
+    NSError *ownershipError = nil;
+    BOOL repairedOwnership = [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
+    if (!migrated) {
+        if (error) {
+            *error = migrationError;
+        }
+        return NO;
+    }
+    if (!repairedOwnership) {
+        if (error) {
+            *error = ownershipError;
+        }
+        return NO;
+    }
+
+    return YES;
 }
 
 - (NSArray<NSString *> *)safelyDeletableLegacyPathsWithError:(NSError **)error {
@@ -57,6 +77,44 @@ static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.8
 
 - (NSString *)currentImagesPath {
     return [jbroot(kKayokoCurrentDataDirectory) stringByAppendingPathComponent:@"images"];
+}
+
+- (BOOL)repairCurrentDataDirectoryOwnershipWithError:(NSError **)error {
+    NSString *dataDirectory = jbroot(kKayokoCurrentDataDirectory);
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:dataDirectory]) {
+        return YES;
+    }
+
+    if (![self repairOwnershipAtPath:dataDirectory isDirectory:YES fileManager:fileManager error:error]) {
+        return NO;
+    }
+
+    NSDirectoryEnumerator<NSString *> *enumerator = [fileManager enumeratorAtPath:dataDirectory];
+    for (NSString *relativePath in enumerator) {
+        NSString *path = [dataDirectory stringByAppendingPathComponent:relativePath];
+        BOOL isDirectory = NO;
+        if (![fileManager fileExistsAtPath:path isDirectory:&isDirectory]) {
+            continue;
+        }
+        if (![self repairOwnershipAtPath:path isDirectory:isDirectory fileManager:fileManager error:error]) {
+            return NO;
+        }
+    }
+
+    return YES;
+}
+
+- (BOOL)repairOwnershipAtPath:(NSString *)path
+                  isDirectory:(BOOL)isDirectory
+                  fileManager:(NSFileManager *)fileManager
+                        error:(NSError **)error {
+    NSDictionary *attributes = @{
+        NSFileOwnerAccountID : @(kKayokoMobileUserID),
+        NSFileGroupOwnerAccountID : @(kKayokoMobileGroupID),
+        NSFilePosixPermissions : @(isDirectory ? 0755 : 0644)
+    };
+    return [fileManager setAttributes:attributes ofItemAtPath:path error:error];
 }
 
 - (void)addPathIfExists:(NSString *)path

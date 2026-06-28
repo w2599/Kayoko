@@ -12,7 +12,7 @@ static int runPostinstall(void) {
         KayokoPostinstallUpdater *updater = [[KayokoPostinstallUpdater alloc] init];
         NSError *error = nil;
         if (![updater runPostinstallWithError:&error]) {
-            fprintf(stderr, "kayoko_updater: postinst migration failed: %s\n",
+            fprintf(stderr, "kayoko_updater: postinst failed: %s\n",
                     [[[error localizedDescription] description] UTF8String]);
             return 0;
         }
