@@ -150,6 +150,43 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return NO;
 }
 
+- (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
+                shouldRemoveImages:(BOOL)shouldRemoveImages
+                              error:(NSError **)error {
+    if ([historyKey length] == 0) {
+        return YES;
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    NSArray<NSString *> *imageNames = shouldRemoveImages ? [self imageNamesForHistoryKey:historyKey error:error] : @[];
+    if (!imageNames) {
+        [self rollbackTransaction];
+        return NO;
+    }
+
+    BOOL success = [self executeStatement:@"DELETE FROM history_items WHERE history_key = ?"
+                                 bindings:@[ historyKey ]
+                                    error:error];
+    if (success && shouldRemoveImages) {
+        for (NSString *imageName in imageNames) {
+            if (![self removeImageIfUnreferenced:imageName error:error]) {
+                success = NO;
+                break;
+            }
+        }
+    }
+
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
 - (NSMutableArray *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     NSMutableArray *items = [[NSMutableArray alloc] init];
@@ -290,31 +327,33 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
         return YES;
     }
 
+    NSString *trimmedRowsSubquery =
+        @"SELECT id FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT -1 OFFSET ?";
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT id, image_name FROM history_items "
-                      "WHERE history_key = ? ORDER BY sequence DESC LIMIT -1 OFFSET ?";
-    if (![self prepareStatement:sql statement:&statement error:error]) {
+    const char *imageSQL =
+        "SELECT DISTINCT image_name FROM history_items "
+        "WHERE image_name <> '' AND id IN "
+        "(SELECT id FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT -1 OFFSET ?)";
+    if (![self prepareStatement:imageSQL statement:&statement error:error]) {
         return NO;
     }
 
     sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
     sqlite3_bind_int64(statement, 2, (sqlite3_int64)limit);
 
-    NSMutableArray<NSNumber *> *ids = [[NSMutableArray alloc] init];
     NSMutableArray<NSString *> *imageNames = [[NSMutableArray alloc] init];
     while (sqlite3_step(statement) == SQLITE_ROW) {
-        [ids addObject:@(sqlite3_column_int64(statement, 0))];
-        NSString *imageName = [self stringFromColumn:statement index:1];
+        NSString *imageName = [self stringFromColumn:statement index:0];
         if ([imageName length] > 0) {
             [imageNames addObject:imageName];
         }
     }
     sqlite3_finalize(statement);
 
-    for (NSNumber *itemID in ids) {
-        if (![self executeStatement:@"DELETE FROM history_items WHERE id = ?" bindings:@[ itemID ] error:error]) {
-            return NO;
-        }
+    NSString *deleteStatement = [NSString stringWithFormat:@"DELETE FROM history_items WHERE id IN (%@)",
+                                                           trimmedRowsSubquery];
+    if (![self executeStatement:deleteStatement bindings:@[ historyKey, @(limit) ] error:error]) {
+        return NO;
     }
 
     for (NSString *imageName in imageNames) {
@@ -324,6 +363,25 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     }
 
     return YES;
+}
+
+- (NSArray<NSString *> *)imageNamesForHistoryKey:(NSString *)historyKey error:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT DISTINCT image_name FROM history_items WHERE history_key = ? AND image_name <> ''";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return nil;
+    }
+
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    NSMutableArray<NSString *> *imageNames = [[NSMutableArray alloc] init];
+    while (sqlite3_step(statement) == SQLITE_ROW) {
+        NSString *imageName = [self stringFromColumn:statement index:0];
+        if ([imageName length] > 0) {
+            [imageNames addObject:imageName];
+        }
+    }
+    sqlite3_finalize(statement);
+    return imageNames;
 }
 
 - (BOOL)removeImageIfUnreferenced:(NSString *)imageName error:(NSError **)error {

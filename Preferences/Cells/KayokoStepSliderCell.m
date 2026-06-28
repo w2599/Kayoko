@@ -149,7 +149,7 @@
         storedValue = [specifier propertyForKey:@"default"];
     }
 
-    NSUInteger index = [self closestIndexForValue:[storedValue unsignedIntegerValue]];
+    NSUInteger index = [self upperBoundIndexForValue:[storedValue unsignedIntegerValue]];
     [_slider setValue:(float)index animated:NO];
     [self updateValueLabelForIndex:index];
 }
@@ -170,18 +170,18 @@
     return normalizedValues;
 }
 
-- (NSUInteger)closestIndexForValue:(NSUInteger)value {
-    NSUInteger closestIndex = 0;
-    NSUInteger closestDistance = NSUIntegerMax;
+- (NSUInteger)upperBoundIndexForValue:(NSUInteger)value {
+    if ([_stepValues count] == 0) {
+        return 0;
+    }
+
     for (NSUInteger index = 0; index < [_stepValues count]; index++) {
         NSUInteger candidate = [_stepValues[index] unsignedIntegerValue];
-        NSUInteger distance = candidate > value ? candidate - value : value - candidate;
-        if (distance < closestDistance) {
-            closestDistance = distance;
-            closestIndex = index;
+        if (value <= candidate) {
+            return index;
         }
     }
-    return closestIndex;
+    return [_stepValues count] - 1;
 }
 
 - (NSNumber *)valueForIndex:(NSUInteger)index {

@@ -292,8 +292,9 @@ static void load_preferences() {
     kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
     kayokoHelperPrefsActivationMethod =
         [[kayokoPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
-    kayokoPrefsMaximumHistoryAmount =
-        [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
+    kayokoPrefsMaximumHistoryAmount = [PasteboardManager
+        normalizedMaximumHistoryAmountForValue:[[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount]
+                                                   unsignedIntegerValue]];
     kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
     kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];

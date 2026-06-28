@@ -443,13 +443,33 @@
     [[self clearConfirmationView] updateWithHistoryKey:key];
 }
 
+- (void)reloadTableViewForHistoryKey:(NSString *)key completion:(void (^)(KayokoTableView *tableView))completion {
+    KayokoTableView *tableView = [self tableViewForHistoryKey:key];
+    [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key
+                                                        completion:^(NSMutableArray *items) {
+                                                          [tableView reloadDataWithItems:items];
+                                                          if (completion) {
+                                                              completion(tableView);
+                                                          }
+                                                        }];
+}
+
 - (void)showClearConfirmationForHistoryKey:(NSString *)key {
     _activeHistoryKey = key;
     _clearConfirmationHistoryKey = key;
     [self updateClearConfirmationTextForHistoryKey:key];
     [[self clearButton] setHidden:YES];
+    [[[self clearConfirmationView] cancelButton] setEnabled:YES];
+    [[[self clearConfirmationView] confirmButton] setEnabled:YES];
 
     [self showContentView:[self clearConfirmationView] andHideContentView:[self activeHistoryContentView] reverse:NO];
+}
+
+- (void)finishHidingClearConfirmationForHistoryKey:(NSString *)key {
+    _clearConfirmationHistoryKey = nil;
+    [[self clearButton] setHidden:NO];
+    [self updateClearButtonStateForTableView:[self tableViewForHistoryKey:key]];
+    [self showContentView:[self contentViewForHistoryKey:key] andHideContentView:[self clearConfirmationView] reverse:YES];
 }
 
 - (void)hideClearConfirmationWithReload:(BOOL)reload {
@@ -458,16 +478,15 @@
     }
 
     NSString *key = _clearConfirmationHistoryKey;
-    KayokoTableView *tableView = [self tableViewForHistoryKey:key];
     if (reload) {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
-        [tableView reloadDataWithItems:items];
+        [self reloadTableViewForHistoryKey:key
+                                completion:^(KayokoTableView *tableView) {
+                                  [self finishHidingClearConfirmationForHistoryKey:key];
+                                }];
+        return;
     }
 
-    _clearConfirmationHistoryKey = nil;
-    [[self clearButton] setHidden:NO];
-    [self updateClearButtonStateForTableView:[self tableViewForHistoryKey:key]];
-    [self showContentView:[self contentViewForHistoryKey:key] andHideContentView:[self clearConfirmationView] reverse:YES];
+    [self finishHidingClearConfirmationForHistoryKey:key];
 }
 
 - (void)resetClearConfirmationIfNeeded {
@@ -545,46 +564,33 @@
     NSString *key = [self activeHistoryKey];
     BOOL showingFavorites = [key isEqualToString:kHistoryKeyFavorites];
     NSString *targetKey = showingFavorites ? kHistoryKeyHistory : kHistoryKeyFavorites;
-    KayokoTableView *targetTableView = [self tableViewForHistoryKey:targetKey];
     UIView *viewToHide = [self activeHistoryContentView];
+    BOOL reverse = showingFavorites;
+    NSString *imageName = showingFavorites ? @"heart" : @"heart.fill";
+    UIColor *tintColor = showingFavorites ? [UIColor labelColor] : [UIColor systemPinkColor];
 
-    if (showingFavorites) {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
-        [[self historyTableView] reloadDataWithItems:items];
-        _activeHistoryKey = kHistoryKeyHistory;
-        [self updateClearButtonStateForTableView:targetTableView];
+    [self reloadTableViewForHistoryKey:targetKey
+                            completion:^(KayokoTableView *targetTableView) {
+                              if (![[self activeHistoryKey] isEqualToString:key] || _isAnimating) {
+                                  return;
+                              }
 
-        UIView *viewToShow = [self contentViewForHistoryKey:kHistoryKeyHistory];
-        if (viewToShow != viewToHide) {
-            [self showContentView:viewToShow andHideContentView:viewToHide reverse:YES];
-        } else {
-            [[self titleLabel] setText:[self titleForContentView:viewToShow]];
-        }
+                              _activeHistoryKey = targetKey;
+                              [self updateClearButtonStateForTableView:targetTableView];
 
-        [self updateStyleForHeaderButton:[self favoritesButton]
-                           withImageName:@"heart"
-                            andImageSize:kFavoritesButtonImageSize
-                            andTintColor:[UIColor labelColor]];
-    } else {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
-        [[self favoritesTableView] reloadDataWithItems:items];
-        _activeHistoryKey = kHistoryKeyFavorites;
-        [self updateClearButtonStateForTableView:targetTableView];
+                              UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
+                              if (viewToShow != viewToHide) {
+                                  [self showContentView:viewToShow andHideContentView:viewToHide reverse:reverse];
+                              } else {
+                                  [[self titleLabel] setText:[self titleForContentView:viewToShow]];
+                              }
 
-        UIView *viewToShow = [self contentViewForHistoryKey:kHistoryKeyFavorites];
-        if (viewToShow != viewToHide) {
-            [self showContentView:viewToShow andHideContentView:viewToHide reverse:NO];
-        } else {
-            [[self titleLabel] setText:[self titleForContentView:viewToShow]];
-        }
-
-        [self updateStyleForHeaderButton:[self favoritesButton]
-                           withImageName:@"heart.fill"
-                            andImageSize:kFavoritesButtonImageSize
-                            andTintColor:[UIColor systemPinkColor]];
-    }
-
-    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+                              [self updateStyleForHeaderButton:[self favoritesButton]
+                                                 withImageName:imageName
+                                                  andImageSize:kFavoritesButtonImageSize
+                                                  andTintColor:tintColor];
+                              [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+                            }];
 }
 
 - (void)handlePreviewActionButtonPressed {
@@ -664,16 +670,22 @@
     }
 
     NSString *key = _clearConfirmationHistoryKey;
-    NSArray *items = [[[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key] copy];
-    for (NSDictionary *dictionary in items) {
-        PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-        [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                              fromHistoryWithKey:key
-                                               shouldRemoveImage:YES];
-    }
-
-    [self hideClearConfirmationWithReload:YES];
-    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
+    [[[self clearConfirmationView] cancelButton] setEnabled:NO];
+    [[[self clearConfirmationView] confirmButton] setEnabled:NO];
+    [[PasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:key
+                                                                shouldRemoveImages:YES
+                                                                        completion:^(BOOL success) {
+                                                                          if (!success) {
+                                                                              [[[self clearConfirmationView]
+                                                                                  cancelButton] setEnabled:YES];
+                                                                              [[[self clearConfirmationView]
+                                                                                  confirmButton] setEnabled:YES];
+                                                                              return;
+                                                                          }
+                                                                          [self hideClearConfirmationWithReload:YES];
+                                                                          [self triggerHapticFeedbackWithStyle:
+                                                                                    UIImpactFeedbackStyleHeavy];
+                                                                        }];
 }
 
 /**
@@ -822,13 +834,17 @@
  */
 - (void)reload {
     NSString *key = [self activeHistoryKey];
-    NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
-    [[self tableViewForHistoryKey:key] reloadDataWithItems:items];
-    if ([self isShowingClearConfirmation] || ![[self previewView] isHidden]) {
-        return;
-    }
-    [self setHistoryContentVisibleForKey:key];
-    [self updateClearButtonState];
+    [self reloadTableViewForHistoryKey:key
+                            completion:^(KayokoTableView *tableView) {
+                              if (![[self activeHistoryKey] isEqualToString:key]) {
+                                  return;
+                              }
+                              if ([self isShowingClearConfirmation] || ![[self previewView] isHidden]) {
+                                  return;
+                              }
+                              [self setHistoryContentVisibleForKey:key];
+                              [self updateClearButtonStateForTableView:tableView];
+                            }];
 }
 
 /**

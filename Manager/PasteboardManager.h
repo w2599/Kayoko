@@ -30,6 +30,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 + (NSString *)historyDatabasePath;
 + (NSString *)historyImagesPath;
 + (NSBundle *)localizationBundle;
++ (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value;
 
 - (void)pullPasteboardChanges;
 - (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
@@ -43,8 +44,12 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage;
+- (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
+                                shouldRemoveImages:(BOOL)shouldRemoveImages
+                                        completion:(void (^)(BOOL success))completion;
 
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
+- (void)getItemsFromHistoryWithKey:(NSString *)historyKey completion:(void (^)(NSMutableArray *items))completion;
 - (PasteboardItem *)getLatestHistoryItem;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;
 
