@@ -15,6 +15,11 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
+@interface KayokoView ()
+- (void)hideWithCompletion:(void (^)(void))completion;
+- (void)restorePreviewSourceAfterAction;
+@end
+
 @implementation KayokoView
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -603,6 +608,13 @@
         [[UIPasteboard generalPasteboard] setString:text];
     }
 
+    [self hideWithCompletion:^{
+      [self restorePreviewSourceAfterAction];
+    }];
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+}
+
+- (void)restorePreviewSourceAfterAction {
     [[self previewView] reset];
     [[self previewView] setHidden:YES];
     [_previewSourceTableView setHidden:NO];
@@ -624,8 +636,6 @@
                             andTintColor:[UIColor labelColor]];
     }
     _previewItem = nil;
-    [self hide];
-    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
 - (void)updatePreviewActionButtonState {
@@ -843,6 +853,10 @@
 }
 
 - (void)hide {
+    [self hideWithCompletion:nil];
+}
+
+- (void)hideWithCompletion:(void (^)(void))completion {
     if (_isAnimating) {
         return;
     }
@@ -862,6 +876,9 @@
           [self setHidden:YES];
           [self hideOutsideDismissOverlay];
           _isAnimating = NO;
+          if (completion) {
+              completion();
+          }
         }];
 }
 
