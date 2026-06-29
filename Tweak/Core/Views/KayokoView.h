@@ -36,7 +36,6 @@ static CGFloat const kTitleLabelLeadingInset = 64;
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
-@property(nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
 @property(nonatomic, strong) _UIGrabber *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIButton *clearButton;

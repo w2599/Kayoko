@@ -63,10 +63,6 @@
                                                   action:@selector(handlePanGestureRecognizer:)]];
         [[self headerView] addGestureRecognizer:[self panGestureRecognizer]];
 
-        [self setTapGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self
-                                                                              action:@selector(hidePreview)]];
-        [[self headerView] addGestureRecognizer:[self tapGestureRecognizer]];
-
         [self setGrabber:[[_UIGrabber alloc] init]];
         [[self headerView] addSubview:[self grabber]];
 
@@ -308,7 +304,7 @@
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     CGPoint translation = [recognizer translationInView:self];
-    NSUInteger const kMaxTranslation = 100;
+    CGFloat const kMaxTranslation = 100;
 
     if ([recognizer state] == UIGestureRecognizerStateBegan) {
         [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
@@ -319,22 +315,17 @@
             return;
         }
 
-        CGFloat alpha = fabs(translation.y / kMaxTranslation);
+        CGFloat alpha = MIN(MAX(translation.y / kMaxTranslation, 0), 1);
         [UIView animateWithDuration:0.1
                               delay:0
              usingSpringWithDamping:0.7
               initialSpringVelocity:0
-                            options:UIViewAnimationOptionCurveEaseOut
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
                            [self setTransform:CGAffineTransformMakeTranslation(0, translation.y)];
                            [self setAlpha:1 - alpha];
                          }
                          completion:nil];
-
-        if (translation.y >= kMaxTranslation) {
-            [self hide];
-            return;
-        }
     } else if ([recognizer state] == UIGestureRecognizerStateEnded ||
                [recognizer state] == UIGestureRecognizerStateCancelled ||
                [recognizer state] == UIGestureRecognizerStateFailed) {
@@ -343,7 +334,7 @@
                 delay:0
                 usingSpringWithDamping:1
                 initialSpringVelocity:0
-                options:UIViewAnimationOptionCurveEaseOut
+                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                 animations:^{
                   [self setTransform:CGAffineTransformIdentity];
                   [self setAlpha:1];
