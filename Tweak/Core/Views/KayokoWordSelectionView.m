@@ -12,12 +12,77 @@ static CGFloat const kKayokoWordSelectionTopInset = 12;
 static CGFloat const kKayokoWordSelectionTokenSpacing = 9;
 static CGFloat const kKayokoWordSelectionLineSpacing = 9;
 static CGFloat const kKayokoWordSelectionTokenHeight = 34;
+static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
+
+@interface KayokoWordTokenView : UIControl
+@property(nonatomic, strong, readonly) UILabel *titleLabel;
+@property(nonatomic, assign) UIEdgeInsets kayokoContentInsets;
+- (void)setTitle:(NSString *)title forState:(UIControlState)state;
+- (void)setTitleColor:(UIColor *)color forState:(UIControlState)state;
+@end
+
+@implementation KayokoWordTokenView {
+    NSString *_title;
+    UIColor *_titleColor;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+
+    if (self) {
+        _titleLabel = [[UILabel alloc] init];
+        [_titleLabel setTextAlignment:NSTextAlignmentCenter];
+        [self addSubview:_titleLabel];
+    }
+
+    return self;
+}
+
+- (void)setTitle:(NSString *)title forState:(UIControlState)state {
+    if (state != UIControlStateNormal) {
+        return;
+    }
+
+    _title = [title copy];
+    [[self titleLabel] setText:_title];
+    [self invalidateIntrinsicContentSize];
+    [self setNeedsLayout];
+}
+
+- (void)setTitleColor:(UIColor *)color forState:(UIControlState)state {
+    if (state != UIControlStateNormal) {
+        return;
+    }
+
+    _titleColor = color;
+    [[self titleLabel] setTextColor:_titleColor];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [[self titleLabel] setFrame:UIEdgeInsetsInsetRect([self bounds], [self kayokoContentInsets])];
+}
+
+- (CGSize)sizeThatFits:(CGSize)size {
+    UIEdgeInsets contentInsets = [self kayokoContentInsets];
+    CGFloat availableWidth = MAX(size.width - contentInsets.left - contentInsets.right, 0);
+    CGFloat availableHeight = MAX(size.height - contentInsets.top - contentInsets.bottom, 0);
+    CGSize titleSize = [[self titleLabel] sizeThatFits:CGSizeMake(availableWidth, availableHeight)];
+    return CGSizeMake(titleSize.width + contentInsets.left + contentInsets.right,
+                      titleSize.height + contentInsets.top + contentInsets.bottom);
+}
+
+- (CGSize)intrinsicContentSize {
+    return [self sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
+}
+
+@end
 
 @interface KayokoWordSelectionView () <UIGestureRecognizerDelegate>
 @property(nonatomic, strong) UIScrollView *scrollView;
 @property(nonatomic, strong) UIView *contentView;
 @property(nonatomic, strong) NSMutableArray<NSDictionary *> *tokens;
-@property(nonatomic, strong) NSMutableArray<UIButton *> *tokenButtons;
+@property(nonatomic, strong) NSMutableArray<KayokoWordTokenView *> *tokenButtons;
 @property(nonatomic, strong) NSMutableIndexSet *selectedTokenIndexes;
 @property(nonatomic, strong) NSMutableIndexSet *selectionGestureOriginalIndexes;
 @property(nonatomic, copy) NSString *originalText;
@@ -78,12 +143,14 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
     [[self tokens] addObjectsFromArray:tokens];
 
     for (NSUInteger index = 0; index < [[self tokens] count]; index++) {
-        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        KayokoWordTokenView *button = [[KayokoWordTokenView alloc] initWithFrame:CGRectZero];
         NSDictionary *token = [self tokens][index];
         [button setTag:index];
         [button setTitle:token[@"text"] forState:UIControlStateNormal];
         [[button titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightRegular]];
         [[button titleLabel] setLineBreakMode:NSLineBreakByTruncatingMiddle];
+        [button setKayokoContentInsets:UIEdgeInsetsMake(0, kKayokoWordSelectionTokenHorizontalInset, 0,
+                                                        kKayokoWordSelectionTokenHorizontalInset)];
         [button setUserInteractionEnabled:NO];
         [[button layer] setCornerRadius:7];
         [[button layer] setBorderWidth:0.5];
@@ -97,7 +164,7 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 }
 
 - (void)reset {
-    for (UIButton *button in [self tokenButtons]) {
+    for (KayokoWordTokenView *button in [self tokenButtons]) {
         [button removeFromSuperview];
     }
 
@@ -121,7 +188,7 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
     CGFloat y = kKayokoWordSelectionTopInset;
 
     for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
-        UIButton *button = [self tokenButtons][index];
+        KayokoWordTokenView *button = [self tokenButtons][index];
         CGSize size = [button sizeThatFits:CGSizeMake(availableWidth, kKayokoWordSelectionTokenHeight)];
         CGFloat buttonWidth = MIN(MAX(ceil(size.width), kKayokoWordSelectionTokenHeight), availableWidth);
 
@@ -216,7 +283,7 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 }
 
 - (NSUInteger)tokenIndexAtPoint:(CGPoint)point {
-    for (UIButton *button in [self tokenButtons]) {
+    for (KayokoWordTokenView *button in [self tokenButtons]) {
         if (CGRectContainsPoint([button frame], point)) {
             return [button tag];
         }
@@ -226,7 +293,7 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 }
 
 - (NSUInteger)tokenIndexForSelectionLocation:(CGPoint)point {
-    for (UIButton *button in [self tokenButtons]) {
+    for (KayokoWordTokenView *button in [self tokenButtons]) {
         CGRect frame =
             CGRectInset([button frame], -kKayokoWordSelectionTokenSpacing / 2, -kKayokoWordSelectionLineSpacing / 2);
         if (CGRectContainsPoint(frame, point)) {
@@ -296,11 +363,13 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
                                                                                alpha:0.10];
 
     for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
-        UIButton *button = [self tokenButtons][index];
+        KayokoWordTokenView *button = [self tokenButtons][index];
         BOOL selected = [[self selectedTokenIndexes] containsIndex:index];
         [[button layer] setBorderWidth:selected ? 0.75 : 0.5];
-        [button setTitleColor:selected ? selectedTextColor : normalTextColor forState:UIControlStateNormal];
-        [button setBackgroundColor:selected ? selectedBackgroundColor : normalBackgroundColor];
+        UIColor *textColor = selected ? selectedTextColor : normalTextColor;
+        UIColor *backgroundColor = selected ? selectedBackgroundColor : normalBackgroundColor;
+        [button setTitleColor:textColor forState:UIControlStateNormal];
+        [button setBackgroundColor:backgroundColor];
         [[button layer] setBorderColor:(selected ? selectedBorderColor : normalBorderColor).CGColor];
     }
 }

@@ -50,6 +50,7 @@ static NSTimeInterval lastCopyFeedbackOccurred = 0;
 static AVAudioPlayer *copySoundPlayer = nil;
 static AVAudioPlayer *pasteSoundPlayer = nil;
 static BOOL didPreparePasteboardQueue = NO;
+static BOOL pendingHeightPreferenceApply = NO;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -64,6 +65,28 @@ static BOOL didPreparePasteboardQueue = NO;
 + (instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
 - (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
+
+static void apply_height_preference_to_view(BOOL applyWhenHidden) {
+    if (!kayokoView) {
+        return;
+    }
+
+    if (!applyWhenHidden && [kayokoView isHidden]) {
+        return;
+    }
+
+    UIView *containerView = [kayokoView superview];
+    CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
+    CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
+    CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
+    if (!CGRectEqualToRect([kayokoView frame], newFrame)) {
+        if (!CGAffineTransformIsIdentity([kayokoView transform])) {
+            [kayokoView setTransform:CGAffineTransformIdentity];
+        }
+        [kayokoView setFrame:newFrame];
+        [kayokoView setNeedsLayout];
+    }
+}
 
 static void apply_preferences_to_view() {
     if (!kayokoView) {
@@ -86,17 +109,7 @@ static void apply_preferences_to_view() {
         [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
     }
 
-    UIView *containerView = [kayokoView superview];
-    CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
-    CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
-    CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
-    if (!CGRectEqualToRect([kayokoView frame], newFrame)) {
-        if (!CGAffineTransformIsIdentity([kayokoView transform])) {
-            [kayokoView setTransform:CGAffineTransformIdentity];
-        }
-        [kayokoView setFrame:newFrame];
-        [kayokoView setNeedsLayout];
-    }
+    apply_height_preference_to_view(YES);
 }
 
 #pragma mark - UIStatusBarWindow class hooks
@@ -191,6 +204,7 @@ static void kayokoCopy() {
 
 static void show() {
     if ([kayokoView isHidden]) {
+        apply_height_preference_to_view(YES);
 
         [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
 
@@ -313,7 +327,15 @@ static void load_height_preference() {
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
     }];
     kayokoPrefsHeightInPoints = [[heightPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
-    apply_preferences_to_view();
+    if (pendingHeightPreferenceApply) {
+        return;
+    }
+
+    pendingHeightPreferenceApply = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      pendingHeightPreferenceApply = NO;
+      apply_height_preference_to_view(NO);
+    });
 }
 
 #pragma mark - Sound effects
