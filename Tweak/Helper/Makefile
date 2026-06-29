@@ -8,7 +8,6 @@ KayokoHelper_FILES += KayokoMenu.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 
 KayokoHelper_CFLAGS += -fobjc-arc
-KayokoHelper_CFLAGS += -DDISABLE_ROOTLESS_COMPAT_WARNING
 KayokoHelper_CFLAGS += -I../../Headers
 KayokoHelper_CFLAGS += -I../../Preferences
 KayokoHelper_CFLAGS += -I../../Manager
@@ -27,6 +26,7 @@ endif
 KayokoHelper_FRAMEWORKS += CoreGraphics
 KayokoHelper_FRAMEWORKS += QuartzCore
 KayokoHelper_FRAMEWORKS += UIKit
+
 KayokoHelper_LIBRARIES += sandy
 KayokoHelper_LIBRARIES += sqlite3
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)

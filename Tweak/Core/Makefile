@@ -7,7 +7,6 @@ KayokoCore_FILES += KayokoCoreLogos.xm
 KayokoCore_FILES += $(wildcard ../../Manager/*.m Views/*.m ../../Utils/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc
-KayokoCore_CFLAGS += -DDISABLE_ROOTLESS_COMPAT_WARNING
 KayokoCore_CFLAGS += -I../../Manager
 KayokoCore_CFLAGS += -I../../Preferences
 KayokoCore_CFLAGS += -I../../Utils
@@ -17,8 +16,8 @@ KayokoCore_FRAMEWORKS += AVFoundation
 KayokoCore_FRAMEWORKS += CoreGraphics
 KayokoCore_FRAMEWORKS += QuartzCore
 KayokoCore_FRAMEWORKS += UIKit
-KayokoCore_LIBRARIES += sqlite3
 
+KayokoCore_LIBRARIES += sqlite3
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 KayokoCore_LIBRARIES += roothide
 endif
