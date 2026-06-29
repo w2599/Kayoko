@@ -101,14 +101,6 @@ static void apply_preferences_to_view() {
 
 #pragma mark - UIStatusBarWindow class hooks
 
-/**
- * Sets up the history view.
- *
- * Using the status bar's window is hacky, yet it's present on SpringBoard and in apps.
- * It's important to note that it runs on the SpringBoard process too, which gives us file system read/write.
- *
- * @param frame
- */
 static void (*orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow *self, SEL _cmd, CGRect frame);
 static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
     orig_UIStatusBarWindow_initWithFrame(self, _cmd, frame);
@@ -170,9 +162,6 @@ static AVAudioPlayer *kayokoPlayFeedbackSound(AVAudioPlayer *player, NSString *s
     return player;
 }
 
-/**
- * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
- */
 static void _kayokoCopy() {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
     if (isInPasteProgress) {
@@ -200,9 +189,6 @@ static void kayokoCopy() {
     });
 }
 
-/**
- * Shows the history.
- */
 static void show() {
     if ([kayokoView isHidden]) {
 
@@ -247,18 +233,12 @@ static void show() {
     }
 }
 
-/**
- * Hides the history.
- */
 static void hide() {
     if (![kayokoView isHidden]) {
         [kayokoView hide];
     }
 }
 
-/**
- * Reloads the history.
- */
 static void reload() {
     if (![kayokoView isHidden]) {
         [kayokoView reload];
@@ -267,9 +247,6 @@ static void reload() {
 
 #pragma mark - Preferences
 
-/**
- * Loads the user's preferences.
- */
 static void load_preferences() {
     kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
 
@@ -355,13 +332,6 @@ static void kayokoPaste() {
 
 #pragma mark - Constructor
 
-/**
- * Initializes the core.
- *
- * First it loads the preferences and continues if Kayoko is enabled.
- * Secondly it sets up the hooks.
- * Finally it registers the notification callbacks.
- */
 __attribute((constructor)) static void initialize() {
     NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
     BOOL isSpringBoard = [bundleIdentifier isEqualToString:@"com.apple.springboard"];
