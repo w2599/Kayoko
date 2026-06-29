@@ -257,9 +257,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
       }
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        if (success) {
-            [self postHistoryChangedNotification];
-        }
         if (completion) {
             completion(success);
         }
@@ -285,9 +282,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
       }
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        if (success) {
-            [self postHistoryChangedNotification];
-        }
         if (completion) {
             completion(success);
         }
