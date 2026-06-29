@@ -16,7 +16,7 @@
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[[super tableView:tableView
         leadingSwipeActionsConfigurationForRowAtIndexPath:indexPath] actions] mutableCopy];
-    NSDictionary *dictionary = [self items][[indexPath row]];
+    NSDictionary *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *unfavoriteAction = [UIContextualAction
@@ -55,7 +55,7 @@
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[NSMutableArray alloc] init];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
+    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
 
     UIContextualAction *deleteAction = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleDestructive

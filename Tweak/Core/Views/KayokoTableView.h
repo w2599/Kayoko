@@ -11,6 +11,10 @@
 
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic, strong) NSArray *items;
+@property(nonatomic, strong, readonly) NSArray *displayedItems;
+@property(nonatomic, copy) NSString *searchText;
+@property(nonatomic, copy) NSArray<NSString *> *selectedBundleIdentifiers;
+@property(nonatomic, strong, readonly) NSArray<NSDictionary *> *availableAppTokenItems;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, copy) NSString *historyKey;
@@ -18,6 +22,8 @@
 - (instancetype)initWithName:(NSString *)name;
 - (void)reloadDataWithItems:(NSArray *)items;
 - (void)updateDataWithItems:(NSArray *)items animatingTopInsertions:(BOOL)animatingTopInsertions;
+- (void)applySearchText:(NSString *)searchText selectedBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers;
+- (NSDictionary *)itemDictionaryAtIndexPath:(NSIndexPath *)indexPath;
 - (void)clearItems;
 - (void)upsertItemDictionaryAtTop:(NSDictionary *)dictionary limit:(NSUInteger)limit;
 - (void)removeItemDictionary:(NSDictionary *)dictionary;

@@ -14,8 +14,29 @@
 #import "KayokoWordSelectionView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
+#import <objc/runtime.h>
 
-@interface KayokoView ()
+static CGFloat const kKayokoSearchHeaderHeight = 56;
+static CGFloat const kKayokoAppTokenSuggestionRowHeight = 44;
+static CGFloat const kKayokoAppTokenSuggestionMaximumHeight = 220;
+
+@interface UIImage (KayokoPrivate)
++ (instancetype)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier
+                                                  format:(int)format
+                                                   scale:(CGFloat)scale;
+@end
+
+@interface SBApplication : NSObject
+@property(nonatomic, copy, readonly) NSString *bundleIdentifier;
+@property(nonatomic, copy, readonly) NSString *displayName;
+@end
+
+@interface SBApplicationController : NSObject
++ (instancetype)sharedInstance;
+- (SBApplication *)applicationWithBundleIdentifier:(NSString *)bundleIdentifier;
+@end
+
+@interface KayokoView () <UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource>
 - (void)hideWithCompletion:(void (^)(void))completion;
 - (void)restorePreviewSourceAfterAction;
 @end
@@ -25,6 +46,14 @@
     NSMutableSet<NSString *> *_loadedHistoryKeys;
     NSMutableSet<NSString *> *_dirtyHistoryKeys;
     NSUInteger _pendingLocalHistoryChangeNotificationCount;
+    UISearchBar *_searchBar;
+    UITableView *_appTokenSuggestionTableView;
+    NSArray<NSDictionary *> *_appTokenSuggestionItems;
+    CGRect _normalFrameBeforeSearch;
+    BOOL _hasNormalFrameBeforeSearch;
+    BOOL _isSearchActive;
+    BOOL _isResettingSearch;
+    CGFloat _keyboardBottomInset;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -37,6 +66,14 @@
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(handleLocalHistoryChangeNotification:)
                                                      name:kPasteboardManagerHistoryDidChangeNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleKeyboardWillChangeFrameNotification:)
+                                                     name:UIKeyboardWillChangeFrameNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleKeyboardWillHideNotification:)
+                                                     name:UIKeyboardWillHideNotification
                                                    object:nil];
 
         [self hide];
@@ -235,6 +272,37 @@
             [[[self previewView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
             [[[self previewView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
+
+        _searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth([self bounds]),
+                                                                   kKayokoSearchHeaderHeight)];
+        [_searchBar setDelegate:self];
+        [_searchBar setPlaceholder:[[PasteboardManager localizationBundle] localizedStringForKey:@"Search"
+                                                                                           value:nil
+                                                                                           table:@"Tweak"]];
+        [_searchBar setSearchBarStyle:UISearchBarStyleMinimal];
+        [_searchBar setBackgroundImage:[[UIImage alloc] init]];
+        if (@available(iOS 13.0, *)) {
+            [[_searchBar searchTextField] addTarget:self
+                                             action:@selector(handleSearchTextFieldEditingChanged)
+                                   forControlEvents:UIControlEventEditingChanged];
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(handleSearchTextFieldTextDidChangeNotification:)
+                                                         name:UITextFieldTextDidChangeNotification
+                                                       object:[_searchBar searchTextField]];
+        }
+        [self attachSearchBarToTableView:[self historyTableView] hidesSearchBar:YES];
+
+        _appTokenSuggestionItems = @[];
+        _appTokenSuggestionTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+        [_appTokenSuggestionTableView setDelegate:self];
+        [_appTokenSuggestionTableView setDataSource:self];
+        [_appTokenSuggestionTableView setRowHeight:kKayokoAppTokenSuggestionRowHeight];
+        [_appTokenSuggestionTableView setBackgroundColor:[UIColor clearColor]];
+        [_appTokenSuggestionTableView setSeparatorStyle:UITableViewCellSeparatorStyleNone];
+        [_appTokenSuggestionTableView setHidden:YES];
+        [_appTokenSuggestionTableView setClipsToBounds:YES];
+        [[_appTokenSuggestionTableView layer] setCornerRadius:12];
+        [self addSubview:_appTokenSuggestionTableView];
     }
 
     return self;
@@ -242,6 +310,432 @@
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+
+    [self layoutSearchBarForTableView:[self historyTableView]];
+    [self layoutSearchBarForTableView:[self favoritesTableView]];
+    [self layoutAppTokenSuggestionTableView];
+}
+
+- (KayokoTableView *)activeTableView {
+    return [self tableViewForHistoryKey:[self activeHistoryKey]];
+}
+
+- (CGFloat)searchHeaderHeight {
+    return CGRectGetHeight([_searchBar frame]) ?: kKayokoSearchHeaderHeight;
+}
+
+- (void)layoutSearchBarForTableView:(KayokoTableView *)tableView {
+    if ([tableView tableHeaderView] != _searchBar) {
+        return;
+    }
+
+    CGFloat width = CGRectGetWidth([tableView bounds]);
+    CGRect frame = CGRectMake(0, 0, width, kKayokoSearchHeaderHeight);
+    if (!CGRectEqualToRect([_searchBar frame], frame)) {
+        [_searchBar setFrame:frame];
+        [tableView setTableHeaderView:_searchBar];
+    }
+}
+
+- (void)attachSearchBarToTableView:(KayokoTableView *)tableView hidesSearchBar:(BOOL)hidesSearchBar {
+    if (!tableView || [tableView tableHeaderView] == _searchBar) {
+        if (hidesSearchBar && !_isSearchActive) {
+            [self hideSearchBarInTableView:tableView animated:NO];
+        }
+        return;
+    }
+
+    [[self historyTableView] setTableHeaderView:nil];
+    [[self favoritesTableView] setTableHeaderView:nil];
+    [_searchBar setFrame:CGRectMake(0, 0, CGRectGetWidth([tableView bounds]), kKayokoSearchHeaderHeight)];
+    [tableView setTableHeaderView:_searchBar];
+    if (hidesSearchBar && !_isSearchActive) {
+        [self hideSearchBarInTableView:tableView animated:NO];
+    }
+}
+
+- (void)hideSearchBarInTableView:(KayokoTableView *)tableView animated:(BOOL)animated {
+    if (!tableView || [tableView tableHeaderView] != _searchBar || _isSearchActive) {
+        return;
+    }
+
+    CGPoint contentOffset = [tableView contentOffset];
+    contentOffset.y = [self searchHeaderHeight];
+    [tableView setContentOffset:contentOffset animated:animated];
+}
+
+- (void)revealSearchBarInTableView:(KayokoTableView *)tableView animated:(BOOL)animated {
+    if (!tableView || [tableView tableHeaderView] != _searchBar) {
+        return;
+    }
+
+    CGPoint contentOffset = [tableView contentOffset];
+    contentOffset.y = 0;
+    [tableView setContentOffset:contentOffset animated:animated];
+}
+
+- (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+        return [[PasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard" value:nil table:@"Tweak"];
+    }
+
+    NSString *displayName = [[[objc_getClass("SBApplicationController") sharedInstance]
+        applicationWithBundleIdentifier:bundleIdentifier] displayName];
+    return [displayName length] > 0 ? displayName : bundleIdentifier;
+}
+
+- (UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
+    UIImage *icon = nil;
+    if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+        BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
+        icon = [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
+                           inBundle:[PasteboardManager localizationBundle]
+      compatibleWithTraitCollection:nil];
+    } else {
+        icon = [UIImage _applicationIconImageForBundleIdentifier:bundleIdentifier
+                                                          format:2
+                                                           scale:[[UIScreen mainScreen] scale]];
+    }
+    if (!icon) {
+        icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
+                                                          format:2
+                                                           scale:[[UIScreen mainScreen] scale]];
+    }
+    return icon;
+}
+
+- (NSArray<NSDictionary *> *)appTokenItemsForTableView:(KayokoTableView *)tableView {
+    NSMutableArray *items = [[NSMutableArray alloc] init];
+    for (NSDictionary *tokenItem in [tableView availableAppTokenItems]) {
+        NSString *bundleIdentifier = tokenItem[@"bundleIdentifier"];
+        if ([bundleIdentifier length] == 0) {
+            continue;
+        }
+
+        UIImage *icon = [self iconForBundleIdentifier:bundleIdentifier];
+        NSMutableDictionary *item = [@{
+            @"bundleIdentifier" : bundleIdentifier,
+            @"displayName" : [self displayNameForBundleIdentifier:bundleIdentifier]
+        } mutableCopy];
+        if (icon) {
+            item[@"icon"] = icon;
+        }
+        [items addObject:item];
+    }
+    return items;
+}
+
+- (NSArray<NSString *> *)selectedSearchBundleIdentifiers {
+    if (@available(iOS 13.0, *)) {
+        NSMutableArray *bundleIdentifiers = [[NSMutableArray alloc] init];
+        for (UISearchToken *token in [[_searchBar searchTextField] tokens]) {
+            NSString *bundleIdentifier = [token representedObject];
+            if ([bundleIdentifier length] > 0 && ![bundleIdentifiers containsObject:bundleIdentifier]) {
+                [bundleIdentifiers addObject:bundleIdentifier];
+            }
+        }
+        return bundleIdentifiers;
+    }
+    return @[];
+}
+
+- (NSArray<NSDictionary *> *)unselectedAppTokenSuggestionItemsForTableView:(KayokoTableView *)tableView {
+    NSArray<NSString *> *selectedBundleIdentifiers = [self selectedSearchBundleIdentifiers];
+    NSMutableArray *suggestionItems = [[NSMutableArray alloc] init];
+    for (NSDictionary *item in [self appTokenItemsForTableView:tableView]) {
+        NSString *bundleIdentifier = item[@"bundleIdentifier"];
+        if (![selectedBundleIdentifiers containsObject:bundleIdentifier]) {
+            [suggestionItems addObject:item];
+        }
+    }
+    return suggestionItems;
+}
+
+- (void)setSearchTokensWithBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers
+                                forTableView:(KayokoTableView *)tableView {
+    if (@available(iOS 13.0, *)) {
+        NSMutableDictionary *itemsByBundleIdentifier = [[NSMutableDictionary alloc] init];
+        for (NSDictionary *item in [self appTokenItemsForTableView:tableView]) {
+            NSString *bundleIdentifier = item[@"bundleIdentifier"];
+            if ([bundleIdentifier length] > 0) {
+                itemsByBundleIdentifier[bundleIdentifier] = item;
+            }
+        }
+
+        NSMutableArray<UISearchToken *> *tokens = [[NSMutableArray alloc] init];
+        for (NSString *bundleIdentifier in bundleIdentifiers) {
+            NSDictionary *item = itemsByBundleIdentifier[bundleIdentifier];
+            if (!item) {
+                continue;
+            }
+
+            UISearchToken *token = [UISearchToken tokenWithIcon:item[@"icon"] text:item[@"displayName"]];
+            [token setRepresentedObject:bundleIdentifier];
+            [tokens addObject:token];
+        }
+        [[_searchBar searchTextField] setTokens:tokens];
+    }
+}
+
+- (void)applySearchToActiveTableView {
+    KayokoTableView *tableView = [self activeTableView];
+    NSArray<NSString *> *selectedBundleIdentifiers = [self selectedSearchBundleIdentifiers];
+    [tableView applySearchText:[_searchBar text] selectedBundleIdentifiers:selectedBundleIdentifiers];
+
+    NSArray<NSString *> *validBundleIdentifiers = [tableView selectedBundleIdentifiers] ?: @[];
+    if (![validBundleIdentifiers isEqualToArray:selectedBundleIdentifiers]) {
+        [self setSearchTokensWithBundleIdentifiers:validBundleIdentifiers forTableView:tableView];
+    }
+
+    [self refreshAppTokenSuggestions];
+}
+
+- (void)refreshSearchForActiveTableView {
+    KayokoTableView *tableView = [self activeTableView];
+    [self attachSearchBarToTableView:tableView hidesSearchBar:!_isSearchActive];
+    [self setSearchTokensWithBundleIdentifiers:[self selectedSearchBundleIdentifiers] forTableView:tableView];
+    [self applySearchToActiveTableView];
+}
+
+- (void)refreshAppTokenSuggestions {
+    KayokoTableView *tableView = [self activeTableView];
+    _appTokenSuggestionItems = [self unselectedAppTokenSuggestionItemsForTableView:tableView];
+    [_appTokenSuggestionTableView reloadData];
+    [self layoutAppTokenSuggestionTableView];
+    [_appTokenSuggestionTableView setHidden:!_isSearchActive || [_appTokenSuggestionItems count] == 0];
+}
+
+- (void)layoutAppTokenSuggestionTableView {
+    CGFloat height = MIN([_appTokenSuggestionItems count] * kKayokoAppTokenSuggestionRowHeight,
+                         kKayokoAppTokenSuggestionMaximumHeight);
+    if (height <= 0 || !_isSearchActive) {
+        [_appTokenSuggestionTableView setFrame:CGRectZero];
+        return;
+    }
+
+    CGFloat y = CGRectGetMaxY([[self headerView] frame]) + 8 + [self searchHeaderHeight];
+    CGRect frame = CGRectMake(16, y, MAX(CGRectGetWidth([self bounds]) - 32, 0), height);
+    [_appTokenSuggestionTableView setFrame:frame];
+    [self bringSubviewToFront:_appTokenSuggestionTableView];
+}
+
+- (void)beginSearchIfNeeded {
+    if (_isSearchActive || _isAnimating) {
+        return;
+    }
+
+    _isSearchActive = YES;
+    _normalFrameBeforeSearch = [self frame];
+    _hasNormalFrameBeforeSearch = YES;
+    [[self panGestureRecognizer] setEnabled:NO];
+    [_searchBar setShowsCancelButton:YES animated:YES];
+    [self revealSearchBarInTableView:[self activeTableView] animated:YES];
+    [self refreshAppTokenSuggestions];
+
+    UIView *superview = [self superview];
+    if (!superview) {
+        return;
+    }
+
+    CGRect bounds = [superview bounds];
+    CGRect safeBounds = UIEdgeInsetsInsetRect(bounds, [superview safeAreaInsets]);
+    _isAnimating = YES;
+    [UIView animateWithDuration:0.28
+        delay:0
+        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+        animations:^{
+          [self setTransform:CGAffineTransformIdentity];
+          [self setFrame:safeBounds];
+          [self setNeedsLayout];
+          [self layoutIfNeeded];
+        }
+        completion:^(__unused BOOL finished) {
+          _isAnimating = NO;
+          [self finishOutsideDismissOverlayShow];
+        }];
+}
+
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame clearsSearch:(BOOL)clearsSearch {
+    if (!_isSearchActive && !clearsSearch) {
+        return;
+    }
+
+    _isResettingSearch = YES;
+    _isSearchActive = NO;
+    [_searchBar resignFirstResponder];
+    [_searchBar setShowsCancelButton:NO animated:YES];
+    if (clearsSearch) {
+        [_searchBar setText:@""];
+        [self setSearchTokensWithBundleIdentifiers:@[] forTableView:[self activeTableView]];
+    }
+    _keyboardBottomInset = 0;
+    [self applyKeyboardBottomInsetToTableViews];
+    [self applySearchToActiveTableView];
+    [_appTokenSuggestionTableView setHidden:YES];
+    [[self panGestureRecognizer] setEnabled:YES];
+
+    CGRect targetFrame = _hasNormalFrameBeforeSearch ? _normalFrameBeforeSearch : [self frame];
+    _hasNormalFrameBeforeSearch = NO;
+    _isResettingSearch = NO;
+
+    if (restoresFrame && !CGRectEqualToRect([self frame], targetFrame)) {
+        _isAnimating = YES;
+        [UIView animateWithDuration:0.28
+            delay:0
+            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+            animations:^{
+              [self setFrame:targetFrame];
+              [self setNeedsLayout];
+              [self layoutIfNeeded];
+            }
+            completion:^(__unused BOOL finished) {
+              _isAnimating = NO;
+              [self hideSearchBarInTableView:[self activeTableView] animated:YES];
+              [self finishOutsideDismissOverlayShow];
+            }];
+    } else {
+        [self setFrame:targetFrame];
+        [self hideSearchBarInTableView:[self activeTableView] animated:NO];
+    }
+}
+
+- (void)resetSearchBeforeHide {
+    if (!_isSearchActive && [[_searchBar text] length] == 0 && [[self selectedSearchBundleIdentifiers] count] == 0) {
+        return;
+    }
+
+    [self endSearchRestoringFrame:NO clearsSearch:YES];
+}
+
+- (void)applyKeyboardBottomInsetToTableView:(KayokoTableView *)tableView {
+    UIEdgeInsets contentInset = [tableView contentInset];
+    contentInset.bottom = _keyboardBottomInset;
+    [tableView setContentInset:contentInset];
+
+    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, _keyboardBottomInset, 0);
+    if (@available(iOS 13.0, *)) {
+        [tableView setVerticalScrollIndicatorInsets:indicatorInsets];
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        [tableView setScrollIndicatorInsets:indicatorInsets];
+#pragma clang diagnostic pop
+    }
+}
+
+- (void)applyKeyboardBottomInsetToTableViews {
+    [self applyKeyboardBottomInsetToTableView:[self historyTableView]];
+    [self applyKeyboardBottomInsetToTableView:[self favoritesTableView]];
+}
+
+- (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
+    if (!_isSearchActive) {
+        return;
+    }
+
+    CGRect keyboardEndFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect keyboardFrameInView = [self convertRect:keyboardEndFrame fromView:nil];
+    _keyboardBottomInset = MAX(CGRectGetMaxY([self bounds]) - CGRectGetMinY(keyboardFrameInView), 0);
+    [self applyKeyboardBottomInsetToTableViews];
+}
+
+- (void)handleKeyboardWillHideNotification:(NSNotification *)notification {
+    if (!_isSearchActive) {
+        return;
+    }
+
+    _keyboardBottomInset = 0;
+    [self applyKeyboardBottomInsetToTableViews];
+}
+
+- (void)handleSearchTextFieldEditingChanged {
+    if (_isResettingSearch) {
+        return;
+    }
+    [self applySearchToActiveTableView];
+}
+
+- (void)handleSearchTextFieldTextDidChangeNotification:(NSNotification *)notification {
+    if (_isResettingSearch) {
+        return;
+    }
+    [self applySearchToActiveTableView];
+}
+
+- (void)searchBarTextDidBeginEditing:(UISearchBar *)searchBar {
+    [self beginSearchIfNeeded];
+}
+
+- (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
+    if (_isResettingSearch) {
+        return;
+    }
+    [self applySearchToActiveTableView];
+}
+
+- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
+    [searchBar resignFirstResponder];
+}
+
+- (void)searchBarCancelButtonClicked:(UISearchBar *)searchBar {
+    [self endSearchRestoringFrame:YES clearsSearch:YES];
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    if (tableView != _appTokenSuggestionTableView) {
+        return 0;
+    }
+    return [_appTokenSuggestionItems count];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"KayokoAppTokenSuggestionCell"];
+    if (!cell) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                      reuseIdentifier:@"KayokoAppTokenSuggestionCell"];
+        [cell setBackgroundColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+          if ([traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark) {
+              return [UIColor colorWithWhite:0.12 alpha:0.92];
+          }
+          return [UIColor colorWithWhite:1 alpha:0.94];
+        }]];
+        [[cell textLabel] setFont:[UIFont systemFontOfSize:15 weight:UIFontWeightMedium]];
+        [[cell imageView] setContentMode:UIViewContentModeScaleAspectFit];
+        [[[cell imageView] layer] setCornerRadius:6];
+        [[cell imageView] setClipsToBounds:YES];
+    }
+
+    NSDictionary *item = _appTokenSuggestionItems[[indexPath row]];
+    [[cell textLabel] setText:item[@"displayName"]];
+    [[cell imageView] setImage:item[@"icon"]];
+    return cell;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (tableView != _appTokenSuggestionTableView) {
+        return;
+    }
+
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    NSDictionary *item = _appTokenSuggestionItems[[indexPath row]];
+    NSString *bundleIdentifier = item[@"bundleIdentifier"];
+    if ([bundleIdentifier length] == 0) {
+        return;
+    }
+
+    if (@available(iOS 13.0, *)) {
+        NSMutableArray *bundleIdentifiers = [[self selectedSearchBundleIdentifiers] mutableCopy];
+        if (![bundleIdentifiers containsObject:bundleIdentifier]) {
+            [bundleIdentifiers addObject:bundleIdentifier];
+        }
+        [self setSearchTokensWithBundleIdentifiers:bundleIdentifiers forTableView:[self activeTableView]];
+        [self applySearchToActiveTableView];
+        [_searchBar becomeFirstResponder];
+    }
 }
 
 - (void)setOutsideDismissOverlayView:(UIControl *)outsideDismissOverlayView {
@@ -421,6 +915,8 @@
 - (void)setHistoryContentVisibleForKey:(NSString *)key {
     _activeHistoryKey = key;
     UIView *contentView = [self contentViewForHistoryKey:key];
+    [self attachSearchBarToTableView:[self tableViewForHistoryKey:key] hidesSearchBar:!_isSearchActive];
+    [self refreshSearchForActiveTableView];
     [[self historyTableView] setHidden:contentView != [self historyTableView]];
     [[self favoritesTableView] setHidden:contentView != [self favoritesTableView]];
     [[self emptyStateView] setHidden:contentView != [self emptyStateView]];
@@ -506,6 +1002,7 @@
 
     [self markHistoryKeyLoaded:key];
     if ([[self activeHistoryKey] isEqualToString:key]) {
+        [self refreshSearchForActiveTableView];
         [self updateClearButtonStateForTableView:tableView];
     }
 }
@@ -557,6 +1054,9 @@
                                                           [tableView updateDataWithItems:items
                                                                   animatingTopInsertions:animatingTopInsertions];
                                                           [self markHistoryKeyLoaded:key];
+                                                          if ([[self activeHistoryKey] isEqualToString:key]) {
+                                                              [self refreshSearchForActiveTableView];
+                                                          }
                                                           if (completion) {
                                                               completion(tableView);
                                                           }
@@ -596,6 +1096,9 @@
     if (reload) {
         [[self tableViewForHistoryKey:key] clearItems];
         [self markHistoryKeyLoaded:key];
+        if ([[self activeHistoryKey] isEqualToString:key]) {
+            [self refreshSearchForActiveTableView];
+        }
         [self finishHidingClearConfirmationForHistoryKey:key];
         return;
     }
@@ -685,6 +1188,8 @@
                               }
 
                               _activeHistoryKey = targetKey;
+                              [self attachSearchBarToTableView:targetTableView hidesSearchBar:!_isSearchActive];
+                              [self refreshSearchForActiveTableView];
                               [self updateClearButtonStateForTableView:targetTableView];
 
                               UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
@@ -821,6 +1326,8 @@
 }
 
 - (void)showPreviewWithItem:(PasteboardItem *)item {
+    [_searchBar resignFirstResponder];
+    [_appTokenSuggestionTableView setHidden:YES];
     _previewItem = item;
 
     if (![[item imageName] isEqualToString:@""]) {
@@ -889,6 +1396,9 @@
                                                                                       table:@"Tweak"]];
 
     [[self previewView] reset];
+    if (_isSearchActive) {
+        [self refreshAppTokenSuggestions];
+    }
 }
 
 - (void)showContentView:(UIView *)viewToShow andHideContentView:(UIView *)viewToHide reverse:(BOOL)reverse {
@@ -950,6 +1460,7 @@
                                   return;
                               }
                               [self setHistoryContentVisibleForKey:key];
+                              [self refreshSearchForActiveTableView];
                               [self updateClearButtonStateForTableView:tableView];
                             }];
 }
@@ -965,6 +1476,7 @@
     [[self favoritesTableView] setAutomaticallyPaste:[self automaticallyPaste]];
 
     [self reload];
+    [self attachSearchBarToTableView:[self activeTableView] hidesSearchBar:YES];
 
     [self setTransform:CGAffineTransformMakeTranslation(0, [self bounds].size.height / 3)];
     [self setAlpha:0];
@@ -997,6 +1509,7 @@
         return;
     }
 
+    [self resetSearchBeforeHide];
     [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
     _isAnimating = YES;
     [UIView animateWithDuration:0.33

@@ -15,6 +15,144 @@ static CGFloat const kKayokoTableViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 
 @implementation KayokoTableView
+{
+    NSArray *_displayedItems;
+    NSArray<NSDictionary *> *_availableAppTokenItems;
+}
+
+- (BOOL)hasActiveSearch {
+    return [[self searchText] length] > 0 || [[self selectedBundleIdentifiers] count] > 0;
+}
+
+- (NSArray *)displayedItems {
+    return _displayedItems ?: ([self items] ?: @[]);
+}
+
+- (NSArray<NSDictionary *> *)availableAppTokenItems {
+    return _availableAppTokenItems ?: @[];
+}
+
+- (NSDictionary *)itemDictionaryAtIndexPath:(NSIndexPath *)indexPath {
+    NSArray *displayedItems = [self displayedItems];
+    if ([indexPath row] >= [displayedItems count]) {
+        return nil;
+    }
+    return displayedItems[[indexPath row]];
+}
+
+- (NSArray<NSString *> *)validBundleIdentifiersFromBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
+    if ([bundleIdentifiers count] == 0) {
+        return @[];
+    }
+
+    NSMutableSet *availableBundleIdentifiers = [[NSMutableSet alloc] init];
+    for (NSDictionary *tokenItem in [self availableAppTokenItems]) {
+        NSString *bundleIdentifier = tokenItem[@"bundleIdentifier"];
+        if ([bundleIdentifier length] > 0) {
+            [availableBundleIdentifiers addObject:bundleIdentifier];
+        }
+    }
+
+    NSMutableArray *validBundleIdentifiers = [[NSMutableArray alloc] init];
+    for (NSString *bundleIdentifier in bundleIdentifiers) {
+        if ([bundleIdentifier length] == 0 || ![availableBundleIdentifiers containsObject:bundleIdentifier]) {
+            continue;
+        }
+        if (![validBundleIdentifiers containsObject:bundleIdentifier]) {
+            [validBundleIdentifiers addObject:bundleIdentifier];
+        }
+    }
+    return validBundleIdentifiers;
+}
+
+- (void)refreshAvailableAppTokenItems {
+    NSMutableArray *tokenItems = [[NSMutableArray alloc] init];
+    NSMutableSet *seenBundleIdentifiers = [[NSMutableSet alloc] init];
+    for (NSDictionary *item in [self items] ?: @[]) {
+        NSString *bundleIdentifier = item[kItemKeyBundleIdentifier];
+        if ([bundleIdentifier length] == 0 || [seenBundleIdentifiers containsObject:bundleIdentifier]) {
+            continue;
+        }
+
+        [seenBundleIdentifiers addObject:bundleIdentifier];
+        [tokenItems addObject:@{ @"bundleIdentifier" : bundleIdentifier }];
+    }
+    _availableAppTokenItems = [tokenItems copy];
+    _selectedBundleIdentifiers = [[self validBundleIdentifiersFromBundleIdentifiers:[self selectedBundleIdentifiers]]
+        copy];
+}
+
+- (void)refreshDisplayedItems {
+    NSArray *items = [self items] ?: @[];
+    NSString *searchText = [[self searchText]
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSArray<NSString *> *selectedBundleIdentifiers = [self selectedBundleIdentifiers] ?: @[];
+
+    if ([searchText length] == 0 && [selectedBundleIdentifiers count] == 0) {
+        _displayedItems = items;
+        return;
+    }
+
+    NSMutableArray *displayedItems = [[NSMutableArray alloc] init];
+    for (NSDictionary *item in items) {
+        NSString *bundleIdentifier = item[kItemKeyBundleIdentifier];
+        if ([selectedBundleIdentifiers count] > 0 && ![selectedBundleIdentifiers containsObject:bundleIdentifier]) {
+            continue;
+        }
+
+        if ([searchText length] > 0) {
+            NSString *imageName = item[kItemKeyImageName];
+            NSString *content = item[kItemKeyContent];
+            if ([imageName length] > 0 ||
+                [content rangeOfString:searchText
+                               options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch].location ==
+                    NSNotFound) {
+                continue;
+            }
+        }
+
+        [displayedItems addObject:item];
+    }
+    _displayedItems = [displayedItems copy];
+}
+
+- (void)setItems:(NSArray *)items {
+    _items = [items copy];
+    [self refreshAvailableAppTokenItems];
+    [self refreshDisplayedItems];
+}
+
+- (void)setSearchText:(NSString *)searchText {
+    _searchText = [searchText copy] ?: @"";
+    [self refreshDisplayedItems];
+}
+
+- (void)setSelectedBundleIdentifiers:(NSArray<NSString *> *)selectedBundleIdentifiers {
+    _selectedBundleIdentifiers = [[self validBundleIdentifiersFromBundleIdentifiers:selectedBundleIdentifiers] copy];
+    [self refreshDisplayedItems];
+}
+
+- (void)updateSearchBackgroundView {
+    if (![self hasActiveSearch] || [[self items] count] == 0 || [[self displayedItems] count] > 0) {
+        [self setBackgroundView:nil];
+        return;
+    }
+
+    UILabel *label = [[UILabel alloc] init];
+    [label setFont:[UIFont systemFontOfSize:17 weight:UIFontWeightMedium]];
+    [label setTextColor:[UIColor secondaryLabelColor]];
+    [label setTextAlignment:NSTextAlignmentCenter];
+    [label setNumberOfLines:0];
+    [label setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"No Search Results"
+                                                                           value:nil
+                                                                           table:@"Tweak"]];
+    [self setBackgroundView:label];
+}
+
+- (void)reloadData {
+    [super reloadData];
+    [self updateSearchBackgroundView];
+}
 
 - (NSArray *)indexPathsFromRow:(NSUInteger)startRow count:(NSUInteger)count {
     NSMutableArray *indexPaths = [[NSMutableArray alloc] initWithCapacity:count];
@@ -111,11 +249,11 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return [[self items] count] ?: 0;
+    return [[self displayedItems] count] ?: 0;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *dictionary = [self items][[indexPath row]];
+    NSDictionary *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
     KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
@@ -134,7 +272,10 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
 
-    NSDictionary *dictionary = [self items][[indexPath row]];
+    NSDictionary *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+    if (!dictionary) {
+        return;
+    }
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
     [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
                                                                  historyItem:item
@@ -147,7 +288,7 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[NSMutableArray alloc] init];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
+    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
 
     // If automatic paste is enabled and the item has text, add an option to only copy the contents without pasting.
     // If the item has an image we want to instead add an option to save the image to the photo library.
@@ -206,7 +347,10 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
         KayokoTableViewCell *cell = (KayokoTableViewCell *)[recognizer view];
         NSIndexPath *indexPath = [self indexPathForCell:cell];
 
-        NSDictionary *dictionary = [self items][[indexPath row]];
+        NSDictionary *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+        if (!dictionary) {
+            return;
+        }
         PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
         [[self superview] performSelector:@selector(showPreviewWithItem:) withObject:item];
@@ -226,7 +370,8 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 
     NSUInteger insertedCount = 0;
     NSUInteger removedCount = 0;
-    BOOL canAnimateTopInsertion = animatingTopInsertions && [self numberOfRowsInSection:0] == [oldItems count] &&
+    BOOL canAnimateTopInsertion = ![self hasActiveSearch] && animatingTopInsertions &&
+                                  [self numberOfRowsInSection:0] == [oldItems count] &&
                                   [self canUpdateFromItems:oldItems
                                                    toItems:newItems
                                       withTopInsertedCount:&insertedCount
@@ -252,6 +397,12 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
           }
         }
                  completion:nil];
+}
+
+- (void)applySearchText:(NSString *)searchText selectedBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
+    [self setSearchText:searchText ?: @""];
+    [self setSelectedBundleIdentifiers:bundleIdentifiers ?: @[]];
+    [self reloadData];
 }
 
 - (void)clearItems {
@@ -283,12 +434,13 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
         [newItems removeLastObject];
     }
 
-    if ([oldItems isEqualToArray:newItems] && [self numberOfRowsInSection:0] == [oldItems count]) {
+    if ([oldItems isEqualToArray:newItems] && [self numberOfRowsInSection:0] == [[self displayedItems] count]) {
         return;
     }
 
-    if ([self numberOfRowsInSection:0] != [oldItems count]) {
+    if ([self hasActiveSearch] || [self numberOfRowsInSection:0] != [oldItems count]) {
         [self updateDataWithItems:newItems animatingTopInsertions:YES];
+        [self notifyContentStateChanged];
         return;
     }
 
@@ -344,7 +496,9 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 }
 
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(void (^)(BOOL success))completion {
-    if ([indexPath row] >= [[self items] count]) {
+    NSDictionary *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+    NSUInteger existingIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self items] ?: @[]];
+    if (!dictionary || existingIndex == NSNotFound) {
         if (completion) {
             completion(NO);
         }
@@ -354,7 +508,7 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
     [self
         performBatchUpdates:^{
           NSMutableArray *items = [[self items] mutableCopy];
-          [items removeObjectAtIndex:[indexPath row]];
+          [items removeObjectAtIndex:existingIndex];
           [self setItems:items];
           [self deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
         }

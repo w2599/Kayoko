@@ -203,47 +203,49 @@ static void kayokoCopy() {
 }
 
 static void show() {
-    if ([kayokoView isHidden]) {
-        apply_height_preference_to_view(YES);
+    if (!kayokoView || ![kayokoView isHidden]) {
+        return;
+    }
 
-        [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
+    apply_height_preference_to_view(YES);
 
-        /* iOS 15 */
-        SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
-        if (statusBarManager) {
-            UIStatusBarStyleRequest *styleRequest = [statusBarManager frontmostStatusBarStyleRequest];
-            if (styleRequest) {
-                long long style = [styleRequest style];
-                BOOL isKindOfDark = style == 1;
-                if (isKindOfDark) {
-                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
-                } else {
-                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
-                }
+    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
+
+    /* iOS 15 */
+    SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
+    if (statusBarManager) {
+        UIStatusBarStyleRequest *styleRequest = [statusBarManager frontmostStatusBarStyleRequest];
+        if (styleRequest) {
+            long long style = [styleRequest style];
+            BOOL isKindOfDark = style == 1;
+            if (isKindOfDark) {
+                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+            } else {
+                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
             }
         }
+    }
 
-        /* iOS 16 */
-        SBWindowSceneStatusBarManager *windowSceneStatusBarManager =
-            [objc_getClass("SBWindowSceneStatusBarManager") windowSceneStatusBarManagerForEmbeddedDisplay];
-        if (windowSceneStatusBarManager) {
-            UIStatusBarStyleRequest *styleRequest = [windowSceneStatusBarManager frontmostStatusBarStyleRequest];
-            if (styleRequest) {
-                long long style = [styleRequest style];
-                BOOL isKindOfDark = style == 1;
-                if (isKindOfDark) {
-                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
-                } else {
-                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
-                }
+    /* iOS 16 */
+    SBWindowSceneStatusBarManager *windowSceneStatusBarManager =
+        [objc_getClass("SBWindowSceneStatusBarManager") windowSceneStatusBarManagerForEmbeddedDisplay];
+    if (windowSceneStatusBarManager) {
+        UIStatusBarStyleRequest *styleRequest = [windowSceneStatusBarManager frontmostStatusBarStyleRequest];
+        if (styleRequest) {
+            long long style = [styleRequest style];
+            BOOL isKindOfDark = style == 1;
+            if (isKindOfDark) {
+                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+            } else {
+                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
             }
         }
+    }
 
-        [kayokoView show];
+    [kayokoView show];
 
-        if (kayokoPrefsPlayHapticFeedback && (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey)) {
-            AudioServicesPlaySystemSound(1519);
-        }
+    if (kayokoPrefsPlayHapticFeedback && (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey)) {
+        AudioServicesPlaySystemSound(1519);
     }
 }
 
