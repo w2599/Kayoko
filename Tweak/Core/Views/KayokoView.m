@@ -7,12 +7,14 @@
 
 #import "KayokoView.h"
 #import "KayokoFavoritesTableView.h"
+#import "KayokoClearConfirmationView.h"
 #import "KayokoHistoryTableView.h"
 #import "KayokoPreviewView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import <roothide.h>
 #import <QuartzCore/QuartzCore.h>
+#import <objc/message.h>
 
 static CGFloat const kKayokoViewTopCornerRadius = 25; // 视图顶部圆角半径
 static CGFloat const kKayokoViewShadowRadius = 5.0; // 阴影半径
@@ -24,9 +26,13 @@ static CGFloat const kKayokoEdgeIndicatorOutsideOffset = -5.15; // 指示器距�
 static NSTimeInterval const kKayokoEdgeIndicatorPulseDuration = 2.5; // 指示器脉冲动画持续时间
 static CGFloat const kKayokoSegmentedMultiplier = 0.39; // 切换按钮宽度比例
 static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部按钮透明度
+static CGFloat const kKayokoHideTranslationMultiplier = 1.0; // 收起时向下滑动的距离比例
+static NSTimeInterval const kKayokoHideAnimationDuration = 0.03; // 收起动画时长
+static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
 
 @interface KayokoView ()
 @property(nonatomic, strong) UIView *edgeIndicatorView;
+@property(nonatomic, strong) KayokoClearConfirmationView *clearConfirmationView;
 @end
 
 @implementation KayokoView
@@ -39,6 +45,7 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
     __weak UIWindow *_adjustedWindow;
     UIWindowLevel _originalWindowLevel;
     BOOL _didAdjustWindowLevel;
+    __weak UIView *_clearConfirmationSourceView;
 }
 
 - (void)startEdgeIndicatorAnimation {
@@ -67,8 +74,92 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
 
 - (void)updateClearButtonVisibility {
     BOOL isPreviewVisible = ![[self previewView] isHidden];
+    BOOL isClearConfirmationVisible = ![[self clearConfirmationView] isHidden];
     BOOL isHistoryVisible = ![[self historyTableView] isHidden];
-    [[self clearButton] setHidden:!(isHistoryVisible && !isPreviewVisible)];
+    BOOL isFavoritesVisible = ![[self favoritesTableView] isHidden];
+    [[self clearButton] setHidden:!(isHistoryVisible && !isPreviewVisible && !isClearConfirmationVisible)];
+    [[self sortButton] setHidden:!(isFavoritesVisible && !isPreviewVisible && !isClearConfirmationVisible)];
+}
+
+- (void)updateClearConfirmationCopy {
+    NSBundle *bundle = [PasteboardManager localizationBundle];
+    NSString *key = kHistoryKeyHistory;
+    NSString *message = [NSString stringWithFormat:[bundle localizedStringForKey:@"This will clear your %@."
+                                                                           value:nil
+                                                                           table:@"Tweak"],
+                         [bundle localizedStringForKey:key value:nil table:@"Tweak"]];
+
+    [[self clearConfirmationView] setName:[bundle localizedStringForKey:@"History"
+                                                              value:nil
+                                                              table:@"Tweak"]];
+    [[[self clearConfirmationView] titleLabel] setText:[bundle localizedStringForKey:@"Are you sure?"
+                                                                                value:nil
+                                                                                table:@"Tweak"]];
+    [[[self clearConfirmationView] messageLabel] setText:message];
+    [[[self clearConfirmationView] cancelButton] setTitle:[bundle localizedStringForKey:@"No"
+                                                                                 value:nil
+                                                                                 table:@"Tweak"]
+                                                forState:UIControlStateNormal];
+    [[[self clearConfirmationView] confirmButton] setTitle:[bundle localizedStringForKey:@"Yes"
+                                                                                   value:nil
+                                                                                   table:@"Tweak"]
+                                                  forState:UIControlStateNormal];
+}
+
+- (void)showClearConfirmation {
+    if (_isAnimating || ![[self clearConfirmationView] isHidden]) {
+        return;
+    }
+
+    [self updateClearConfirmationCopy];
+    _clearConfirmationSourceView = [self historyTableView];
+    [self showContentView:[self clearConfirmationView] andHideContentView:_clearConfirmationSourceView reverse:NO];
+
+    [[self clearButton] setHidden:YES];
+    [[self sortButton] setHidden:YES];
+    [[self backButton] setHidden:NO];
+    [[self closeButton] setHidden:YES];
+}
+
+- (void)hideClearConfirmation {
+    if ([[self clearConfirmationView] isHidden] || _isAnimating) {
+        return;
+    }
+
+    UIView *sourceView = _clearConfirmationSourceView ?: [self historyTableView];
+    [self showContentView:sourceView andHideContentView:[self clearConfirmationView] reverse:YES];
+
+    [[self clearButton] setHidden:NO];
+    [[self sortButton] setHidden:YES];
+    [[self backButton] setHidden:YES];
+    [[self closeButton] setHidden:NO];
+    _clearConfirmationSourceView = nil;
+}
+
+- (void)clearHistoryItems {
+    NSString *key = kHistoryKeyHistory;
+    NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
+    for (NSDictionary *dictionary in items) {
+        PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+        [[PasteboardManager sharedInstance] removePasteboardItem:item
+                                              fromHistoryWithKey:key
+                                               shouldRemoveImage:YES];
+    }
+
+    NSArray *updatedItems = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
+    [[self historyTableView] reloadDataWithItems:updatedItems];
+    [self updateClearButtonVisibility];
+}
+
+- (void)handleClearConfirmationCancelPressed {
+    [self hideClearConfirmation];
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+}
+
+- (void)handleClearConfirmationConfirmPressed {
+    [self clearHistoryItems];
+    [self hideClearConfirmation];
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
 }
 
 - (void)selectHistoryAsActiveContentView {
@@ -78,6 +169,13 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         [[self previewView] setTransform:CGAffineTransformIdentity];
         [[self previewView] reset];
         _previewSourceTableView = nil;
+    }
+
+    if (![[self clearConfirmationView] isHidden]) {
+        [[self clearConfirmationView] setHidden:YES];
+        [[self clearConfirmationView] setAlpha:1];
+        [[self clearConfirmationView] setTransform:CGAffineTransformIdentity];
+        _clearConfirmationSourceView = nil;
     }
 
     [[self favoritesTableView] setHidden:YES];
@@ -143,6 +241,13 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         [[self previewView] setTransform:CGAffineTransformIdentity];
         [[self previewView] reset];
         _previewSourceTableView = nil;
+    }
+
+    if (![[self clearConfirmationView] isHidden]) {
+        [[self clearConfirmationView] setHidden:YES];
+        [[self clearConfirmationView] setAlpha:1];
+        [[self clearConfirmationView] setTransform:CGAffineTransformIdentity];
+        _clearConfirmationSourceView = nil;
     }
 
     [[self historyTableView] setHidden:YES];
@@ -233,7 +338,7 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         [[self headerView] addGestureRecognizer:[self panGestureRecognizer]];
 
         [self setTapGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self
-                                                                              action:@selector(hidePreview)]];
+                                              action:@selector(handleBackButtonPressed)]];
         [[self headerView] addGestureRecognizer:[self tapGestureRecognizer]];
 
         NSArray *segmentItems = @[ [[PasteboardManager localizationBundle] localizedStringForKey:@"History"
@@ -267,25 +372,6 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
                                                                                        constant:-24]
         ]];
 
-        [self setFavoritesButton:[[UIButton alloc] init]];
-        [[self favoritesButton] addTarget:self
-                                   action:@selector(handleFavoritesButtonPressed)
-                         forControlEvents:UIControlEventTouchUpInside];
-        [self updateStyleForHeaderButton:[self favoritesButton]
-                   withImageName:@"heart.fill"
-                    andImageSize:kFavoritesButtonImageSize
-                    andTintColor:[UIColor systemPinkColor]];
-        [[self headerView] addSubview:[self favoritesButton]];
-        [[self favoritesButton] setHidden:YES];
-        [[self favoritesButton] setUserInteractionEnabled:NO];
-
-        [[self favoritesButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self favoritesButton] centerYAnchor] constraintEqualToAnchor:[[self headerView] centerYAnchor]],
-            [[[self favoritesButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                                   constant:30]
-        ]];
-
         [self setTitleLabel:[[UILabel alloc] init]];
         [[self titleLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"History"
                                                    value:nil
@@ -307,7 +393,7 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
                                action:@selector(handleClearButtonPressed)
                      forControlEvents:UIControlEventTouchUpInside];
         [self updateStyleForHeaderButton:[self clearButton]
-                           withImageName:@"trash"
+                           withImageName:@"trash.circle"
                             andImageSize:kClearButtonImageSize
                                                         andTintColor:[UIColor labelColor]
                                                     andImageWeight:UIImageSymbolWeightRegular];
@@ -316,20 +402,35 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         [[self clearButton] setHidden:YES];
 
         [[self clearButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        // Move the trash (clear) button to the left top instead of right top.
-        // Align the center of trash icon (20pt) with the center of list icon (40pt):
-        // List icon center = 24 + 20 = 44, so trash should start at 44 - 10 = 34
+
         [NSLayoutConstraint activateConstraints:@[
             [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self headerView] centerYAnchor]],
-            [[[self clearButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                               constant:34]
+            [[[self clearButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor] constant:kKayokoButtonAnchor]
         ]];
+
+                [self setSortButton:[[UIButton alloc] init]];
+                [[self sortButton] addTarget:self
+                                                            action:@selector(handleSortButtonPressed)
+                                        forControlEvents:UIControlEventTouchUpInside];
+                [self updateStyleForHeaderButton:[self sortButton]
+                                                     withImageName:@"equal.circle"
+                                                        andImageSize:kClearButtonImageSize
+                                                        andTintColor:[UIColor labelColor]
+                                                    andImageWeight:UIImageSymbolWeightRegular];
+                [[self sortButton] setAlpha:kKayokoSecondaryHeaderButtonAlpha];
+                [[self headerView] addSubview:[self sortButton]];
+                [[self sortButton] setHidden:YES];
+                [[self sortButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
+                [NSLayoutConstraint activateConstraints:@[
+                        [[[self sortButton] centerYAnchor] constraintEqualToAnchor:[[self headerView] centerYAnchor]],
+                        [[[self sortButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor] constant:kKayokoButtonAnchor]
+                ]];
 
         // Add a close button on the right top to close the view.
         [self setCloseButton:[[UIButton alloc] init]];
         [[self closeButton] addTarget:self action:@selector(handleCloseButtonPressed) forControlEvents:UIControlEventTouchUpInside];
         [self updateStyleForHeaderButton:[self closeButton]
-                           withImageName:@"chevron.compact.down"
+                           withImageName:@"chevron.down.circle"
                             andImageSize:kClearButtonImageSize
                                                         andTintColor:[UIColor labelColor]
                                                     andImageWeight:UIImageSymbolWeightRegular];
@@ -339,13 +440,13 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         [NSLayoutConstraint activateConstraints:@[
             [[[self closeButton] centerYAnchor] constraintEqualToAnchor:[[self headerView] centerYAnchor]],
             [[[self closeButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                                 constant:-34]
+                                                                 constant:-kKayokoButtonAnchor]
         ]];
 
         [self setBackButton:[[UIButton alloc] init]];
-        [[self backButton] addTarget:self action:@selector(hidePreview) forControlEvents:UIControlEventTouchUpInside];
+        [[self backButton] addTarget:self action:@selector(handleBackButtonPressed) forControlEvents:UIControlEventTouchUpInside];
         [self updateStyleForHeaderButton:[self backButton]
-                           withImageName:@"arrowshape.turn.up.backward"
+                           withImageName:@"arrowshape.turn.up.backward.circle"
                             andImageSize:kBackButtonImageSize
                                                         andTintColor:[UIColor labelColor]
                                                     andImageWeight:UIImageSymbolWeightRegular];
@@ -357,7 +458,7 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         [NSLayoutConstraint activateConstraints:@[
             [[[self backButton] centerYAnchor] constraintEqualToAnchor:[[self headerView] centerYAnchor]],
             [[[self backButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                                 constant:-34]
+                                                                 constant:-kKayokoButtonAnchor]
         ]];
 
         [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:[[PasteboardManager localizationBundle]
@@ -414,6 +515,30 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
             [[[self previewView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
             [[[self previewView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
+
+        [self setClearConfirmationView:[[KayokoClearConfirmationView alloc] initWithName:[[PasteboardManager localizationBundle]
+                                                      localizedStringForKey:@"History"
+                                                              value:nil
+                                                              table:@"Tweak"]]];
+        [[self clearConfirmationView] setHidden:YES];
+        [self addSubview:[self clearConfirmationView]];
+
+        [[self clearConfirmationView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self clearConfirmationView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor] constant:0],
+            [[[self clearConfirmationView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self clearConfirmationView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self clearConfirmationView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
+
+        [[[self clearConfirmationView] cancelButton] addTarget:self
+                                                        action:@selector(handleClearConfirmationCancelPressed)
+                                              forControlEvents:UIControlEventTouchUpInside];
+        [[[self clearConfirmationView] confirmButton] addTarget:self
+                                                         action:@selector(handleClearConfirmationConfirmPressed)
+                                               forControlEvents:UIControlEventTouchUpInside];
+
+        [self updateClearConfirmationCopy];
 
         [self updateClearButtonVisibility];
     }
@@ -500,45 +625,6 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
     [button setTintColor:color];
 }
 
-/**
- * Handles the press of the favorites button.
- *
- * It either shows the history or favorites view or hides the preview view again.
- */
-- (void)handleFavoritesButtonPressed {
-    if (_isAnimating) {
-        return;
-    }
-
-    if (![[self previewView] isHidden]) {
-        [self hidePreview];
-    }
-
-    if ([[self historyTableView] isHidden]) {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
-        [[self historyTableView] reloadDataWithItems:items];
-
-        [self showContentView:[self historyTableView] andHideContentView:[self favoritesTableView] reverse:YES];
-
-        [self updateStyleForHeaderButton:[self favoritesButton]
-                           withImageName:@"heart"
-                            andImageSize:kFavoritesButtonImageSize
-                            andTintColor:[UIColor labelColor]];
-    } else {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
-        [[self favoritesTableView] reloadDataWithItems:items];
-
-        [self showContentView:[self favoritesTableView] andHideContentView:[self historyTableView] reverse:NO];
-
-        [self updateStyleForHeaderButton:[self favoritesButton]
-                           withImageName:@"heart.fill"
-                            andImageSize:kFavoritesButtonImageSize
-                            andTintColor:[UIColor systemPinkColor]];
-    }
-
-    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
-}
-
 - (void)handleContentSegmentedControlChanged:(UISegmentedControl *)control {
     if (_isAnimating) {
         // Queue the latest requested selection and apply it when the transition completes.
@@ -547,15 +633,28 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         // Apply immediate visibility changes even while animating.
         if (_pendingSegmentIndex == 1) {
             [[self clearButton] setHidden:YES];
+            [[self sortButton] setHidden:NO];
+        } else {
+            [[self clearButton] setHidden:NO];
+            [[self sortButton] setHidden:YES];
         }
         return;
     }
 
     BOOL isPreviewVisible = ![[self previewView] isHidden];
+    BOOL isClearConfirmationVisible = ![[self clearConfirmationView] isHidden];
     if (isPreviewVisible) {
         [[self previewView] reset];
         _previewSourceTableView = nil;
         [[self clearButton] setHidden:YES];
+        [[self sortButton] setHidden:YES];
+        [[self backButton] setHidden:YES];
+    }
+
+    if (isClearConfirmationVisible) {
+        _clearConfirmationSourceView = nil;
+        [[self clearButton] setHidden:YES];
+        [[self sortButton] setHidden:YES];
         [[self backButton] setHidden:YES];
     }
 
@@ -563,9 +662,11 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
     if ([control selectedSegmentIndex] == 1) {
         // 收藏：不显示清空按钮
         [[self clearButton] setHidden:YES];
+        [[self sortButton] setHidden:(isPreviewVisible || isClearConfirmationVisible)];
     } else {
         // 历史：非预览状态下显示清空按钮
-        [[self clearButton] setHidden:isPreviewVisible];
+        [[self clearButton] setHidden:(isPreviewVisible || isClearConfirmationVisible)];
+        [[self sortButton] setHidden:YES];
     }
 
     // 索引 0 = 历史，索引 1 = 收藏
@@ -577,7 +678,8 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
         [[self historyTableView] reloadDataWithItems:items];
 
-        UIView *viewToHide = isPreviewVisible ? [self previewView] : [self favoritesTableView];
+        UIView *viewToHide = isPreviewVisible ? [self previewView] :
+                             (isClearConfirmationVisible ? [self clearConfirmationView] : [self favoritesTableView]);
         [self showContentView:[self historyTableView] andHideContentView:viewToHide reverse:YES];
     } else {
         if (![[self favoritesTableView] isHidden]) {
@@ -587,7 +689,8 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
         [[self favoritesTableView] reloadDataWithItems:items];
 
-        UIView *viewToHide = isPreviewVisible ? [self previewView] : [self historyTableView];
+        UIView *viewToHide = isPreviewVisible ? [self previewView] :
+                             (isClearConfirmationVisible ? [self clearConfirmationView] : [self historyTableView]);
         [self showContentView:[self favoritesTableView] andHideContentView:viewToHide reverse:NO];
     }
 
@@ -629,69 +732,39 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
-- (void)handleClearButtonPressed {
-    [self hide];
+- (void)handleSortButtonPressed {
 
-    // Clear history only; do not clear favorites
-    NSString *key = kHistoryKeyHistory;
-    UIAlertController *clearAlert = [UIAlertController
-        alertControllerWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
-                                                                                         value:nil
-                                                                                         table:@"Tweak"]
-                         message:[NSString stringWithFormat:[[PasteboardManager localizationBundle]
-                                                                localizedStringForKey:@"This will clear your %@."
-                                                                                value:nil
-                                                                                table:@"Tweak"],
-                                                            [[PasteboardManager localizationBundle]
-                                                                localizedStringForKey:key
-                                                                                value:nil
-                                                                                table:@"Tweak"]]
-                  preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction *yesAction = [UIAlertAction
-        actionWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Yes" value:nil table:@"Tweak"]
-                  style:UIAlertActionStyleDestructive
-                handler:^(UIAlertAction *action) {
-                  NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
-                  for (NSDictionary *dictionary in items) {
-                      PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-                      [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                                            fromHistoryWithKey:key
-                                                             shouldRemoveImage:YES];
-                  }
-                  self.cleaning = YES;
-                  [self show];
-                  self.cleaning = NO;
-                }];
-
-    UIAlertAction *noAction = [UIAlertAction
-        actionWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"No" value:nil table:@"Tweak"]
-                  style:UIAlertActionStyleCancel
-                handler:^(UIAlertAction *action) {
-                  self.cleaning = YES;
-                  [self show];
-                  self.cleaning = NO;
-                }];
-
-    [clearAlert addAction:yesAction];
-    [clearAlert addAction:noAction];
+    NSString *openUrl = [NSString stringWithFormat:@"prefs:root=Hello Kayoko&path=Favorites Sort Order"];
+    openUrl = [openUrl stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+    NSURL *url = [NSURL URLWithString:openUrl];
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    [[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:clearAlert
-                                                                                     animated:YES
-                                                                                   completion:nil];
+    [[UIApplication sharedApplication] openURL:url];
 #pragma clang diagnostic pop
-    // 防呆, 避免错误的图层上无法点击弹窗导致无法关闭
-    __weak UIAlertController *weakClearAlert = clearAlert;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        UIAlertController *strongAlert = weakClearAlert;
-        if (strongAlert && strongAlert.presentingViewController) {
-            [strongAlert dismissViewControllerAnimated:YES completion:nil];
-        }
-    });
 
+
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+    [self hide];
+
+}
+
+- (void)handleClearButtonPressed {
+    if (_isAnimating || [[self clearConfirmationView] isHidden] == NO) {
+        return;
+    }
+
+    [self showClearConfirmation];
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
+}
+
+- (void)handleBackButtonPressed {
+    if (![[self clearConfirmationView] isHidden]) {
+        [self hideClearConfirmation];
+        return;
+    }
+
+    [self hidePreview];
 }
 
 
@@ -728,6 +801,7 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
     [self showContentView:[self previewView] andHideContentView:_previewSourceTableView reverse:NO];
 
     [[self clearButton] setHidden:YES];
+    [[self sortButton] setHidden:YES];
     [[self backButton] setHidden:NO];
     [[self closeButton] setHidden:YES];
 
@@ -747,6 +821,7 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
     // Clear button visibility will be updated after the transition.
     BOOL isHistoryVisible = self.contentSegmentedControl.selectedSegmentIndex == 0;
     [[self clearButton] setHidden:isHistoryVisible ? NO : YES];
+    [[self sortButton] setHidden:isHistoryVisible ? YES : NO];
     [[self backButton] setHidden:YES];
     [[self closeButton] setHidden:NO];
 
@@ -939,39 +1014,44 @@ static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部�
         return;
     }
 
+    [[self clearConfirmationView] setHidden:YES];
+    [[self clearConfirmationView] setAlpha:1];
+    [[self clearConfirmationView] setTransform:CGAffineTransformIdentity];
+    _clearConfirmationSourceView = nil;
+
     // 失去焦点
     [[self historyTableView] endEditing:YES];
     [[self favoritesTableView] endEditing:YES];
     [[self previewView] endEditing:YES];
 
-        UIView *backdropView = [self backdropView];
+    UIView *backdropView = [self backdropView];
+    CGFloat hiddenOffset = MAX([self bounds].size.height * kKayokoHideTranslationMultiplier, 1.0);
+    CGAffineTransform hiddenTransform = CGAffineTransformMakeTranslation(0, hiddenOffset);
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.33
+    [UIView animateWithDuration:kKayokoHideAnimationDuration
         delay:0
-        usingSpringWithDamping:1
-        initialSpringVelocity:0
-        options:UIViewAnimationOptionCurveEaseOut
+        options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState)
         animations:^{
-                    [backdropView setAlpha:0];
-          [self setAlpha:0];
+          [self setTransform:hiddenTransform];
         }
         completion:^(BOOL finished) {
-                    [backdropView setHidden:YES];
+          [backdropView setHidden:YES];
           [self setHidden:YES];
-                                        [self setTransform:CGAffineTransformIdentity];
-                                        [self setAlpha:1];
-                                        if (_didAdjustWindowLevel) {
-                                            UIWindow *hostWindow = _adjustedWindow ?: [self window];
-                                            if (hostWindow) {
-                                                [hostWindow setWindowLevel:_originalWindowLevel];
-                                            }
-                                        }
-                                        _adjustedWindow = nil;
-                                        _didAdjustWindowLevel = NO;
-                    [self stopEdgeIndicatorAnimation];
+          [self setTransform:CGAffineTransformIdentity];
+          [self setAlpha:1];
+          if (_didAdjustWindowLevel) {
+              UIWindow *hostWindow = _adjustedWindow ?: [self window];
+              if (hostWindow) {
+                  [hostWindow setWindowLevel:_originalWindowLevel];
+              }
+          }
+          _adjustedWindow = nil;
+          _didAdjustWindowLevel = NO;
+          [self stopEdgeIndicatorAnimation];
           _isAnimating = NO;
-        }];
+        }
+    ];
 }
 
 @end

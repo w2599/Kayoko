@@ -13,7 +13,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <os/lock.h>
 
-#import <HBLog.h>
+#import <NSLogDebug.h>
 #import <roothide.h>
 #import <substrate.h>
 
@@ -425,9 +425,9 @@ static void kayokoPasteWillStart() { isInPasteProgress = YES; }
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
 static void _kayokoCopy() {
-    NSLog(@"[----] [Kayoko] Copying ...");
+    NSLogDebug(@"[----] [Kayoko] Copying ...");
     [[PasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
-        NSLog(@"[----] [Kayoko] didSaveAnyItem: %d", didSaveAnyItem);
+        NSLogDebug(@"[----] [Kayoko] didSaveAnyItem: %d", didSaveAnyItem);
         if (isInPasteProgress) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
               isInPasteProgress = NO;
@@ -475,16 +475,15 @@ static BOOL limitedCallback(CFTimeInterval interval) {
 
 static void kayokoCopy() {
     if (limitedCallback(0.1)) {
-        NSLog(@"[----] [kayoko]: 频率过高，已限制");
+        NSLogDebug(@"[----] [kayoko]: 频率过高，已限制");
         return;
     }
 
-    // NSLog(@"[----] kayokoCopy");
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (kayokoPrefsIgnoreRemoteReplication) {
             BOOL isRemote = [[UIPasteboard generalPasteboard] containsPasteboardTypes:@[@"com.apple.is-remote-clipboard"]];
             if (isRemote) {
-                NSLog(@"[----] [kayoko]: 检测到远程复制，忽略此次粘贴板变更");
+                NSLogDebug(@"[----] [kayoko]: 检测到远程复制，忽略此次粘贴板变更");
                 return;
             }
         }
@@ -492,7 +491,7 @@ static void kayokoCopy() {
         // 从macOS远程复制文件时会有com.apple.icns类型
         BOOL isRemoteFile = [[UIPasteboard generalPasteboard] containsPasteboardTypes:@[@"com.apple.icns"]];
         if (isRemoteFile) {
-            NSLog(@"[----] [kayoko]: 检测到远程文件，忽略此次粘贴板变更");
+            NSLogDebug(@"[----] [kayoko]: 检测到远程文件，忽略此次粘贴板变更");
             return;
         }
 

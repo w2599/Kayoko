@@ -29,6 +29,7 @@ static NSUInteger const kBackButtonImageSize = 20;
 @property(nonatomic, strong) UISegmentedControl *contentSegmentedControl;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIButton *clearButton;
+@property(nonatomic, strong) UIButton *sortButton;
 @property(nonatomic, strong) UIButton *closeButton;
 @property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;

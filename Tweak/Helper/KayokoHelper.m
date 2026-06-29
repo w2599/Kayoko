@@ -17,7 +17,7 @@
 #import <libSandy.h>
 #import <substrate.h>
 #import <roothide.h>
-#import "NSLogDebug.h"
+#import <NSLogDebug.h>
 
 BOOL kayokoHelperPrefsEnabled = NO;
 NSUInteger kayokoHelperPrefsActivationMethod = 0;
