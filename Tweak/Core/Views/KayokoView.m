@@ -593,11 +593,11 @@
     }
 
     NSString *text = [[self previewView] selectedText];
+    PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[_previewItem bundleIdentifier]
+                                                                         andContent:text
+                                                                     withImageNamed:@""];
 
     if ([self automaticallyPaste]) {
-        PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[_previewItem bundleIdentifier]
-                                                                             andContent:text
-                                                                         withImageNamed:@""];
         NSString *historyKey =
             _previewSourceTableView == [self favoritesTableView] ? kHistoryKeyFavorites : kHistoryKeyHistory;
         [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
@@ -605,7 +605,10 @@
                                                               fromHistoryWithKey:historyKey
                                                                  shouldAutoPaste:YES];
     } else {
-        [[UIPasteboard generalPasteboard] setString:text];
+        PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+        if ([pasteboardManager copyPasteboardItemToPasteboard:selectedItem]) {
+            [pasteboardManager addPasteboardItem:selectedItem toHistoryWithKey:kHistoryKeyHistory];
+        }
     }
 
     [self hideWithCompletion:^{
