@@ -27,22 +27,11 @@
                                 fromHistoryWithKey:kHistoryKeyFavorites
                                   toHistoryWithKey:kHistoryKeyHistory
                                         completion:^(BOOL success) {
-                                          if (!success || [indexPath row] >= [[self items] count]) {
-                                              completionHandler(success);
+                                          if (!success) {
+                                              completionHandler(NO);
                                               return;
                                           }
-                                          [self
-                                              performBatchUpdates:^{
-                                                [self deleteRowsAtIndexPaths:@[ indexPath ]
-                                                            withRowAnimation:UITableViewRowAnimationRight];
-                                                NSMutableArray *items = [[self items] mutableCopy];
-                                                [items removeObjectAtIndex:[indexPath row]];
-                                                [self setItems:items];
-                                              }
-                                              completion:^(BOOL finished) {
-                                                [self notifyContentStateChanged];
-                                                completionHandler(YES);
-                                              }];
+                                          [self removeItemAtIndexPath:indexPath completion:completionHandler];
                                         }];
                           }];
     [unfavoriteAction setImage:[UIImage systemImageNamed:@"heart.slash.fill"]];
@@ -58,7 +47,7 @@
     PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
 
     UIContextualAction *deleteAction = [UIContextualAction
-        contextualActionWithStyle:UIContextualActionStyleNormal
+        contextualActionWithStyle:UIContextualActionStyleDestructive
                             title:@""
                           handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                     void (^_Nonnull completionHandler)(BOOL)) {
@@ -67,22 +56,11 @@
                                   fromHistoryWithKey:kHistoryKeyFavorites
                                    shouldRemoveImage:YES
                                           completion:^(BOOL success) {
-                                            if (!success || [indexPath row] >= [[self items] count]) {
-                                                completionHandler(success);
+                                            if (!success) {
+                                                completionHandler(NO);
                                                 return;
                                             }
-                                            [self
-                                                performBatchUpdates:^{
-                                                  [self deleteRowsAtIndexPaths:@[ indexPath ]
-                                                              withRowAnimation:UITableViewRowAnimationLeft];
-                                                  NSMutableArray *items = [[self items] mutableCopy];
-                                                  [items removeObjectAtIndex:[indexPath row]];
-                                                  [self setItems:items];
-                                                }
-                                                completion:^(BOOL finished) {
-                                                  [self notifyContentStateChanged];
-                                                  completionHandler(YES);
-                                                }];
+                                            [self removeItemAtIndexPath:indexPath completion:completionHandler];
                                           }];
                           }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];

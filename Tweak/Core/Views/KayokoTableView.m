@@ -234,6 +234,29 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
                  completion:nil];
 }
 
+- (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(void (^)(BOOL success))completion {
+    if ([indexPath row] >= [[self items] count]) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    [self
+        performBatchUpdates:^{
+          NSMutableArray *items = [[self items] mutableCopy];
+          [items removeObjectAtIndex:[indexPath row]];
+          [self setItems:items];
+          [self deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
+        }
+                 completion:^(__unused BOOL finished) {
+                   [self notifyContentStateChanged];
+                   if (completion) {
+                       completion(YES);
+                   }
+                 }];
+}
+
 - (void)notifyContentStateChanged {
     SEL selector = NSSelectorFromString(@"updateContentState");
     UIView *superview = [self superview];
