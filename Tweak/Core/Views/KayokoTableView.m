@@ -141,8 +141,9 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
                                     title:@""
                                   handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                             void (^_Nonnull completionHandler)(BOOL)) {
-                                    [[UIPasteboard generalPasteboard] setString:[item content]];
-                                    completionHandler(YES);
+                                    BOOL copied =
+                                        [[PasteboardManager sharedInstance] copyPasteboardItemToPasteboard:item];
+                                    completionHandler(copied);
                                   }];
             [saveAction setImage:[UIImage systemImageNamed:@"doc.on.doc.fill"]];
         } else {
@@ -249,12 +250,12 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
           [self setItems:items];
           [self deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
         }
-                 completion:^(__unused BOOL finished) {
-                   [self notifyContentStateChanged];
-                   if (completion) {
-                       completion(YES);
-                   }
-                 }];
+        completion:^(__unused BOOL finished) {
+          [self notifyContentStateChanged];
+          if (completion) {
+              completion(YES);
+          }
+        }];
 }
 
 - (void)notifyContentStateChanged {

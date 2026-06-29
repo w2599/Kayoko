@@ -343,6 +343,14 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
                                shouldAutoPaste:shouldAutoPaste];
 }
 
+- (BOOL)copyPasteboardItemToPasteboard:(PasteboardItem *)item {
+    BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:item];
+    if (didUpdatePasteboard) {
+        _lastChangeCount = [_pasteboard changeCount];
+    }
+    return didUpdatePasteboard;
+}
+
 - (void)_reallyPerformDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
                                         historyItem:(PasteboardItem *)historyItem
                                  fromHistoryWithKey:(NSString *)historyKey
