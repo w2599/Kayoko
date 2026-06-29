@@ -16,11 +16,59 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 
 @implementation KayokoTableView
 
-/**
- * Initializes the table view.
- *
- * @param name The associated name with the table view that's displayed on the main view.
- */
+- (NSArray *)indexPathsFromRow:(NSUInteger)startRow count:(NSUInteger)count {
+    NSMutableArray *indexPaths = [[NSMutableArray alloc] initWithCapacity:count];
+    for (NSUInteger row = startRow; row < startRow + count; row++) {
+        [indexPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
+    }
+    return indexPaths;
+}
+
+- (BOOL)canUpdateFromItems:(NSArray *)oldItems
+                   toItems:(NSArray *)newItems
+      withTopInsertedCount:(NSUInteger *)insertedCount
+        bottomRemovedCount:(NSUInteger *)removedCount {
+    NSUInteger oldCount = [oldItems count];
+    NSUInteger newCount = [newItems count];
+
+    if (newCount == 0 || [oldItems isEqualToArray:newItems]) {
+        return NO;
+    }
+
+    if (oldCount == 0) {
+        if (insertedCount) {
+            *insertedCount = newCount;
+        }
+        if (removedCount) {
+            *removedCount = 0;
+        }
+        return YES;
+    }
+
+    for (NSUInteger candidateInsertedCount = 1; candidateInsertedCount <= newCount; candidateInsertedCount++) {
+        NSUInteger retainedCount = MIN(oldCount, newCount - candidateInsertedCount);
+        if (retainedCount == 0 || candidateInsertedCount + retainedCount != newCount) {
+            continue;
+        }
+
+        NSArray *newRetainedItems = [newItems subarrayWithRange:NSMakeRange(candidateInsertedCount, retainedCount)];
+        NSArray *oldRetainedItems = [oldItems subarrayWithRange:NSMakeRange(0, retainedCount)];
+        if (![newRetainedItems isEqualToArray:oldRetainedItems]) {
+            continue;
+        }
+
+        if (insertedCount) {
+            *insertedCount = candidateInsertedCount;
+        }
+        if (removedCount) {
+            *removedCount = oldCount - retainedCount;
+        }
+        return YES;
+    }
+
+    return NO;
+}
+
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
 
@@ -39,27 +87,14 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
     NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoTableViewMaximumPreviewLineCount);
     _previewLineCount = lineCount;
-    [self setRowHeight:kKayokoTableViewBaseRowHeight +
-                       (lineCount - 1) * kKayokoTableViewAdditionalPreviewLineHeight];
+    [self setRowHeight:kKayokoTableViewBaseRowHeight + (lineCount - 1) * kKayokoTableViewAdditionalPreviewLineHeight];
     [self reloadData];
 }
 
-/**
- * Defines how many rows are in the table view.
- *
- * @param tableView
- * @param section
- */
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return [[self items] count] ?: 0;
 }
 
-/**
- * Styles the table view cells.
- *
- * @param tableView
- * @param indexPath
- */
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary *dictionary = [self items][[indexPath row]];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
@@ -77,34 +112,19 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
     return cell;
 }
 
-/**
- * Handles table view cell selection.
- *
- * it creates a dictionary from the cell's row index.
- * Then it creates a pasteboard item from the dictionary and updates the pasteboard with it.
- *
- * @param tableView
- * @param indexPath
- */
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
 
     NSDictionary *dictionary = [self items][[indexPath row]];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
     [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
-                                                                  historyItem:item
-                                                           fromHistoryWithKey:[self historyKey]
-                                                              shouldAutoPaste:YES];
+                                                                 historyItem:item
+                                                          fromHistoryWithKey:[self historyKey]
+                                                             shouldAutoPaste:YES];
 
     [[self superview] performSelector:@selector(hide)];
 }
 
-/**
- * Sets up the swipe actions on the left.
- *
- * @param tableView
- * @param indexPath
- */
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[NSMutableArray alloc] init];
@@ -161,13 +181,6 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 
-/**
- * Handles the long press gesture for the preview.
- *
- * It creates a dictionary from the cell's content and sends it to the main view to preview it.
- *
- * @param recognizer The long press gesture recognizer.
- */
 - (void)handleLongPressGestureRecognizer:(UILongPressGestureRecognizer *)recognizer {
     if ([recognizer state] == UIGestureRecognizerStateBegan) {
         KayokoTableViewCell *cell = (KayokoTableViewCell *)[recognizer view];
@@ -180,14 +193,45 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
     }
 }
 
-/**
- * Reloads the table view with new items.
- *
- * @param items The new items to laod.
- */
 - (void)reloadDataWithItems:(NSArray *)items {
-    [self setItems:items];
-    [self reloadData];
+    [self updateDataWithItems:items animatingTopInsertions:NO];
+}
+
+- (void)updateDataWithItems:(NSArray *)items animatingTopInsertions:(BOOL)animatingTopInsertions {
+    NSArray *oldItems = [self items] ?: @[];
+    NSArray *newItems = items ?: @[];
+    if ([oldItems isEqualToArray:newItems] && [self numberOfRowsInSection:0] == [oldItems count]) {
+        return;
+    }
+
+    NSUInteger insertedCount = 0;
+    NSUInteger removedCount = 0;
+    BOOL canAnimateTopInsertion = animatingTopInsertions && [self numberOfRowsInSection:0] == [oldItems count] &&
+                                  [self canUpdateFromItems:oldItems
+                                                   toItems:newItems
+                                      withTopInsertedCount:&insertedCount
+                                        bottomRemovedCount:&removedCount];
+
+    if (!canAnimateTopInsertion) {
+        [self setItems:newItems];
+        [self reloadData];
+        return;
+    }
+
+    NSArray *insertedIndexPaths = [self indexPathsFromRow:0 count:insertedCount];
+    NSArray *removedIndexPaths = [self indexPathsFromRow:[oldItems count] - removedCount count:removedCount];
+
+    [self
+        performBatchUpdates:^{
+          [self setItems:newItems];
+          if ([insertedIndexPaths count] > 0) {
+              [self insertRowsAtIndexPaths:insertedIndexPaths withRowAnimation:UITableViewRowAnimationTop];
+          }
+          if ([removedIndexPaths count] > 0) {
+              [self deleteRowsAtIndexPaths:removedIndexPaths withRowAnimation:UITableViewRowAnimationFade];
+          }
+        }
+                 completion:nil];
 }
 
 - (void)notifyContentStateChanged {

@@ -16,16 +16,24 @@
 #import "../PreferenceKeys.h"
 #import "PasteboardManager.h"
 
+@interface NSConcreteNotification : NSNotification
+@end
+
+@interface PSListController (Private)
+- (void)_returnKeyPressed:(NSConcreteNotification *)notification;
+@end
+
+@interface NSTask : NSObject
+@property(nonatomic, copy) NSArray *arguments;
+@property(nonatomic, copy) NSString *launchPath;
+- (void)launch;
+@end
+
 @implementation KayokoRootListController {
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
 }
 
-/**
- * Loads the root specifiers.
- *
- * @return The specifiers.
- */
 - (NSArray *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
@@ -56,12 +64,6 @@
     return activationMethod == 0 ? kPreferenceKeyActivationMethodDefaultValue : activationMethod;
 }
 
-/**
- * Handles preference changes.
- *
- * @param value The new value for the changed option.
- * @param specifier The specifier that was interacted with.
- */
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     [super setPreferenceValue:value specifier:specifier];
 
@@ -77,19 +79,11 @@
     }
 }
 
-/**
- * Hides the keyboard when the "Return" key is pressed on focused text fields.
- *
- * @param notification The event notification.
- */
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification {
     [[self view] endEditing:YES];
     [super _returnKeyPressed:notification];
 }
 
-/**
- * Prompts the user to respring to apply changes.
- */
 - (void)promptToRespring {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
@@ -121,9 +115,6 @@
     [self presentViewController:resetAlert animated:YES completion:nil];
 }
 
-/**
- * Prompts the user before manually respringing.
- */
 - (void)respringPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
@@ -155,9 +146,6 @@
     [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
-/**
- * Resprings the device.
- */
 - (void)respring {
     NSTask *task = [[NSTask alloc] init];
     [task setLaunchPath:jbroot(@"/usr/bin/killall")];
@@ -165,9 +153,6 @@
     [task launch];
 }
 
-/**
- * Prompts the user to reset their preferences.
- */
 - (void)resetPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
@@ -198,9 +183,6 @@
     [self presentViewController:resetAlert animated:YES completion:nil];
 }
 
-/**
- * Resets the preferences.
- */
 - (void)resetPreferences {
     NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
     for (NSString *key in [userDefaults dictionaryRepresentation]) {

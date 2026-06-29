@@ -40,8 +40,8 @@ NS_ASSUME_NONNULL_BEGIN
            shouldRemoveImage:(BOOL)shouldRemoveImage
                        error:(NSError **)error;
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
-                shouldRemoveImages:(BOOL)shouldRemoveImages
-                              error:(NSError **)error;
+               shouldRemoveImages:(BOOL)shouldRemoveImages
+                            error:(NSError **)error;
 - (NSMutableArray *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error;
 - (NSDictionary *_Nullable)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error;
 - (BOOL)importItemDictionaries:(NSArray<NSDictionary *> *)items

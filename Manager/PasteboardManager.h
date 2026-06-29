@@ -12,11 +12,8 @@
 static NSString *const kHistoryKeyHistory = @"history";
 static NSString *const kHistoryKeyFavorites = @"favorites";
 
-@interface PasteboardManager : NSObject {
-    UIPasteboard *_pasteboard;
-    NSUInteger _lastChangeCount;
-    NSFileManager *_fileManager;
-}
+@interface PasteboardManager : NSObject
+
 @property(nonatomic, assign) NSUInteger maximumHistoryAmount;
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
@@ -61,12 +58,4 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (PasteboardItem *)getLatestHistoryItem;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;
 
-@end
-
-@interface SBApplication : NSObject
-@property(nonatomic, copy, readonly) NSString *bundleIdentifier;
-@end
-
-@interface UIApplication (Private)
-- (SBApplication *)_accessibilityFrontMostApplication;
 @end

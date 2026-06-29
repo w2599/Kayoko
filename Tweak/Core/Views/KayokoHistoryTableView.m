@@ -11,12 +11,6 @@
 
 @implementation KayokoHistoryTableView
 
-/**
- * Sets up the swipe actions on the left.
- *
- * @param tableView
- * @param indexPath
- */
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[[super tableView:tableView
@@ -46,9 +40,9 @@
                                                 [self setItems:items];
                                               }
                                               completion:^(BOOL finished) {
-                                  [self notifyContentStateChanged];
-                                  completionHandler(YES);
-                                }];
+                                                [self notifyContentStateChanged];
+                                                completionHandler(YES);
+                                              }];
                                         }];
                           }];
     [favoriteAction setImage:[UIImage systemImageNamed:@"heart.fill"]];
@@ -58,12 +52,6 @@
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 
-/**
- * Sets up the swipe actions on the right.
- *
- * @param tableView
- * @param indexPath
- */
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[NSMutableArray alloc] init];
@@ -92,9 +80,9 @@
                                                   [self setItems:items];
                                                 }
                                                 completion:^(BOOL finished) {
-                                  [self notifyContentStateChanged];
-                                  completionHandler(YES);
-                                }];
+                                                  [self notifyContentStateChanged];
+                                                  completionHandler(YES);
+                                                }];
                                           }];
                           }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];

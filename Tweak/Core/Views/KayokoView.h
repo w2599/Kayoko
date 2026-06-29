@@ -32,6 +32,7 @@ static CGFloat const kTitleLabelLeadingInset = 64;
     NSString *_clearConfirmationHistoryKey;
     BOOL _isAnimating;
 }
+
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
@@ -54,8 +55,10 @@ static CGFloat const kTitleLabelLeadingInset = 64;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
+
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)show;
 - (void)hide;
 - (void)reload;
+
 @end

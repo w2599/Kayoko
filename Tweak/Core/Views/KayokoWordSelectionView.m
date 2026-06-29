@@ -228,7 +228,8 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 
 - (NSUInteger)tokenIndexForSelectionLocation:(CGPoint)point {
     for (UIButton *button in [self tokenButtons]) {
-        CGRect frame = CGRectInset([button frame], -kKayokoWordSelectionTokenSpacing / 2, -kKayokoWordSelectionLineSpacing / 2);
+        CGRect frame =
+            CGRectInset([button frame], -kKayokoWordSelectionTokenSpacing / 2, -kKayokoWordSelectionLineSpacing / 2);
         if (CGRectContainsPoint(frame, point)) {
             return [button tag];
         }
@@ -273,12 +274,27 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 }
 
 - (void)updateButtonStyles {
-    UIColor *selectedTextColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0 alpha:0.88 darkWhite:1 alpha:0.92];
+    UIColor *selectedTextColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0
+                                                                               alpha:0.88
+                                                                           darkWhite:1
+                                                                               alpha:0.92];
     UIColor *normalTextColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0 alpha:0.58 darkWhite:1 alpha:0.62];
-    UIColor *selectedBackgroundColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0 alpha:0.08 darkWhite:1 alpha:0.12];
-    UIColor *normalBackgroundColor = [KayokoWordSelectionView dynamicColorWithLightWhite:1 alpha:0.08 darkWhite:1 alpha:0.035];
-    UIColor *selectedBorderColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0 alpha:0.20 darkWhite:1 alpha:0.24];
-    UIColor *normalBorderColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0 alpha:0.08 darkWhite:1 alpha:0.10];
+    UIColor *selectedBackgroundColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0
+                                                                                     alpha:0.08
+                                                                                 darkWhite:1
+                                                                                     alpha:0.12];
+    UIColor *normalBackgroundColor = [KayokoWordSelectionView dynamicColorWithLightWhite:1
+                                                                                   alpha:0.08
+                                                                               darkWhite:1
+                                                                                   alpha:0.035];
+    UIColor *selectedBorderColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0
+                                                                                 alpha:0.20
+                                                                             darkWhite:1
+                                                                                 alpha:0.24];
+    UIColor *normalBorderColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0
+                                                                               alpha:0.08
+                                                                           darkWhite:1
+                                                                               alpha:0.10];
 
     for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
         UIButton *button = [self tokenButtons][index];
@@ -316,7 +332,8 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
       if ([selectedText length] > 0) {
           if (previousTokenIndex != NSNotFound && index == previousTokenIndex + 1 &&
               NSMaxRange(previousRange) <= range.location) {
-              NSRange separatorRange = NSMakeRange(NSMaxRange(previousRange), range.location - NSMaxRange(previousRange));
+              NSRange separatorRange =
+                  NSMakeRange(NSMaxRange(previousRange), range.location - NSMaxRange(previousRange));
               [selectedText appendString:[[self originalText] substringWithRange:separatorRange]];
           } else {
               [selectedText appendString:@" "];
@@ -346,8 +363,8 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
 
     [text enumerateSubstringsInRange:NSMakeRange(0, [text length])
                              options:NSStringEnumerationBySentences
-                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange,
-                                        NSRange enclosingRange, BOOL *_Nonnull stop) {
+                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange,
+                                       BOOL *_Nonnull stop) {
                             foundSentence = YES;
 
                             if (substringRange.location > cursor) {
@@ -355,12 +372,11 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
                                 [tokens addObjectsFromArray:[self detectedTokensForText:text inRange:gapRange]];
                             }
 
-                            NSArray<NSDictionary *> *sentenceTokens =
-                                [self detectedTokensForText:text inRange:substringRange];
+                            NSArray<NSDictionary *> *sentenceTokens = [self detectedTokensForText:text
+                                                                                          inRange:substringRange];
                             if ([sentenceTokens count] > 0) {
                                 if (previousSentenceLastTokenIndex != NSNotFound) {
-                                    [self markTokenForLineBreakAtIndex:previousSentenceLastTokenIndex
-                                                              inTokens:tokens];
+                                    [self markTokenForLineBreakAtIndex:previousSentenceLastTokenIndex inTokens:tokens];
                                 }
 
                                 [tokens addObjectsFromArray:sentenceTokens];
@@ -446,8 +462,8 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
     NSMutableArray<NSDictionary *> *tokens = [[NSMutableArray alloc] init];
     NSString *substring = [text substringWithRange:range];
     CFStringRef cfSubstring = (__bridge CFStringRef)substring;
-    CFStringTokenizerRef tokenizer =
-        CFStringTokenizerCreate(NULL, cfSubstring, CFRangeMake(0, [substring length]), kCFStringTokenizerUnitWord, NULL);
+    CFStringTokenizerRef tokenizer = CFStringTokenizerCreate(NULL, cfSubstring, CFRangeMake(0, [substring length]),
+                                                             kCFStringTokenizerUnitWord, NULL);
 
     if (!tokenizer) {
         [self addNonWhitespaceCharacterTokensFromText:text inRange:range toTokens:tokens];
@@ -485,11 +501,13 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
     return tokens;
 }
 
-+ (void)addCharacterTokensFromText:(NSString *)text inRange:(NSRange)range toTokens:(NSMutableArray<NSDictionary *> *)tokens {
++ (void)addCharacterTokensFromText:(NSString *)text
+                           inRange:(NSRange)range
+                          toTokens:(NSMutableArray<NSDictionary *> *)tokens {
     [text enumerateSubstringsInRange:range
                              options:NSStringEnumerationByComposedCharacterSequences
-                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange,
-                                        NSRange enclosingRange, BOOL *_Nonnull stop) {
+                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange,
+                                       BOOL *_Nonnull stop) {
                             if ([self isTokenTextValid:substring]) {
                                 [self addTokenFromText:text inRange:substringRange toTokens:tokens];
                             }
@@ -501,8 +519,8 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
                                        toTokens:(NSMutableArray<NSDictionary *> *)tokens {
     [text enumerateSubstringsInRange:range
                              options:NSStringEnumerationByComposedCharacterSequences
-                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange,
-                                        NSRange enclosingRange, BOOL *_Nonnull stop) {
+                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange,
+                                       BOOL *_Nonnull stop) {
                             if ([self isTokenTextValid:substring]) {
                                 [self addTokenFromText:text inRange:substringRange toTokens:tokens];
                             }

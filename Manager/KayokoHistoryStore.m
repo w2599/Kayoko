@@ -204,8 +204,8 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
 }
 
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
-                shouldRemoveImages:(BOOL)shouldRemoveImages
-                              error:(NSError **)error {
+               shouldRemoveImages:(BOOL)shouldRemoveImages
+                            error:(NSError **)error {
     if ([historyKey length] == 0) {
         return YES;
     }
@@ -403,8 +403,8 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     }
     sqlite3_finalize(statement);
 
-    NSString *deleteStatement = [NSString stringWithFormat:@"DELETE FROM history_items WHERE id IN (%@)",
-                                                           trimmedRowsSubquery];
+    NSString *deleteStatement =
+        [NSString stringWithFormat:@"DELETE FROM history_items WHERE id IN (%@)", trimmedRowsSubquery];
     if (![self executeStatement:deleteStatement bindings:@[ historyKey, @(limit) ] error:error]) {
         return NO;
     }

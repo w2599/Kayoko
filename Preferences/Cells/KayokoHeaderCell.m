@@ -31,7 +31,8 @@
 
         [[self iconImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[[self contentView] leadingAnchor] constant:18],
+            [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[[self contentView] leadingAnchor]
+                                                                 constant:18],
             [[[self iconImageView] centerYAnchor] constraintEqualToAnchor:[[self contentView] centerYAnchor]],
             [[[self iconImageView] widthAnchor] constraintEqualToConstant:46],
             [[[self iconImageView] heightAnchor] constraintEqualToConstant:46]
@@ -59,7 +60,7 @@
         NSString *version = [specifier propertyForKey:@"detail"];
         UIFont *versionFont = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
         CGFloat versionBadgeWidth =
-            ceil([version sizeWithAttributes:@{ NSFontAttributeName : versionFont }].width) + 16.0;
+            ceil([version sizeWithAttributes:@{NSFontAttributeName : versionFont}].width) + 16.0;
         [self setVersionLabel:[[UILabel alloc] init]];
         [[self versionLabel] setText:version];
         [[self versionLabel] setFont:versionFont];
@@ -71,7 +72,7 @@
         [[self versionLabel] setContentHuggingPriority:UILayoutPriorityRequired
                                                forAxis:UILayoutConstraintAxisHorizontal];
         [[self versionLabel] setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                            forAxis:UILayoutConstraintAxisHorizontal];
+                                                             forAxis:UILayoutConstraintAxisHorizontal];
         [[self contentView] addSubview:[self versionLabel]];
 
         [[self versionLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -99,7 +100,8 @@
             [[[self subtitleLabel] leadingAnchor] constraintEqualToAnchor:[[self headerTitleLabel] leadingAnchor]],
             [[[self subtitleLabel] trailingAnchor] constraintEqualToAnchor:[[self contentView] trailingAnchor]
                                                                   constant:-18],
-            [[[self subtitleLabel] topAnchor] constraintEqualToAnchor:[[self headerTitleLabel] bottomAnchor] constant:4],
+            [[[self subtitleLabel] topAnchor] constraintEqualToAnchor:[[self headerTitleLabel] bottomAnchor]
+                                                             constant:4],
             [[[self subtitleLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[[self iconImageView] bottomAnchor]
                                                                           constant:-1]
         ]];

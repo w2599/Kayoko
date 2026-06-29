@@ -17,11 +17,6 @@
 
 @implementation KayokoView
 
-/**
- * Initializes the main view.
- *
- * @param frame
- */
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
 
@@ -184,7 +179,8 @@
 
         [[self clearConfirmationView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self clearConfirmationView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor] constant:8],
+            [[[self clearConfirmationView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                                     constant:8],
             [[[self clearConfirmationView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
             [[[self clearConfirmationView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
             [[[self clearConfirmationView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
@@ -305,11 +301,6 @@
     [[self outsideDismissOverlayView] setHidden:YES];
 }
 
-/**
- * Handles the drag on the top of the main view to close it.
- *
- * @param recognizer The pan gesture recognizer.
- */
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     CGPoint translation = [recognizer translationInView:self];
     NSUInteger const kMaxTranslation = 100;
@@ -344,30 +335,23 @@
                [recognizer state] == UIGestureRecognizerStateFailed) {
         if (translation.y < kMaxTranslation) {
             [UIView animateWithDuration:0.4
-                                  delay:0
-                 usingSpringWithDamping:1
-                  initialSpringVelocity:0
-                                options:UIViewAnimationOptionCurveEaseOut
-                             animations:^{
-                               [self setTransform:CGAffineTransformIdentity];
-                               [self setAlpha:1];
-                             }
-                             completion:^(BOOL finished) {
-                               [self finishOutsideDismissOverlayShow];
-                             }];
+                delay:0
+                usingSpringWithDamping:1
+                initialSpringVelocity:0
+                options:UIViewAnimationOptionCurveEaseOut
+                animations:^{
+                  [self setTransform:CGAffineTransformIdentity];
+                  [self setAlpha:1];
+                }
+                completion:^(BOOL finished) {
+                  [self finishOutsideDismissOverlayShow];
+                }];
         } else {
             [self hide];
         }
     }
 }
 
-/**
- * Updates the style of the a header button.
- *
- * @param button The button to update.
- * @param imageName The name of the system image to use on the button.
- * @param color The color to use for the image.
- */
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
@@ -443,15 +427,22 @@
     [[self clearConfirmationView] updateWithHistoryKey:key];
 }
 
-- (void)reloadTableViewForHistoryKey:(NSString *)key completion:(void (^)(KayokoTableView *tableView))completion {
+- (void)reloadTableViewForHistoryKey:(NSString *)key
+              animatingTopInsertions:(BOOL)animatingTopInsertions
+                          completion:(void (^)(KayokoTableView *tableView))completion {
     KayokoTableView *tableView = [self tableViewForHistoryKey:key];
     [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key
                                                         completion:^(NSMutableArray *items) {
-                                                          [tableView reloadDataWithItems:items];
+                                                          [tableView updateDataWithItems:items
+                                                                  animatingTopInsertions:animatingTopInsertions];
                                                           if (completion) {
                                                               completion(tableView);
                                                           }
                                                         }];
+}
+
+- (void)reloadTableViewForHistoryKey:(NSString *)key completion:(void (^)(KayokoTableView *tableView))completion {
+    [self reloadTableViewForHistoryKey:key animatingTopInsertions:NO completion:completion];
 }
 
 - (void)showClearConfirmationForHistoryKey:(NSString *)key {
@@ -469,7 +460,9 @@
     _clearConfirmationHistoryKey = nil;
     [[self clearButton] setHidden:NO];
     [self updateClearButtonStateForTableView:[self tableViewForHistoryKey:key]];
-    [self showContentView:[self contentViewForHistoryKey:key] andHideContentView:[self clearConfirmationView] reverse:YES];
+    [self showContentView:[self contentViewForHistoryKey:key]
+        andHideContentView:[self clearConfirmationView]
+                   reverse:YES];
 }
 
 - (void)hideClearConfirmationWithReload:(BOOL)reload {
@@ -539,11 +532,6 @@
     [self updateClearButtonState];
 }
 
-/**
- * Handles the press of the favorites button.
- *
- * It either shows the history or favorites view or hides the preview view again.
- */
 - (void)handleFavoritesButtonPressed {
     if (_isAnimating) {
         return;
@@ -608,9 +596,9 @@
         NSString *historyKey =
             _previewSourceTableView == [self favoritesTableView] ? kHistoryKeyFavorites : kHistoryKeyHistory;
         [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
-                                                                      historyItem:_previewItem
-                                                               fromHistoryWithKey:historyKey
-                                                                  shouldAutoPaste:YES];
+                                                                     historyItem:_previewItem
+                                                              fromHistoryWithKey:historyKey
+                                                                 shouldAutoPaste:YES];
     } else {
         [[UIPasteboard generalPasteboard] setString:text];
     }
@@ -672,27 +660,20 @@
     NSString *key = _clearConfirmationHistoryKey;
     [[[self clearConfirmationView] cancelButton] setEnabled:NO];
     [[[self clearConfirmationView] confirmButton] setEnabled:NO];
-    [[PasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:key
-                                                                shouldRemoveImages:YES
-                                                                        completion:^(BOOL success) {
-                                                                          if (!success) {
-                                                                              [[[self clearConfirmationView]
-                                                                                  cancelButton] setEnabled:YES];
-                                                                              [[[self clearConfirmationView]
-                                                                                  confirmButton] setEnabled:YES];
-                                                                              return;
-                                                                          }
-                                                                          [self hideClearConfirmationWithReload:YES];
-                                                                          [self triggerHapticFeedbackWithStyle:
-                                                                                    UIImpactFeedbackStyleHeavy];
-                                                                        }];
+    [[PasteboardManager sharedInstance]
+        removeAllPasteboardItemsFromHistoryWithKey:key
+                                shouldRemoveImages:YES
+                                        completion:^(BOOL success) {
+                                          if (!success) {
+                                              [[[self clearConfirmationView] cancelButton] setEnabled:YES];
+                                              [[[self clearConfirmationView] confirmButton] setEnabled:YES];
+                                              return;
+                                          }
+                                          [self hideClearConfirmationWithReload:YES];
+                                          [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
+                                        }];
 }
 
-/**
- * Shows the preview view with a given item's contents.
- *
- * @param item The item to preview.
- */
 - (void)showPreviewWithItem:(PasteboardItem *)item {
     _previewItem = item;
 
@@ -714,18 +695,17 @@
                         andImageSize:kFavoritesButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [self updateStyleForHeaderButton:[self backButton]
-                       withImageName:([self automaticallyPaste] ? @"doc.on.clipboard" : @"doc.on.doc.fill")
-                        andImageSize:kBackButtonImageSize
+                       withImageName:([self automaticallyPaste] ? @"doc.on.clipboard" : @"doc.on.doc.fill")andImageSize
+                                    :kBackButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [[self favoritesButton]
         setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
                                                                                       value:nil
                                                                                       table:@"Tweak"]];
-    [[self backButton]
-        setAccessibilityLabel:[[PasteboardManager localizationBundle]
-                                  localizedStringForKey:([self automaticallyPaste] ? @"Paste" : @"Copy")
-                                                  value:nil
-                                                  table:@"Tweak"]];
+    [[self backButton] setAccessibilityLabel:[[PasteboardManager localizationBundle]
+                                                 localizedStringForKey:([self automaticallyPaste] ? @"Paste" : @"Copy")
+                                                                 value:nil
+                                                                 table:@"Tweak"]];
     [[self clearButton] setHidden:YES];
     [[self backButton] setHidden:![[self previewView] showingWordSelection]];
     [self updatePreviewActionButtonState];
@@ -733,9 +713,6 @@
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
-/**
- * Hides the preview view.
- */
 - (void)hidePreview {
     if ([[self previewView] isHidden] || _isAnimating) {
         return;
@@ -768,15 +745,6 @@
     [[self previewView] reset];
 }
 
-/**
- * Animates a view in and out.
- *
- * For example when switching between the history and favorites view.
- *
- * @param viewToShow The view that's to be shown.
- * @param viewToHide The view that's to be hidden.
- * @param reverse Whether the animation should play reversed for a mirrored effect.
- */
 - (void)showContentView:(UIView *)viewToShow andHideContentView:(UIView *)viewToHide reverse:(BOOL)reverse {
     [UIView transitionWithView:[self titleLabel]
                       duration:0.1
@@ -814,11 +782,6 @@
         }];
 }
 
-/**
- * Triggers haptic feedback.
- *
- * @param style The feedback type/strength to use.
- */
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style {
     if (!self.shouldPlayFeedback) {
         return;
@@ -829,12 +792,10 @@
     [self setFeedbackGenerator:nil];
 }
 
-/**
- * Reloads the active history view.
- */
 - (void)reload {
     NSString *key = [self activeHistoryKey];
     [self reloadTableViewForHistoryKey:key
+                animatingTopInsertions:![self isHidden] && [key isEqualToString:kHistoryKeyHistory]
                             completion:^(KayokoTableView *tableView) {
                               if (![[self activeHistoryKey] isEqualToString:key]) {
                                   return;
@@ -847,9 +808,6 @@
                             }];
 }
 
-/**
- * Shows the main view.
- */
 - (void)show {
     if (_isAnimating) {
         return;
@@ -884,9 +842,6 @@
         }];
 }
 
-/**
- * Hides the main view.
- */
 - (void)hide {
     if (_isAnimating) {
         return;

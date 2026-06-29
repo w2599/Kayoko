@@ -19,17 +19,28 @@
 
 static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
+@interface SBApplication : NSObject
+@property(nonatomic, copy, readonly) NSString *bundleIdentifier;
+@end
+
+@interface UIApplication (Private)
+- (SBApplication *)_accessibilityFrontMostApplication;
+@end
+
 @implementation PasteboardManager {
+    UIPasteboard *_pasteboard;
+    NSUInteger _lastChangeCount;
+    NSFileManager *_fileManager;
+
     dispatch_queue_t _queue;
     dispatch_queue_t _historyQueue;
+
     BOOL _isPerformingDirectPaste;
     BOOL _didPrepareHistoryStore;
+
     KayokoHistoryStore *_historyStore;
 }
 
-/**
- * Creates the shared instance.
- */
 + (instancetype)sharedInstance {
     static PasteboardManager *sharedInstance;
     static dispatch_once_t onceToken;
@@ -86,17 +97,12 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return [[stepValues lastObject] unsignedIntegerValue];
 }
 
-/**
- * Creates the manager using the shared instance.
- */
 - (instancetype)init {
     self = [super init];
     if (self) {
         _fileManager = [NSFileManager defaultManager];
         _historyQueue = dispatch_queue_create("com.82flex.kayoko.queue.history", DISPATCH_QUEUE_SERIAL);
-        dispatch_queue_set_specific(_historyQueue,
-                                    kKayokoHistoryQueueSpecificKey,
-                                    kKayokoHistoryQueueSpecificKey,
+        dispatch_queue_set_specific(_historyQueue, kKayokoHistoryQueueSpecificKey, kKayokoHistoryQueueSpecificKey,
                                     NULL);
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
@@ -130,9 +136,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     }
 }
 
-/**
- * Pulls new changes from the pasteboard.
- */
 - (void)_reallyPullPasteboardChanges {
     // Return if the pasteboard is empty.
     if ([_pasteboard changeCount] == _lastChangeCount || (![_pasteboard hasStrings] && ![_pasteboard hasImages])) {
@@ -196,12 +199,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     _lastChangeCount = [_pasteboard changeCount];
 }
 
-/**
- * Adds an item to a specified history.
- *
- * @param item The item to save.
- * @param historyKey The key for the history which to save to.
- */
 - (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
     if ([[item content] isEqualToString:@""]) {
         return;
@@ -225,13 +222,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     [self postHistoryChangedNotification];
 }
 
-/**
- * Removes an item from a specified history.
- *
- * @param item The item to remove.
- * @param historyKey The key for the history from which to remove from.
- * @param shouldRemoveImage Whether to remove the item's corresponding image or not.
- */
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
@@ -240,9 +230,9 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     __block BOOL success = NO;
     [self performHistorySync:^{
       success = [[self historyStoreOnHistoryQueue] removeItemDictionary:dictionary
-                                                          fromHistoryKey:historyKey
-                                                       shouldRemoveImage:shouldRemoveImage
-                                                                   error:&error];
+                                                         fromHistoryKey:historyKey
+                                                      shouldRemoveImage:shouldRemoveImage
+                                                                  error:&error];
     }];
     if (!success) {
         NSLog(@"Kayoko: Failed to remove history item: %@", error);
@@ -313,7 +303,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
       NSError *error = nil;
       BOOL success = [[self historyStoreOnHistoryQueue] removeItemsFromHistoryKey:historyKey
                                                                shouldRemoveImages:shouldRemoveImages
-                                                                             error:&error];
+                                                                            error:&error];
       if (!success) {
           NSLog(@"Kayoko: Failed to remove history items: %@", error);
       }
@@ -360,14 +350,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
                                shouldAutoPaste:shouldAutoPaste];
 }
 
-/**
- * Performs a direct paste transaction with explicit history promotion.
- *
- * @param pasteboardItem The item from which to set the pasteboard content.
- * @param historyItem The original item that should be moved to the top of its history.
- * @param historyKey The key for the history which the item is from.
- * @param shouldAutoPaste Whether the helper should automatically paste the new content.
- */
 - (void)_reallyPerformDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
                                         historyItem:(PasteboardItem *)historyItem
                                  fromHistoryWithKey:(NSString *)historyKey
@@ -440,13 +422,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     [self postHistoryChangedNotification];
 }
 
-/**
- * Returns all items from a specified history.
- *
- * @param historyKey The key for the history from which to get the items from.
- *
- * @return The history's items.
- */
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
     __block NSError *error = nil;
     __block NSMutableArray *history = nil;
@@ -476,11 +451,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     }];
 }
 
-/**
- * Returns the latest item from the default history.
- *
- * @return The item.
- */
 - (PasteboardItem *)getLatestHistoryItem {
     __block NSError *error = nil;
     __block NSDictionary *dictionary = nil;
@@ -493,13 +463,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return [PasteboardItem itemFromDictionary:dictionary];
 }
 
-/**
- * Returns the image for an item.
- *
- * @param item The item from which to get the image from.
- *
- * @return The image.
- */
 - (UIImage *)getImageForItem:(PasteboardItem *)item {
     NSData *imageData = [_fileManager
         contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
@@ -567,9 +530,6 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return _historyStore;
 }
 
-/**
- * Creates the v4 history database and path for the images.
- */
 - (void)ensureResourcesExist {
     [self performHistorySync:^{
       [self ensureResourcesExistOnHistoryQueue];

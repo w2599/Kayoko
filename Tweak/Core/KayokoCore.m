@@ -21,7 +21,7 @@
 #import "PreferenceKeys.h"
 #import "Views/KayokoView.h"
 
-#define kMinimumFeedbackInterval 0.6
+static NSTimeInterval kKayokoMinimumFeedbackInterval = 0.6;
 
 KayokoView *kayokoView = nil;
 
@@ -182,7 +182,7 @@ static void _kayokoCopy() {
         return;
     }
     NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastCopyFeedbackOccurred) < kMinimumFeedbackInterval) {
+    if (fabs(now - lastCopyFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
         return;
     }
     lastCopyFeedbackOccurred = now;
@@ -341,7 +341,7 @@ static void load_height_preference() {
 
 static void kayokoPaste() {
     NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastPasteFeedbackOccurred) < kMinimumFeedbackInterval) {
+    if (fabs(now - lastPasteFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
         return;
     }
     lastPasteFeedbackOccurred = now;
