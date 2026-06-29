@@ -1,13 +1,13 @@
 //
-//  LinkCell.m
+//  KayokoLinkCell.m
 //  Akarii Utils
 //
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "LinkCell.h"
+#import "KayokoLinkCell.h"
 
-@implementation LinkCell
+@implementation KayokoLinkCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
               reuseIdentifier:(NSString *)reuseIdentifier

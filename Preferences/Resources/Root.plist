@@ -107,7 +107,7 @@
 			<key>isContinuous</key>
 			<true/>
 			<key>valueLabelWidth</key>
-			<integer>58</integer>
+			<integer>44</integer>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
@@ -284,8 +284,8 @@
 			<string>Height (Points)</string>
 		</dict>
 		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
+			<key>cellClass</key>
+			<string>KayokoSliderCell</string>
 			<key>default</key>
 			<real>420</real>
 			<key>defaults</key>
@@ -302,6 +302,8 @@
 			<true/>
 			<key>isSegmented</key>
 			<false/>
+			<key>valueLabelWidth</key>
+			<integer>44</integer>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.height.reload</string>
 		</dict>

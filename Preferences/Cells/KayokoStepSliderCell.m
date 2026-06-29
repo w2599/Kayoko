@@ -45,7 +45,7 @@
 
     CGRect trackRect = CGRectInset(_cachedTrackRect, CGRectGetWidth(_cachedThumbRect) / 2.0, 0);
     if (CGRectIsEmpty(trackRect)) {
-        trackRect = CGRectInset([self trackRectForBounds:[self bounds]], 14.0, 0);
+        trackRect = CGRectInset([self trackRectForBounds:[self bounds]], 14, 0);
     }
 
     UIColor *tickColor = [[self tintColor] colorWithAlphaComponent:0.45];
@@ -83,7 +83,7 @@
         return nil;
     }
 
-    _valueLabelWidth = [[specifier propertyForKey:@"valueLabelWidth"] doubleValue] ?: 58.0;
+    _valueLabelWidth = [[specifier propertyForKey:@"valueLabelWidth"] doubleValue] ?: 50.0;
 
     _slider = [[KayokoStepSlider alloc] init];
     [_slider setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -109,14 +109,14 @@
     UILayoutGuide *margins = [[self contentView] layoutMarginsGuide];
     [NSLayoutConstraint activateConstraints:@[
         [_slider.leadingAnchor constraintEqualToAnchor:[margins leadingAnchor]],
-        [_slider.trailingAnchor constraintEqualToAnchor:[_valueLabel leadingAnchor] constant:-12.0],
+        [_slider.trailingAnchor constraintEqualToAnchor:[_valueLabel leadingAnchor] constant:-12],
         [_slider.centerYAnchor constraintEqualToAnchor:[[self contentView] centerYAnchor]],
 
         [_valueLabel.trailingAnchor constraintEqualToAnchor:[margins trailingAnchor]],
         [_valueLabel.centerYAnchor constraintEqualToAnchor:[[self contentView] centerYAnchor]],
         [_valueLabel.widthAnchor constraintEqualToConstant:_valueLabelWidth],
 
-        [[[self contentView] heightAnchor] constraintGreaterThanOrEqualToConstant:44.0],
+        [[[self contentView] heightAnchor] constraintGreaterThanOrEqualToConstant:44],
     ]];
 }
 
@@ -138,7 +138,7 @@
 - (void)syncWithSpecifier:(PSSpecifier *)specifier {
     _stepValues = [self normalizedStepValuesFromSpecifier:specifier];
     [_slider setStepValues:_stepValues];
-    [_slider setMinimumValue:0.0];
+    [_slider setMinimumValue:0];
     [_slider setMaximumValue:MAX((NSInteger)[_stepValues count] - 1, 0)];
 
     NSNumber *isContinuous = [specifier propertyForKey:@"isContinuous"];

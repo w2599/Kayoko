@@ -84,7 +84,6 @@ static CGFloat const kKayokoWordSelectionTokenHeight = 34;
         [button setTitle:token[@"text"] forState:UIControlStateNormal];
         [[button titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightRegular]];
         [[button titleLabel] setLineBreakMode:NSLineBreakByTruncatingMiddle];
-        [button setContentEdgeInsets:UIEdgeInsetsMake(0, 11, 0, 11)];
         [button setUserInteractionEnabled:NO];
         [[button layer] setCornerRadius:7];
         [[button layer] setBorderWidth:0.5];
