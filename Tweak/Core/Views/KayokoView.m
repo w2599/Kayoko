@@ -304,18 +304,25 @@
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     CGPoint translation = [recognizer translationInView:self];
-    CGFloat const kMaxTranslation = 100;
+    CGFloat const kFadeOutDistance = 100;
 
     if ([recognizer state] == UIGestureRecognizerStateBegan) {
+        _panGestureDidReachZeroAlpha = NO;
         [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
     } else if ([recognizer state] == UIGestureRecognizerStateChanged) {
         [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
 
-        if (translation.y < 0) {
+        if (translation.y < 0 && !_panGestureDidReachZeroAlpha) {
             return;
         }
 
-        CGFloat alpha = MIN(MAX(translation.y / kMaxTranslation, 0), 1);
+        CGFloat fadeProgress = MIN(MAX(translation.y / kFadeOutDistance, 0), 1);
+        if (_panGestureDidReachZeroAlpha || fadeProgress >= 1) {
+            _panGestureDidReachZeroAlpha = YES;
+            fadeProgress = 1;
+            translation.y = MAX(translation.y, kFadeOutDistance);
+        }
+
         [UIView animateWithDuration:0.1
                               delay:0
              usingSpringWithDamping:0.7
@@ -323,13 +330,13 @@
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
                            [self setTransform:CGAffineTransformMakeTranslation(0, translation.y)];
-                           [self setAlpha:1 - alpha];
+                           [self setAlpha:1 - fadeProgress];
                          }
                          completion:nil];
     } else if ([recognizer state] == UIGestureRecognizerStateEnded ||
                [recognizer state] == UIGestureRecognizerStateCancelled ||
                [recognizer state] == UIGestureRecognizerStateFailed) {
-        if (translation.y < kMaxTranslation) {
+        if (!_panGestureDidReachZeroAlpha) {
             [UIView animateWithDuration:0.4
                 delay:0
                 usingSpringWithDamping:1

@@ -31,6 +31,7 @@ static CGFloat const kTitleLabelLeadingInset = 64;
     NSString *_activeHistoryKey;
     NSString *_clearConfirmationHistoryKey;
     BOOL _isAnimating;
+    BOOL _panGestureDidReachZeroAlpha;
 }
 
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
