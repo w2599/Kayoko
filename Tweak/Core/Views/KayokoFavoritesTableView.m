@@ -18,7 +18,7 @@
     PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
 
     UIContextualAction *unfavoriteAction = [UIContextualAction
-        contextualActionWithStyle:UIContextualActionStyleNormal
+        contextualActionWithStyle:UIContextualActionStyleDestructive
                             title:@""
                           handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                     void (^_Nonnull completionHandler)(BOOL)) {
