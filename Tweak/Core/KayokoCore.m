@@ -240,8 +240,10 @@ static void hide() {
 }
 
 static void reload() {
-    if (![kayokoView isHidden]) {
-        [kayokoView reload];
+    if (kayokoView) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [kayokoView handleHistoryChanged];
+        });
     }
 }
 

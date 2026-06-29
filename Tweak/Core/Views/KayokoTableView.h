@@ -18,6 +18,9 @@
 - (instancetype)initWithName:(NSString *)name;
 - (void)reloadDataWithItems:(NSArray *)items;
 - (void)updateDataWithItems:(NSArray *)items animatingTopInsertions:(BOOL)animatingTopInsertions;
+- (void)clearItems;
+- (void)upsertItemDictionaryAtTop:(NSDictionary *)dictionary limit:(NSUInteger)limit;
+- (void)removeItemDictionary:(NSDictionary *)dictionary;
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(void (^)(BOOL success))completion;
 - (void)notifyContentStateChanged;
 

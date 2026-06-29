@@ -6,6 +6,7 @@
 //
 
 #import "KayokoFavoritesTableView.h"
+#import "KayokoView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
@@ -15,7 +16,8 @@
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[[super tableView:tableView
         leadingSwipeActionsConfigurationForRowAtIndexPath:indexPath] actions] mutableCopy];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
+    NSDictionary *dictionary = [self items][[indexPath row]];
+    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *unfavoriteAction = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -31,7 +33,16 @@
                                               completionHandler(NO);
                                               return;
                                           }
-                                          [self removeItemAtIndexPath:indexPath completion:completionHandler];
+                                          [self removeItemAtIndexPath:indexPath
+                                                           completion:^(BOOL removed) {
+                                                             if (removed) {
+                                                                 [(KayokoView *)[self superview]
+                                                                     handlePasteboardItemDictionary:dictionary
+                                                                                movedFromHistoryKey:kHistoryKeyFavorites
+                                                                                        toHistoryKey:kHistoryKeyHistory];
+                                                             }
+                                                             completionHandler(removed);
+                                                           }];
                                         }];
                           }];
     [unfavoriteAction setImage:[UIImage systemImageNamed:@"heart.slash.fill"]];

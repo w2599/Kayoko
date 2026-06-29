@@ -40,6 +40,22 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     KayokoHistoryStore *_historyStore;
 }
 
+- (NSDictionary *)historyChangeUserInfoWithType:(NSString *)changeType
+                                     historyKey:(NSString *)historyKey
+                                 itemDictionary:(NSDictionary *)itemDictionary
+                                          limit:(NSUInteger)limit {
+    NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+    userInfo[kPasteboardManagerHistoryChangeTypeKey] = changeType ?: kPasteboardManagerHistoryChangeTypeReload;
+    if ([historyKey length] > 0) {
+        userInfo[kPasteboardManagerHistoryChangeHistoryKeyKey] = historyKey;
+        userInfo[kPasteboardManagerHistoryChangeLimitKey] = @(limit);
+    }
+    if (itemDictionary) {
+        userInfo[kPasteboardManagerHistoryChangeItemKey] = itemDictionary;
+    }
+    return userInfo;
+}
+
 + (instancetype)sharedInstance {
     static PasteboardManager *sharedInstance;
     static dispatch_once_t onceToken;
@@ -218,7 +234,10 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    [self postHistoryChangedNotification];
+    [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                           changeType:kPasteboardManagerHistoryChangeTypeUpsertTop
+                                       itemDictionary:dictionary
+                                                limit:limit];
 }
 
 - (void)removePasteboardItem:(PasteboardItem *)item
@@ -238,7 +257,10 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    [self postHistoryChangedNotification];
+    [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                           changeType:kPasteboardManagerHistoryChangeTypeRemove
+                                       itemDictionary:dictionary
+                                                limit:[self limitForHistoryKey:historyKey]];
 }
 
 - (void)removePasteboardItem:(PasteboardItem *)item
@@ -291,6 +313,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
+                           postsChangeNotification:(BOOL)postsChangeNotification
                                         completion:(void (^)(BOOL success))completion {
     [self performHistoryAsync:^{
       NSError *error = nil;
@@ -302,14 +325,26 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
       }
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        if (success) {
-            [self postHistoryChangedNotification];
+        if (success && postsChangeNotification) {
+            [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                                   changeType:kPasteboardManagerHistoryChangeTypeClear
+                                               itemDictionary:nil
+                                                        limit:[self limitForHistoryKey:historyKey]];
         }
         if (completion) {
             completion(success);
         }
       });
     }];
+}
+
+- (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
+                                shouldRemoveImages:(BOOL)shouldRemoveImages
+                                        completion:(void (^)(BOOL success))completion {
+    [self removeAllPasteboardItemsFromHistoryWithKey:historyKey
+                                  shouldRemoveImages:shouldRemoveImages
+                             postsChangeNotification:YES
+                                          completion:completion];
 }
 
 - (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
@@ -420,7 +455,10 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    [self postHistoryChangedNotification];
+    [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                           changeType:kPasteboardManagerHistoryChangeTypeUpsertTop
+                                       itemDictionary:dictionary
+                                                limit:limit];
 }
 
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
@@ -480,6 +518,25 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 }
 
 - (void)postHistoryChangedNotification {
+    [self postHistoryChangedNotificationForHistoryKey:nil
+                                           changeType:kPasteboardManagerHistoryChangeTypeReload
+                                       itemDictionary:nil
+                                                limit:0];
+}
+
+- (void)postHistoryChangedNotificationForHistoryKey:(NSString *)historyKey
+                                         changeType:(NSString *)changeType
+                                     itemDictionary:(NSDictionary *)itemDictionary
+                                              limit:(NSUInteger)limit {
+    NSDictionary *userInfo = [self historyChangeUserInfoWithType:changeType
+                                                      historyKey:historyKey
+                                                  itemDictionary:itemDictionary
+                                                           limit:limit];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [[NSNotificationCenter defaultCenter] postNotificationName:kPasteboardManagerHistoryDidChangeNotification
+                                                          object:self
+                                                        userInfo:userInfo];
+    });
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
 }

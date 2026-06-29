@@ -69,6 +69,25 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
     return NO;
 }
 
+- (NSUInteger)indexOfItemMatchingDictionary:(NSDictionary *)dictionary inItems:(NSArray *)items {
+    NSString *content = dictionary[kItemKeyContent];
+    if ([content length] == 0) {
+        return NSNotFound;
+    }
+
+    for (NSUInteger index = 0; index < [items count]; index++) {
+        NSDictionary *item = items[index];
+        if ([item[kItemKeyContent] isEqualToString:content]) {
+            return index;
+        }
+    }
+    return NSNotFound;
+}
+
+- (NSUInteger)normalizedLimit:(NSUInteger)limit {
+    return limit == 0 ? NSUIntegerMax : limit;
+}
+
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
 
@@ -233,6 +252,95 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
           }
         }
                  completion:nil];
+}
+
+- (void)clearItems {
+    NSArray *oldItems = [self items] ?: @[];
+    if ([oldItems count] == 0) {
+        return;
+    }
+
+    [self setItems:@[]];
+    [self reloadData];
+    [self notifyContentStateChanged];
+}
+
+- (void)upsertItemDictionaryAtTop:(NSDictionary *)dictionary limit:(NSUInteger)limit {
+    if (!dictionary || [dictionary[kItemKeyContent] length] == 0) {
+        return;
+    }
+
+    NSArray *oldItems = [self items] ?: @[];
+    NSMutableArray *newItems = [oldItems mutableCopy];
+    NSUInteger existingIndex = [self indexOfItemMatchingDictionary:dictionary inItems:newItems];
+    NSUInteger normalizedLimit = [self normalizedLimit:limit];
+
+    if (existingIndex != NSNotFound) {
+        [newItems removeObjectAtIndex:existingIndex];
+    }
+    [newItems insertObject:dictionary atIndex:0];
+    while ([newItems count] > normalizedLimit) {
+        [newItems removeLastObject];
+    }
+
+    if ([oldItems isEqualToArray:newItems] && [self numberOfRowsInSection:0] == [oldItems count]) {
+        return;
+    }
+
+    if ([self numberOfRowsInSection:0] != [oldItems count]) {
+        [self updateDataWithItems:newItems animatingTopInsertions:YES];
+        return;
+    }
+
+    if (existingIndex == 0) {
+        [self setItems:newItems];
+        [self reloadRowsAtIndexPaths:@[ [NSIndexPath indexPathForRow:0 inSection:0] ]
+                     withRowAnimation:UITableViewRowAnimationNone];
+        [self notifyContentStateChanged];
+        return;
+    }
+
+    if (existingIndex != NSNotFound && existingIndex < [oldItems count] && [newItems count] == [oldItems count]) {
+        [self
+            performBatchUpdates:^{
+              [self setItems:newItems];
+              [self moveRowAtIndexPath:[NSIndexPath indexPathForRow:existingIndex inSection:0]
+                            toIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
+            }
+            completion:^(__unused BOOL finished) {
+              [self notifyContentStateChanged];
+            }];
+        return;
+    }
+
+    NSUInteger removedCount = [oldItems count] + 1 > [newItems count] ? [oldItems count] + 1 - [newItems count] : 0;
+    NSMutableArray *removedIndexPaths = [[NSMutableArray alloc] initWithCapacity:removedCount];
+    for (NSUInteger row = [oldItems count] - removedCount; row < [oldItems count]; row++) {
+        [removedIndexPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
+    }
+
+    [self
+        performBatchUpdates:^{
+          [self setItems:newItems];
+          [self insertRowsAtIndexPaths:@[ [NSIndexPath indexPathForRow:0 inSection:0] ]
+                      withRowAnimation:UITableViewRowAnimationTop];
+          if ([removedIndexPaths count] > 0) {
+              [self deleteRowsAtIndexPaths:removedIndexPaths withRowAnimation:UITableViewRowAnimationFade];
+          }
+        }
+        completion:^(__unused BOOL finished) {
+          [self notifyContentStateChanged];
+        }];
+}
+
+- (void)removeItemDictionary:(NSDictionary *)dictionary {
+    NSArray *oldItems = [self items] ?: @[];
+    NSUInteger existingIndex = [self indexOfItemMatchingDictionary:dictionary inItems:oldItems];
+    if (existingIndex == NSNotFound) {
+        return;
+    }
+
+    [self removeItemAtIndexPath:[NSIndexPath indexPathForRow:existingIndex inSection:0] completion:nil];
 }
 
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(void (^)(BOOL success))completion {

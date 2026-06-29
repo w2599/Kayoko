@@ -21,12 +21,23 @@
 @end
 
 @implementation KayokoView
+{
+    NSMutableSet<NSString *> *_loadedHistoryKeys;
+    NSMutableSet<NSString *> *_dirtyHistoryKeys;
+    NSUInteger _pendingLocalHistoryChangeNotificationCount;
+}
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
 
     if (self) {
         _activeHistoryKey = kHistoryKeyHistory;
+        _loadedHistoryKeys = [[NSMutableSet alloc] init];
+        _dirtyHistoryKeys = [NSMutableSet setWithObjects:kHistoryKeyHistory, kHistoryKeyFavorites, nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleLocalHistoryChangeNotification:)
+                                                     name:kPasteboardManagerHistoryDidChangeNotification
+                                                   object:nil];
 
         [self hide];
 
@@ -227,6 +238,10 @@
     }
 
     return self;
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)setOutsideDismissOverlayView:(UIControl *)outsideDismissOverlayView {
@@ -430,14 +445,118 @@
     [[self clearConfirmationView] updateWithHistoryKey:key];
 }
 
+- (BOOL)hasLoadedHistoryKey:(NSString *)key {
+    return [_loadedHistoryKeys containsObject:key];
+}
+
+- (BOOL)needsReloadForHistoryKey:(NSString *)key {
+    return ![self hasLoadedHistoryKey:key] || [_dirtyHistoryKeys containsObject:key];
+}
+
+- (void)markHistoryKeyLoaded:(NSString *)key {
+    if ([key length] == 0) {
+        return;
+    }
+    [_loadedHistoryKeys addObject:key];
+    [_dirtyHistoryKeys removeObject:key];
+}
+
+- (void)markHistoryKeyDirty:(NSString *)key {
+    if ([key length] == 0) {
+        return;
+    }
+    [_dirtyHistoryKeys addObject:key];
+}
+
+- (void)markAllHistoryKeysDirty {
+    [self markHistoryKeyDirty:kHistoryKeyHistory];
+    [self markHistoryKeyDirty:kHistoryKeyFavorites];
+}
+
+- (NSUInteger)limitForHistoryKey:(NSString *)key {
+    if ([key isEqualToString:kHistoryKeyFavorites]) {
+        return NSUIntegerMax;
+    }
+    return [[PasteboardManager sharedInstance] maximumHistoryAmount];
+}
+
+- (void)updateCachedTableViewForHistoryKey:(NSString *)key
+                                changeType:(NSString *)changeType
+                            itemDictionary:(NSDictionary *)dictionary
+                                     limit:(NSUInteger)limit {
+    KayokoTableView *tableView = [self tableViewForHistoryKey:key];
+    if (![self hasLoadedHistoryKey:key]) {
+        [self markHistoryKeyDirty:key];
+        if (![self isHidden] && [[self activeHistoryKey] isEqualToString:key]) {
+            [self reload];
+        }
+        return;
+    }
+
+    if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeClear]) {
+        [tableView clearItems];
+    } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeUpsertTop]) {
+        [tableView upsertItemDictionaryAtTop:dictionary limit:(limit ?: [self limitForHistoryKey:key])];
+    } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeRemove]) {
+        [tableView removeItemDictionary:dictionary];
+    } else {
+        [self markHistoryKeyDirty:key];
+        return;
+    }
+
+    [self markHistoryKeyLoaded:key];
+    if ([[self activeHistoryKey] isEqualToString:key]) {
+        [self updateClearButtonStateForTableView:tableView];
+    }
+}
+
+- (void)handleLocalHistoryChangeNotification:(NSNotification *)notification {
+    _pendingLocalHistoryChangeNotificationCount++;
+    NSDictionary *userInfo = [notification userInfo];
+    NSString *key = userInfo[kPasteboardManagerHistoryChangeHistoryKeyKey];
+    NSString *changeType = userInfo[kPasteboardManagerHistoryChangeTypeKey] ?: kPasteboardManagerHistoryChangeTypeReload;
+    NSDictionary *dictionary = userInfo[kPasteboardManagerHistoryChangeItemKey];
+    NSUInteger limit = [userInfo[kPasteboardManagerHistoryChangeLimitKey] unsignedIntegerValue];
+
+    if ([key length] == 0 || [changeType isEqualToString:kPasteboardManagerHistoryChangeTypeReload]) {
+        [self markAllHistoryKeysDirty];
+        if (![self isHidden]) {
+            [self reload];
+        }
+        return;
+    }
+
+    [self updateCachedTableViewForHistoryKey:key changeType:changeType itemDictionary:dictionary limit:limit];
+}
+
+- (void)handleHistoryChanged {
+    if (_pendingLocalHistoryChangeNotificationCount > 0) {
+        _pendingLocalHistoryChangeNotificationCount--;
+        return;
+    }
+
+    [self markAllHistoryKeysDirty];
+    if (![self isHidden]) {
+        [self reload];
+    }
+}
+
 - (void)reloadTableViewForHistoryKey:(NSString *)key
               animatingTopInsertions:(BOOL)animatingTopInsertions
                           completion:(void (^)(KayokoTableView *tableView))completion {
     KayokoTableView *tableView = [self tableViewForHistoryKey:key];
+    if (![self needsReloadForHistoryKey:key]) {
+        if (completion) {
+            completion(tableView);
+        }
+        return;
+    }
+
     [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key
                                                         completion:^(NSMutableArray *items) {
                                                           [tableView updateDataWithItems:items
                                                                   animatingTopInsertions:animatingTopInsertions];
+                                                          [self markHistoryKeyLoaded:key];
                                                           if (completion) {
                                                               completion(tableView);
                                                           }
@@ -475,10 +594,9 @@
 
     NSString *key = _clearConfirmationHistoryKey;
     if (reload) {
-        [self reloadTableViewForHistoryKey:key
-                                completion:^(KayokoTableView *tableView) {
-                                  [self finishHidingClearConfirmationForHistoryKey:key];
-                                }];
+        [[self tableViewForHistoryKey:key] clearItems];
+        [self markHistoryKeyLoaded:key];
+        [self finishHidingClearConfirmationForHistoryKey:key];
         return;
     }
 
@@ -674,6 +792,7 @@
     [[PasteboardManager sharedInstance]
         removeAllPasteboardItemsFromHistoryWithKey:key
                                 shouldRemoveImages:YES
+                           postsChangeNotification:NO
                                         completion:^(BOOL success) {
                                           if (!success) {
                                               [[[self clearConfirmationView] cancelButton] setEnabled:YES];
@@ -683,6 +802,22 @@
                                           [self hideClearConfirmationWithReload:YES];
                                           [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
                                         }];
+}
+
+- (void)handlePasteboardItemDictionary:(NSDictionary *)dictionary
+                   movedFromHistoryKey:(NSString *)sourceHistoryKey
+                           toHistoryKey:(NSString *)destinationHistoryKey {
+    if ([destinationHistoryKey length] == 0) {
+        return;
+    }
+
+    if ([self hasLoadedHistoryKey:destinationHistoryKey]) {
+        [[self tableViewForHistoryKey:destinationHistoryKey] upsertItemDictionaryAtTop:dictionary
+                                                                                 limit:[self limitForHistoryKey:destinationHistoryKey]];
+        [self markHistoryKeyLoaded:destinationHistoryKey];
+    } else {
+        [self markHistoryKeyDirty:destinationHistoryKey];
+    }
 }
 
 - (void)showPreviewWithItem:(PasteboardItem *)item {

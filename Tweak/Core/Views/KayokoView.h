@@ -57,6 +57,10 @@ static CGFloat const kTitleLabelLeadingInset = 64;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
 
 - (void)showPreviewWithItem:(PasteboardItem *)item;
+- (void)handleHistoryChanged;
+- (void)handlePasteboardItemDictionary:(NSDictionary *)dictionary
+                   movedFromHistoryKey:(NSString *)sourceHistoryKey
+                           toHistoryKey:(NSString *)destinationHistoryKey;
 - (void)show;
 - (void)hide;
 - (void)reload;

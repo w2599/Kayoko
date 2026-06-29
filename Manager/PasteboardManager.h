@@ -11,6 +11,15 @@
 
 static NSString *const kHistoryKeyHistory = @"history";
 static NSString *const kHistoryKeyFavorites = @"favorites";
+static NSString *const kPasteboardManagerHistoryDidChangeNotification = @"com.82flex.kayoko.history.did-change";
+static NSString *const kPasteboardManagerHistoryChangeTypeKey = @"change_type";
+static NSString *const kPasteboardManagerHistoryChangeHistoryKeyKey = @"history_key";
+static NSString *const kPasteboardManagerHistoryChangeItemKey = @"item";
+static NSString *const kPasteboardManagerHistoryChangeLimitKey = @"limit";
+static NSString *const kPasteboardManagerHistoryChangeTypeReload = @"reload";
+static NSString *const kPasteboardManagerHistoryChangeTypeUpsertTop = @"upsert_top";
+static NSString *const kPasteboardManagerHistoryChangeTypeRemove = @"remove";
+static NSString *const kPasteboardManagerHistoryChangeTypeClear = @"clear";
 
 @interface PasteboardManager : NSObject
 
@@ -52,6 +61,10 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
                 completion:(void (^)(BOOL success))completion;
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
+                                        completion:(void (^)(BOOL success))completion;
+- (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
+                                shouldRemoveImages:(BOOL)shouldRemoveImages
+                           postsChangeNotification:(BOOL)postsChangeNotification
                                         completion:(void (^)(BOOL success))completion;
 
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
