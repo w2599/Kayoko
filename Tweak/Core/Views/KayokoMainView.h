@@ -9,6 +9,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
+    KayokoContentTransitionDirectionForward,
+    KayokoContentTransitionDirectionBackward,
+    KayokoContentTransitionDirectionSiblingForward,
+    KayokoContentTransitionDirectionSiblingBackward,
+    KayokoContentTransitionDirectionModalPresenting,
+    KayokoContentTransitionDirectionModalDismissing,
+};
+
 @interface _UIGrabber : UIControl
 @end
 
@@ -36,11 +45,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
-                reverse:(BOOL)reverse;
+              direction:(KayokoContentTransitionDirection)direction;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
-                reverse:(BOOL)reverse
+              direction:(KayokoContentTransitionDirection)direction
              completion:(nullable void (^)(void))completion;
 
 @end

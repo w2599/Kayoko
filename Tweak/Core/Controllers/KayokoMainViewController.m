@@ -55,9 +55,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)refreshSearchAfterEndingTransientContentIfNeeded;
 - (BOOL)isPreviewActive;
 - (BOOL)isWordSelectionActive;
+- (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
-                reverse:(BOOL)reverse
+              direction:(KayokoContentTransitionDirection)direction
              completion:(nullable void (^)(void))completion;
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
@@ -340,6 +341,7 @@ NS_ASSUME_NONNULL_END
                                          hidesSearchBar:![[self searchController] isSearchActive]];
     [[self searchController] refreshForListViewController:[self activeListViewController]];
     [[self mainView] setTitleText:[self titleForContentView:contentView]];
+    [self updateFavoritesButtonForHistoryKey:historyKey];
 }
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey {
@@ -379,7 +381,7 @@ NS_ASSUME_NONNULL_END
     [[self mainView] showContentView:[[self clearConfirmationViewController] confirmationView]
                  hideContentView:[self activeHistoryContentView]
                            title:[self titleForContentView:[[self clearConfirmationViewController] confirmationView]]
-                         reverse:NO];
+                       direction:KayokoContentTransitionDirectionModalPresenting];
 }
 
 - (void)finishHidingClearConfirmationForHistoryKey:(NSString *)historyKey {
@@ -390,7 +392,7 @@ NS_ASSUME_NONNULL_END
     [[self mainView] showContentView:contentView
                  hideContentView:[[self clearConfirmationViewController] confirmationView]
                            title:[self titleForContentView:contentView]
-                         reverse:YES];
+                       direction:KayokoContentTransitionDirectionModalDismissing];
 }
 
 - (void)hideClearConfirmationWithReload:(BOOL)reload {
@@ -460,14 +462,24 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
+    BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
+    NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
+    UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
+    [[self mainView] updateStyleForHeaderButton:[[self mainView] favoritesButton]
+                                  withImageName:imageName
+                                   andImageSize:kFavoritesButtonImageSize
+                                   andTintColor:tintColor];
+}
+
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
-                reverse:(BOOL)reverse
+              direction:(KayokoContentTransitionDirection)direction
              completion:(nullable void (^)(void))completion {
     [[self mainView] showContentView:viewToShow
                      hideContentView:viewToHide
                                title:[self titleForContentView:viewToShow]
-                             reverse:reverse
+                           direction:direction
                           completion:completion];
 }
 
@@ -481,7 +493,7 @@ NS_ASSUME_NONNULL_END
             [[self mainView] showContentView:viewToShow
                          hideContentView:viewToHide
                                    title:[self titleForContentView:viewToShow]
-                                 reverse:NO];
+                               direction:KayokoContentTransitionDirectionForward];
         } else {
             [[self mainView] setTitleText:[self titleForContentView:viewToShow]];
         }
@@ -520,9 +532,8 @@ NS_ASSUME_NONNULL_END
     BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
     NSString *targetKey = showingFavorites ? kHistoryKeyHistory : kHistoryKeyFavorites;
     UIView *viewToHide = [self activeHistoryContentView];
-    BOOL reverse = showingFavorites;
-    NSString *imageName = showingFavorites ? @"heart" : @"heart.fill";
-    UIColor *tintColor = showingFavorites ? [UIColor labelColor] : [UIColor systemPinkColor];
+    KayokoContentTransitionDirection direction =
+        showingFavorites ? KayokoContentTransitionDirectionSiblingBackward : KayokoContentTransitionDirectionSiblingForward;
 
     [self reloadTableViewForHistoryKey:targetKey
                             completion:^(KayokoHistoryListView *targetTableView) {
@@ -543,15 +554,12 @@ NS_ASSUME_NONNULL_END
                                   [[self mainView] showContentView:viewToShow
                                                hideContentView:viewToHide
                                                          title:[self titleForContentView:viewToShow]
-                                                       reverse:reverse];
+                                                     direction:direction];
                               } else {
                                   [[self mainView] setTitleText:[self titleForContentView:viewToShow]];
                               }
 
-                              [[self mainView] updateStyleForHeaderButton:[[self mainView] favoritesButton]
-                                                         withImageName:imageName
-                                                          andImageSize:kFavoritesButtonImageSize
-                                                          andTintColor:tintColor];
+                              [self updateFavoritesButtonForHistoryKey:targetKey];
                               [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
                             }];
 }
@@ -595,7 +603,7 @@ NS_ASSUME_NONNULL_END
                                                     automaticallyPaste:[self automaticallyPaste]];
         [self showContentView:[[self wordSelectionViewController] view]
               hideContentView:sourceTableView
-                      reverse:NO
+                    direction:KayokoContentTransitionDirectionForward
                    completion:nil];
         [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
         return;
@@ -604,7 +612,7 @@ NS_ASSUME_NONNULL_END
     [[self previewViewController] showPreviewWithItem:item sourceHistoryKey:historyKey];
     [self showContentView:[[self previewViewController] previewView]
           hideContentView:sourceTableView
-                  reverse:NO
+                direction:KayokoContentTransitionDirectionForward
                completion:nil];
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
@@ -626,7 +634,7 @@ NS_ASSUME_NONNULL_END
 
     [self showContentView:sourceView
           hideContentView:previewView
-                  reverse:YES
+                direction:KayokoContentTransitionDirectionBackward
                completion:^{
                  [[self previewViewController] hidePreview];
                  [self setActiveSourceContentView:nil];
@@ -651,7 +659,7 @@ NS_ASSUME_NONNULL_END
 
     [self showContentView:sourceView
           hideContentView:wordSelectionView
-                  reverse:YES
+                direction:KayokoContentTransitionDirectionBackward
                completion:^{
                  [[self wordSelectionViewController] hideWordSelection];
                  [self setActiveSourceContentView:nil];

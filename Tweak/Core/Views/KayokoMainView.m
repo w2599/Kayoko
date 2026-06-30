@@ -168,14 +168,14 @@
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
-                reverse:(BOOL)reverse {
-    [self showContentView:viewToShow hideContentView:viewToHide title:title reverse:reverse completion:nil];
+              direction:(KayokoContentTransitionDirection)direction {
+    [self showContentView:viewToShow hideContentView:viewToHide title:title direction:direction completion:nil];
 }
 
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
-                reverse:(BOOL)reverse
+              direction:(KayokoContentTransitionDirection)direction
              completion:(void (^)(void))completion {
     [UIView transitionWithView:[self titleLabel]
                       duration:0.1
@@ -185,8 +185,30 @@
                     }
                     completion:nil];
 
-    CGFloat viewToShowTransform = reverse ? 10 : -10;
-    [viewToShow setTransform:CGAffineTransformTranslate(viewToShow.transform, 0, viewToShowTransform)];
+    CGAffineTransform viewToShowTransform = CGAffineTransformIdentity;
+    CGAffineTransform viewToHideTransform = CGAffineTransformIdentity;
+    switch (direction) {
+    case KayokoContentTransitionDirectionForward:
+    case KayokoContentTransitionDirectionModalPresenting:
+        viewToShowTransform = CGAffineTransformMakeTranslation(0, -10);
+        viewToHideTransform = CGAffineTransformMakeTranslation(0, 10);
+        break;
+    case KayokoContentTransitionDirectionBackward:
+    case KayokoContentTransitionDirectionModalDismissing:
+        viewToShowTransform = CGAffineTransformMakeTranslation(0, 10);
+        viewToHideTransform = CGAffineTransformMakeTranslation(0, -10);
+        break;
+    case KayokoContentTransitionDirectionSiblingForward:
+        viewToShowTransform = CGAffineTransformMakeTranslation(10, 0);
+        viewToHideTransform = CGAffineTransformMakeTranslation(-10, 0);
+        break;
+    case KayokoContentTransitionDirectionSiblingBackward:
+        viewToShowTransform = CGAffineTransformMakeTranslation(-10, 0);
+        viewToHideTransform = CGAffineTransformMakeTranslation(10, 0);
+        break;
+    }
+
+    [viewToShow setTransform:viewToShowTransform];
     [viewToShow setAlpha:0];
     [viewToShow setHidden:NO];
 
@@ -200,8 +222,7 @@
           [viewToShow setTransform:CGAffineTransformIdentity];
           [viewToShow setAlpha:1];
 
-          CGFloat viewToHideTransform = reverse ? -10 : 10;
-          [viewToHide setTransform:CGAffineTransformTranslate(viewToShow.transform, 0, viewToHideTransform)];
+          [viewToHide setTransform:viewToHideTransform];
           [viewToHide setAlpha:0];
         }
         completion:^(__unused BOOL finished) {

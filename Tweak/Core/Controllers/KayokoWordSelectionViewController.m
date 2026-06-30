@@ -56,6 +56,7 @@ NS_ASSUME_NONNULL_END
 
         __weak typeof(self) weakSelf = self;
         [_wordSelectionView setSelectionChangedHandler:^{
+          [weakSelf updateActionButtonState];
           if ([weakSelf selectionChangedHandler]) {
               [weakSelf selectionChangedHandler]();
           }
