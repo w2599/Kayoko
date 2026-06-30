@@ -452,46 +452,50 @@ __attribute((constructor)) static void initialize() {
         return;
     }
 
-    if (![NSProcessInfo processInfo]) {
-        return;
-    }
-
-    NSString *processName = [[NSProcessInfo processInfo] processName];
-    BOOL isSpringBoard = [@"SpringBoard" isEqualToString:processName];
-    BOOL isKeyboardExtension = kayokoIsKeyboardExtensionProcess();
-
-    BOOL shouldLoad = NO;
-    NSArray<NSString *> *args = [[objc_getClass("NSProcessInfo") processInfo] arguments];
-    NSUInteger count = [args count];
-    if (count != 0) {
-        NSString *executablePath = args[0];
-        if (executablePath) {
-            NSString *processName = [executablePath lastPathComponent];
-            BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound ||
-                                 [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
-            BOOL isFileProvider = [[processName lowercaseString] rangeOfString:@"fileprovider"].location != NSNotFound;
-            BOOL skip = [processName isEqualToString:@"AdSheet"] || [processName isEqualToString:@"CoreAuthUI"] ||
-                        [processName isEqualToString:@"InCallService"] ||
-                        [processName isEqualToString:@"MessagesNotificationViewService"];
-            if (((!isFileProvider && isApplication && !skip) || isSpringBoard) &&
-                ([executablePath rangeOfString:@".appex/"].location == NSNotFound || isKeyboardExtension)) {
-                shouldLoad = YES;
-            }
-        }
-    }
-
-    if (!shouldLoad) {
-        return;
-    }
-
-    applicationIsInForeground = [[UIApplication sharedApplication] applicationState] == UIApplicationStateActive;
-
-    if (isKeyboardExtension) {
+    if (kayokoIsKeyboardExtensionProcess()) {
         if (kayokoHelperPrefsActivationMethod & kActivationMethodSwipeUp) {
             EnableKayokoActivationSwipeUpForKeyboardExtension();
         }
         return;
     }
+
+    NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
+    NSUInteger count = [args count];
+    if (count == 0) {
+        return;
+    }
+
+    NSString *executablePath = args[0];
+    if (executablePath.length == 0) {
+        return;
+    }
+
+    BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound ||
+                         [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
+    if (!isApplication) {
+        return;
+    }
+
+    NSString *processName = [executablePath lastPathComponent];
+    BOOL isFileProvider = [[processName lowercaseString] rangeOfString:@"fileprovider"].location != NSNotFound;
+    if (isFileProvider) {
+        return;
+    }
+
+    BOOL isProtectedApplication = [processName isEqualToString:@"AdSheet"] ||
+                                  [processName isEqualToString:@"CoreAuthUI"] ||
+                                  [processName isEqualToString:@"InCallService"] ||
+                                  [processName isEqualToString:@"MessagesNotificationViewService"];
+    if (isProtectedApplication) {
+        return;
+    }
+
+    BOOL isApplicationExtension = [executablePath rangeOfString:@".appex/"].location != NSNotFound;
+    if (isApplicationExtension) {
+        return;
+    }
+
+    applicationIsInForeground = [[UIApplication sharedApplication] applicationState] == UIApplicationStateActive;
 
     // Prediction Bar
     if (kayokoHelperPrefsActivationMethod & kActivationMethodPredictionBar) {
