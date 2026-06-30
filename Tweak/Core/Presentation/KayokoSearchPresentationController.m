@@ -281,9 +281,9 @@ NS_ASSUME_NONNULL_END
               [containerView setFrame:targetFrame];
               [containerView setNeedsLayout];
               [containerView layoutIfNeeded];
+              [self hideSearchBarInTableView:activeTableView animated:NO];
             }
             completion:^(__unused BOOL finished) {
-              [self hideSearchBarInTableView:activeTableView animated:YES];
               if (completion) {
                   completion();
               }
