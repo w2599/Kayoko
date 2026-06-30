@@ -95,8 +95,9 @@ NS_ASSUME_NONNULL_END
     for (KayokoHistoryMigrationSource *source in [self migrationSources]) {
         BOOL sourceExists = NO;
         NSError *sourceError = nil;
-        NSDictionary<NSString *, id> *legacyJSON =
-            [self legacyHistoryJSONForSource:source exists:&sourceExists error:&sourceError];
+        NSDictionary<NSString *, id> *legacyJSON = [self legacyHistoryJSONForSource:source
+                                                                             exists:&sourceExists
+                                                                              error:&sourceError];
         if (!legacyJSON) {
             if (!sourceExists) {
                 continue;
@@ -108,11 +109,12 @@ NS_ASSUME_NONNULL_END
             continue;
         }
 
-        NSArray<NSDictionary<NSString *, id> *> *historyItems = [self preparedItemsFromLegacyJSON:legacyJSON
-                                                                                        primaryKey:kKayokoMigratorHistoryKey
-                                                                                       fallbackKey:@"History"
-                                                                                            source:source
-                                                                                             error:&sourceError];
+        NSArray<NSDictionary<NSString *, id> *> *historyItems =
+            [self preparedItemsFromLegacyJSON:legacyJSON
+                                   primaryKey:kKayokoMigratorHistoryKey
+                                  fallbackKey:@"History"
+                                       source:source
+                                        error:&sourceError];
         if (!historyItems) {
             didFailSource = YES;
             if (!firstSourceError) {
@@ -172,8 +174,8 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Private
 
 - (NSDictionary<NSString *, id> *)legacyHistoryJSONForSource:(KayokoHistoryMigrationSource *)source
-                                                       exists:(BOOL *)exists
-                                                        error:(NSError **)error {
+                                                      exists:(BOOL *)exists
+                                                       error:(NSError **)error {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     if (![fileManager fileExistsAtPath:[source historyPath]]) {
         if (exists) {
@@ -204,10 +206,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSArray<NSDictionary<NSString *, id> *> *)preparedItemsFromLegacyJSON:(NSDictionary<NSString *, id> *)json
-                                                               primaryKey:(NSString *)primaryKey
-                                                              fallbackKey:(NSString *)fallbackKey
-                                                                   source:(KayokoHistoryMigrationSource *)source
-                                                                    error:(NSError **)error {
+                                                              primaryKey:(NSString *)primaryKey
+                                                             fallbackKey:(NSString *)fallbackKey
+                                                                  source:(KayokoHistoryMigrationSource *)source
+                                                                   error:(NSError **)error {
     NSArray<NSDictionary<NSString *, id> *> *items = [self itemsFromLegacyJSON:json
                                                                     primaryKey:primaryKey
                                                                    fallbackKey:fallbackKey];
@@ -243,8 +245,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSDictionary<NSString *, id> *)preparedItemDictionary:(NSDictionary<NSString *, id> *)item
-                                                   source:(KayokoHistoryMigrationSource *)source
-                                                    error:(NSError **)error {
+                                                  source:(KayokoHistoryMigrationSource *)source
+                                                   error:(NSError **)error {
     NSString *imageName = [self stringValueFromDictionary:item key:kItemKeyImageName];
     if ([imageName length] == 0) {
         return item;

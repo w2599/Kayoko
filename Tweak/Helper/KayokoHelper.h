@@ -9,7 +9,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN NSUserDefaults * _Nullable kayokoHelperPreferences;
+OBJC_EXTERN NSUserDefaults *_Nullable kayokoHelperPreferences;
 OBJC_EXTERN BOOL kayokoHelperPrefsEnabled;
 OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
 OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;
@@ -95,8 +95,8 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 @end
 
 @interface _UICalloutBarSystemButtonDescription : NSObject
-@property (nonatomic, readonly) SEL action;
-+ (instancetype)buttonDescriptionWithTitle:(NSString *)arg1 action:(SEL)arg2 type:(int)arg3 ;
+@property(nonatomic, readonly) SEL action;
++ (instancetype)buttonDescriptionWithTitle:(NSString *)arg1 action:(SEL)arg2 type:(int)arg3;
 @end
 
 @interface UICalloutBar : UIView

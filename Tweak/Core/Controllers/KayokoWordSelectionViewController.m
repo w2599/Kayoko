@@ -31,9 +31,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (void)resetHeaderState;
 - (void)updateStyleForHeaderButton:(UIButton *)button
-                      withImageName:(NSString *)imageName
-                       andImageSize:(NSUInteger)imageSize
-                       andTintColor:(UIColor *)color;
+                     withImageName:(NSString *)imageName
+                      andImageSize:(NSUInteger)imageSize
+                      andTintColor:(UIColor *)color;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -86,9 +86,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateStyleForHeaderButton:(UIButton *)button
-                      withImageName:(NSString *)imageName
-                       andImageSize:(NSUInteger)imageSize
-                       andTintColor:(UIColor *)color {
+                     withImageName:(NSString *)imageName
+                      andImageSize:(NSUInteger)imageSize
+                      andTintColor:(UIColor *)color {
     UIImageSymbolConfiguration *configuration =
         [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
     UIImage *image = [UIImage systemImageNamed:imageName] ?: [UIImage systemImageNamed:@"doc.on.doc"];
@@ -97,8 +97,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)showWordSelectionWithItem:(PasteboardItem *)item
-                  sourceHistoryKey:(NSString *)sourceHistoryKey
-                automaticallyPaste:(BOOL)automaticallyPaste {
+                 sourceHistoryKey:(NSString *)sourceHistoryKey
+               automaticallyPaste:(BOOL)automaticallyPaste {
     [self setSourceItem:item];
     [self setSourceHistoryKey:sourceHistoryKey];
 
@@ -107,16 +107,17 @@ NS_ASSUME_NONNULL_END
     [[self wordSelectionView] setHidden:NO];
 
     [self updateStyleForHeaderButton:[self favoritesButton]
-                        withImageName:@"arrowshape.turn.up.backward"
-                         andImageSize:kFavoritesButtonImageSize
-                         andTintColor:[UIColor labelColor]];
+                       withImageName:@"arrowshape.turn.up.backward"
+                        andImageSize:kFavoritesButtonImageSize
+                        andTintColor:[UIColor labelColor]];
     [self updateStyleForHeaderButton:[self backButton]
-                        withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")
-                         andImageSize:kBackButtonImageSize
-                         andTintColor:[UIColor labelColor]];
-    [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
-                                                                                                          value:nil
-                                                                                                          table:@"Tweak"]];
+                       withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")andImageSize
+                                    :kBackButtonImageSize
+                        andTintColor:[UIColor labelColor]];
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
     [[self backButton] setAccessibilityLabel:[[PasteboardManager localizationBundle]
                                                  localizedStringForKey:(automaticallyPaste ? @"Paste" : @"Copy")
                                                                  value:nil
@@ -124,7 +125,6 @@ NS_ASSUME_NONNULL_END
     [[self clearButton] setHidden:YES];
     [[self backButton] setHidden:NO];
     [self updateActionButtonState];
-
 }
 
 - (void)prepareToHideWordSelection {
@@ -168,9 +168,10 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setEnabled:YES];
     [[self backButton] setAlpha:1.0];
     [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
-    [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                                          value:nil
-                                                                                                          table:@"Tweak"]];
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
 }
 
 - (void)resetWordSelectionState {
@@ -186,9 +187,9 @@ NS_ASSUME_NONNULL_END
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
     UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     [self updateStyleForHeaderButton:[self favoritesButton]
-                        withImageName:imageName
-                         andImageSize:kFavoritesButtonImageSize
-                         andTintColor:tintColor];
+                       withImageName:imageName
+                        andImageSize:kFavoritesButtonImageSize
+                        andTintColor:tintColor];
 }
 
 - (void)updateActionButtonState {

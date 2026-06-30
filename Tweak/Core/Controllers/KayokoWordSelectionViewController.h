@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)wordSelectionViewControllerDidRequestHideContainer:(KayokoWordSelectionViewController *)controller;
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
-    triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
+     triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
 
 @end
 
@@ -42,8 +42,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)canShowText:(NSString *)text;
 - (void)showWordSelectionWithItem:(PasteboardItem *)item
-                  sourceHistoryKey:(NSString *)sourceHistoryKey
-                automaticallyPaste:(BOOL)automaticallyPaste;
+                 sourceHistoryKey:(NSString *)sourceHistoryKey
+               automaticallyPaste:(BOOL)automaticallyPaste;
 - (void)prepareToHideWordSelection;
 - (void)hideWordSelection;
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste;

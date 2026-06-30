@@ -45,8 +45,8 @@ NS_ASSUME_NONNULL_END
     if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
         BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
         icon = [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
-                           inBundle:[PasteboardManager localizationBundle]
-      compatibleWithTraitCollection:nil];
+                                 inBundle:[PasteboardManager localizationBundle]
+            compatibleWithTraitCollection:nil];
     } else {
         icon = [UIImage _applicationIconImageForBundleIdentifier:bundleIdentifier
                                                           format:2

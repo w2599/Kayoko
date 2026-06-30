@@ -64,7 +64,9 @@
                              }];
 }
 
-- (void)deleteItem:(PasteboardItem *)item historyKey:(NSString *)historyKey completion:(void (^)(BOOL success))completion {
+- (void)deleteItem:(PasteboardItem *)item
+        historyKey:(NSString *)historyKey
+        completion:(void (^)(BOOL success))completion {
     if (!item || [historyKey length] == 0) {
         if (completion) {
             completion(NO);
@@ -79,9 +81,9 @@
 }
 
 - (void)moveItem:(PasteboardItem *)item
-  sourceHistoryKey:(NSString *)sourceHistoryKey
-destinationHistoryKey:(NSString *)destinationHistoryKey
-      completion:(void (^)(BOOL success))completion {
+         sourceHistoryKey:(NSString *)sourceHistoryKey
+    destinationHistoryKey:(NSString *)destinationHistoryKey
+               completion:(void (^)(BOOL success))completion {
     if (!item || [sourceHistoryKey length] == 0 || [destinationHistoryKey length] == 0) {
         if (completion) {
             completion(NO);

@@ -21,9 +21,9 @@ NS_ASSUME_NONNULL_BEGIN
         historyKey:(NSString *)historyKey
         completion:(nullable void (^)(BOOL success))completion;
 - (void)moveItem:(PasteboardItem *)item
-  sourceHistoryKey:(NSString *)sourceHistoryKey
-destinationHistoryKey:(NSString *)destinationHistoryKey
-      completion:(nullable void (^)(BOOL success))completion;
+         sourceHistoryKey:(NSString *)sourceHistoryKey
+    destinationHistoryKey:(NSString *)destinationHistoryKey
+               completion:(nullable void (^)(BOOL success))completion;
 
 @end
 

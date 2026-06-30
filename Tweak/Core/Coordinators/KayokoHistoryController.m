@@ -5,8 +5,8 @@
 
 #import "KayokoHistoryController.h"
 
-#import "KayokoHistoryListViewController.h"
 #import "KayokoHistoryListView.h"
+#import "KayokoHistoryListViewController.h"
 #import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -19,8 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) KayokoHistoryListViewController *favoritesListViewController;
 - (void)loadTableViewForHistoryKey:(NSString *)historyKey
             animatingTopInsertions:(BOOL)animatingTopInsertions
-                   notifiesDelegate:(BOOL)notifiesDelegate
-                         completion:(nullable void (^)(KayokoHistoryListView *tableView))completion;
+                  notifiesDelegate:(BOOL)notifiesDelegate
+                        completion:(nullable void (^)(KayokoHistoryListView *tableView))completion;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -54,7 +54,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (KayokoHistoryListViewController *)listViewControllerForHistoryKey:(NSString *)historyKey {
-    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesListViewController] : [self historyListViewController];
+    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesListViewController]
+                                                             : [self historyListViewController];
 }
 
 - (KayokoHistoryListView *)tableViewForHistoryKey:(NSString *)historyKey {
@@ -62,7 +63,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (KayokoHistoryListView *)activeTableViewWithClearConfirmationHistoryKey:(NSString *)clearConfirmationHistoryKey {
-    return [self tableViewForHistoryKey:[self effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:clearConfirmationHistoryKey]];
+    return [self tableViewForHistoryKey:
+                     [self effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:clearConfirmationHistoryKey]];
 }
 
 - (BOOL)hasLoadedHistoryKey:(NSString *)historyKey {
@@ -101,7 +103,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)shouldAnimateUpdatesForHistoryKey:(NSString *)historyKey {
-    return [[self activeHistoryKey] isEqualToString:historyKey] && [[self delegate] historyControllerIsPanelVisible:self];
+    return
+        [[self activeHistoryKey] isEqualToString:historyKey] && [[self delegate] historyControllerIsPanelVisible:self];
 }
 
 - (BOOL)shouldDeferEmptyInactiveUpsertForHistoryKey:(NSString *)historyKey
@@ -136,8 +139,8 @@ NS_ASSUME_NONNULL_END
             return;
         }
         [listViewController upsertItemDictionaryAtTop:dictionary
-                                                limit:(limit ?: [self limitForHistoryKey:historyKey])
-                                            animating:[self shouldAnimateUpdatesForHistoryKey:historyKey]];
+                                                limit:(limit ?: [self limitForHistoryKey:historyKey])animating
+                                                     :[self shouldAnimateUpdatesForHistoryKey:historyKey]];
     } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeRemove]) {
         [listViewController removeItemDictionary:dictionary];
     } else {
@@ -155,7 +158,8 @@ NS_ASSUME_NONNULL_END
     [self setPendingLocalHistoryChangeNotificationCount:[self pendingLocalHistoryChangeNotificationCount] + 1];
     NSDictionary<NSString *, id> *userInfo = [notification userInfo];
     NSString *historyKey = userInfo[kPasteboardManagerHistoryChangeHistoryKeyKey];
-    NSString *changeType = userInfo[kPasteboardManagerHistoryChangeTypeKey] ?: kPasteboardManagerHistoryChangeTypeReload;
+    NSString *changeType =
+        userInfo[kPasteboardManagerHistoryChangeTypeKey] ?: kPasteboardManagerHistoryChangeTypeReload;
     NSDictionary<NSString *, id> *dictionary = userInfo[kPasteboardManagerHistoryChangeItemKey];
     NSUInteger limit = [userInfo[kPasteboardManagerHistoryChangeLimitKey] unsignedIntegerValue];
 
@@ -167,10 +171,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [self updateCachedTableViewForHistoryKey:historyKey
-                                  changeType:changeType
-                              itemDictionary:dictionary
-                                       limit:limit];
+    [self updateCachedTableViewForHistoryKey:historyKey changeType:changeType itemDictionary:dictionary limit:limit];
 }
 
 - (void)handleHistoryChanged {
@@ -187,17 +188,17 @@ NS_ASSUME_NONNULL_END
 
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
               animatingTopInsertions:(BOOL)animatingTopInsertions
-                           completion:(void (^)(KayokoHistoryListView *tableView))completion {
+                          completion:(void (^)(KayokoHistoryListView *tableView))completion {
     [self loadTableViewForHistoryKey:historyKey
               animatingTopInsertions:animatingTopInsertions
-                     notifiesDelegate:YES
-                           completion:completion];
+                    notifiesDelegate:YES
+                          completion:completion];
 }
 
 - (void)loadTableViewForHistoryKey:(NSString *)historyKey
             animatingTopInsertions:(BOOL)animatingTopInsertions
-                   notifiesDelegate:(BOOL)notifiesDelegate
-                         completion:(void (^)(KayokoHistoryListView *tableView))completion {
+                  notifiesDelegate:(BOOL)notifiesDelegate
+                        completion:(void (^)(KayokoHistoryListView *tableView))completion {
     KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
     KayokoHistoryListView *tableView = [listViewController tableView];
     if (![self needsReloadForHistoryKey:historyKey]) {
@@ -207,45 +208,44 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:historyKey
-                                                        completion:^(NSMutableArray<NSDictionary<NSString *, id> *> *items) {
-                                                          [listViewController updateDataWithItems:items
-                                                                            animatingTopInsertions:animatingTopInsertions];
-                                                          [self markHistoryKeyLoaded:historyKey];
-                                                          if (notifiesDelegate &&
-                                                              [[self activeHistoryKey] isEqualToString:historyKey]) {
-                                                              [[self delegate] historyController:self
-                                                                           didUpdateActiveTableView:tableView];
-                                                          }
-                                                          if (completion) {
-                                                              completion(tableView);
-                                                          }
-                                                        }];
+    [[PasteboardManager sharedInstance]
+        getItemsFromHistoryWithKey:historyKey
+                        completion:^(NSMutableArray<NSDictionary<NSString *, id> *> *items) {
+                          [listViewController updateDataWithItems:items animatingTopInsertions:animatingTopInsertions];
+                          [self markHistoryKeyLoaded:historyKey];
+                          if (notifiesDelegate && [[self activeHistoryKey] isEqualToString:historyKey]) {
+                              [[self delegate] historyController:self didUpdateActiveTableView:tableView];
+                          }
+                          if (completion) {
+                              completion(tableView);
+                          }
+                        }];
 }
 
-- (void)reloadTableViewForHistoryKey:(NSString *)historyKey completion:(void (^)(KayokoHistoryListView *tableView))completion {
+- (void)reloadTableViewForHistoryKey:(NSString *)historyKey
+                          completion:(void (^)(KayokoHistoryListView *tableView))completion {
     [self reloadTableViewForHistoryKey:historyKey animatingTopInsertions:NO completion:completion];
 }
 
 - (void)preloadHistoryWithCompletion:(void (^)(void))completion {
     [self loadTableViewForHistoryKey:kHistoryKeyHistory
               animatingTopInsertions:NO
-                     notifiesDelegate:NO
-                           completion:^(__unused KayokoHistoryListView *historyTableView) {
-                             [self loadTableViewForHistoryKey:kHistoryKeyFavorites
-                                           animatingTopInsertions:NO
-                                                  notifiesDelegate:NO
-                                                        completion:^(__unused KayokoHistoryListView *favoritesTableView) {
-                                                          if (completion) {
-                                                              completion();
-                                                          }
-                                                        }];
-                           }];
+                    notifiesDelegate:NO
+                          completion:^(__unused KayokoHistoryListView *historyTableView) {
+                            [self loadTableViewForHistoryKey:kHistoryKeyFavorites
+                                      animatingTopInsertions:NO
+                                            notifiesDelegate:NO
+                                                  completion:^(__unused KayokoHistoryListView *favoritesTableView) {
+                                                    if (completion) {
+                                                        completion();
+                                                    }
+                                                  }];
+                          }];
 }
 
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
-                           toHistoryKey:(NSString *)destinationHistoryKey {
+                          toHistoryKey:(NSString *)destinationHistoryKey {
     if ([destinationHistoryKey length] == 0) {
         return;
     }
@@ -259,13 +259,13 @@ NS_ASSUME_NONNULL_END
             return;
         }
 
-        [destinationListViewController upsertItemDictionaryAtTop:dictionary
-                                                           limit:[self limitForHistoryKey:destinationHistoryKey]
-                                                       animating:[self shouldAnimateUpdatesForHistoryKey:destinationHistoryKey]];
+        [destinationListViewController
+            upsertItemDictionaryAtTop:dictionary
+                                limit:[self limitForHistoryKey:destinationHistoryKey]
+                            animating:[self shouldAnimateUpdatesForHistoryKey:destinationHistoryKey]];
         [self markHistoryKeyLoaded:destinationHistoryKey];
         if ([[self activeHistoryKey] isEqualToString:destinationHistoryKey]) {
-            [[self delegate] historyController:self
-                      didUpdateActiveTableView:[destinationListViewController tableView]];
+            [[self delegate] historyController:self didUpdateActiveTableView:[destinationListViewController tableView]];
         }
     } else {
         [self markHistoryKeyDirty:destinationHistoryKey];

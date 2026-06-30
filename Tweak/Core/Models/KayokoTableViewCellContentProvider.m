@@ -43,12 +43,14 @@ NS_ASSUME_NONNULL_END
                            scaledToSize:CGSizeMake(originalImage.size.width / 4, originalImage.size.height / 4)];
 }
 
-- (KayokoTableViewCellContent *)cellContentForItem:(PasteboardItem *)item previewLineCount:(NSUInteger)previewLineCount {
+- (KayokoTableViewCellContent *)cellContentForItem:(PasteboardItem *)item
+                                  previewLineCount:(NSUInteger)previewLineCount {
     KayokoTableViewCellContent *content = [[KayokoTableViewCellContent alloc] init];
     NSString *bundleIdentifier = [item bundleIdentifier];
     [content setIcon:[[self metadataProvider] iconForBundleIdentifier:bundleIdentifier]];
     [content setDisplayName:[[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier]];
-    [content setContentText:[([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]]];
+    [content
+        setContentText:[([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]]];
     [content setContentImage:[self scaledContentImageForItem:item]];
     [content setPreviewLineCount:previewLineCount];
     return content;

@@ -17,11 +17,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable, readonly) PasteboardItem *previewItem;
 
 - (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
-                          backButton:(UIButton *)backButton
-                         clearButton:(UIButton *)clearButton;
+                             backButton:(UIButton *)backButton
+                            clearButton:(UIButton *)clearButton;
 
-- (void)showPreviewWithItem:(PasteboardItem *)item
-           sourceHistoryKey:(NSString *)sourceHistoryKey;
+- (void)showPreviewWithItem:(PasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey;
 - (void)prepareToHidePreview;
 - (void)hidePreview;
 - (void)resetPreviewState;

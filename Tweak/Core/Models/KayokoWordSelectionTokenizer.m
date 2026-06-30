@@ -104,7 +104,8 @@
     return tokens;
 }
 
-+ (void)markTokenForLineBreakAtIndex:(NSUInteger)index inTokens:(NSMutableArray<NSDictionary<NSString *, id> *> *)tokens {
++ (void)markTokenForLineBreakAtIndex:(NSUInteger)index
+                            inTokens:(NSMutableArray<NSDictionary<NSString *, id> *> *)tokens {
     if (index >= [tokens count]) {
         return;
     }

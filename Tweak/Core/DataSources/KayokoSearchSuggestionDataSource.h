@@ -12,7 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol KayokoSearchSuggestionDataSourceDelegate <NSObject>
 
 - (void)searchSuggestionDataSource:(KayokoSearchSuggestionDataSource *)controller
-        didSelectBundleIdentifier:(NSString *)bundleIdentifier;
+         didSelectBundleIdentifier:(NSString *)bundleIdentifier;
 
 @end
 

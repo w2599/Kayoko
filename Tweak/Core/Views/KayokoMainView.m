@@ -65,18 +65,20 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [self setHeaderTopConstraint:[[[self headerView] topAnchor] constraintEqualToAnchor:[self topAnchor]]];
         [self setHeaderSafeAreaTopConstraint:[[[self headerView] topAnchor]
-                                                constraintEqualToAnchor:[[self safeAreaLayoutGuide] topAnchor]]];
-        [self setHeaderLeadingConstraint:[[[self headerView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]]];
-        [self setHeaderSafeAreaLeadingConstraint:[[[self headerView] leadingAnchor]
-                                                     constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]]];
-        [self setHeaderTrailingConstraint:[[[self headerView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]]];
+                                                 constraintEqualToAnchor:[[self safeAreaLayoutGuide] topAnchor]]];
+        [self setHeaderLeadingConstraint:[[[self headerView] leadingAnchor]
+                                             constraintEqualToAnchor:[self leadingAnchor]]];
+        [self
+            setHeaderSafeAreaLeadingConstraint:[[[self headerView] leadingAnchor]
+                                                   constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]]];
+        [self setHeaderTrailingConstraint:[[[self headerView] trailingAnchor]
+                                              constraintEqualToAnchor:[self trailingAnchor]]];
         [self setHeaderSafeAreaTrailingConstraint:[[[self headerView] trailingAnchor]
-                                                      constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]]];
+                                                      constraintEqualToAnchor:[[self safeAreaLayoutGuide]
+                                                                                  trailingAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self headerView] heightAnchor] constraintEqualToConstant:60],
-            [self headerTopConstraint],
-            [self headerLeadingConstraint],
-            [self headerTrailingConstraint]
+            [[[self headerView] heightAnchor] constraintEqualToConstant:60], [self headerTopConstraint],
+            [self headerLeadingConstraint], [self headerTrailingConstraint]
         ]];
 
         [self setGrabber:[[_UIGrabber alloc] init]];
@@ -149,7 +151,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
         [self setTitleTapControl:[[UIControl alloc] init]];
         [[self titleTapControl] setBackgroundColor:[UIColor clearColor]];
-        [[self titleTapControl] setAccessibilityTraits:[[self titleTapControl] accessibilityTraits] | UIAccessibilityTraitButton];
+        [[self titleTapControl]
+            setAccessibilityTraits:[[self titleTapControl] accessibilityTraits] | UIAccessibilityTraitButton];
         [[self titleTapControl] setAccessibilityLabel:[[self titleLabel] text]];
         [[self headerView] addSubview:[self titleTapControl]];
 
@@ -161,7 +164,6 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
             [[[self titleTapControl] centerYAnchor] constraintEqualToAnchor:[[self titleLabel] centerYAnchor]],
             [[[self titleTapControl] heightAnchor] constraintEqualToConstant:kKayokoTitleTapControlHeight]
         ]];
-
     }
 
     return self;
@@ -177,14 +179,15 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 - (void)constrainContentView:(UIView *)contentView {
     [contentView setTranslatesAutoresizingMaskIntoConstraints:NO];
     NSLayoutConstraint *leadingConstraint = [[contentView leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]];
-    NSLayoutConstraint *safeAreaLeadingConstraint = [[contentView leadingAnchor]
-        constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]];
-    NSLayoutConstraint *trailingConstraint = [[contentView trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]];
-    NSLayoutConstraint *safeAreaTrailingConstraint = [[contentView trailingAnchor]
-        constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]];
+    NSLayoutConstraint *safeAreaLeadingConstraint =
+        [[contentView leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]];
+    NSLayoutConstraint *trailingConstraint =
+        [[contentView trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]];
+    NSLayoutConstraint *safeAreaTrailingConstraint =
+        [[contentView trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]];
     NSLayoutConstraint *bottomConstraint = [[contentView bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]];
-    NSLayoutConstraint *safeAreaBottomConstraint = [[contentView bottomAnchor]
-        constraintEqualToAnchor:[[self safeAreaLayoutGuide] bottomAnchor]];
+    NSLayoutConstraint *safeAreaBottomConstraint =
+        [[contentView bottomAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] bottomAnchor]];
     [[self contentLeadingConstraints] addObject:leadingConstraint];
     [[self contentSafeAreaLeadingConstraints] addObject:safeAreaLeadingConstraint];
     [[self contentTrailingConstraints] addObject:trailingConstraint];

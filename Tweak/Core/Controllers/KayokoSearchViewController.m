@@ -36,9 +36,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)layoutSuggestionTableViewWithHeaderView:(UIView *)headerView
-                                     itemCount:(NSUInteger)itemCount
-                                  searchActive:(BOOL)searchActive
-                            searchHeaderHeight:(CGFloat)searchHeaderHeight {
+                                      itemCount:(NSUInteger)itemCount
+                                   searchActive:(BOOL)searchActive
+                             searchHeaderHeight:(CGFloat)searchHeaderHeight {
     CGFloat height = MIN(itemCount * [[self searchView] rowHeight], kKayokoAppTokenSuggestionMaximumHeight);
     if (height <= 0 || !searchActive) {
         [[self searchView] setFrame:CGRectZero];

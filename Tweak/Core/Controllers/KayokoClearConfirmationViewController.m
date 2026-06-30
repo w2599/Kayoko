@@ -23,8 +23,12 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _confirmationView = [[KayokoClearConfirmationView alloc] init];
         [self setView:_confirmationView];
-        [[_confirmationView cancelButton] addTarget:self action:@selector(handleCancel) forControlEvents:UIControlEventTouchUpInside];
-        [[_confirmationView confirmButton] addTarget:self action:@selector(handleConfirm) forControlEvents:UIControlEventTouchUpInside];
+        [[_confirmationView cancelButton] addTarget:self
+                                             action:@selector(handleCancel)
+                                   forControlEvents:UIControlEventTouchUpInside];
+        [[_confirmationView confirmButton] addTarget:self
+                                              action:@selector(handleConfirm)
+                                    forControlEvents:UIControlEventTouchUpInside];
     }
     return self;
 }
@@ -54,12 +58,13 @@ NS_ASSUME_NONNULL_END
                            postsChangeNotification:NO
                                         completion:^(BOOL success) {
                                           if (success) {
-                                              [[self delegate] clearConfirmationViewControllerDidClearHistoryKey:historyKey];
+                                              [[self delegate]
+                                                  clearConfirmationViewControllerDidClearHistoryKey:historyKey];
                                           } else {
                                               [[[self confirmationView] cancelButton] setEnabled:YES];
                                               [[[self confirmationView] confirmButton] setEnabled:YES];
                                               [[self delegate] clearConfirmationViewController:self
-                                                                    didFailClearingHistoryKey:historyKey];
+                                                                     didFailClearingHistoryKey:historyKey];
                                           }
                                         }];
 }

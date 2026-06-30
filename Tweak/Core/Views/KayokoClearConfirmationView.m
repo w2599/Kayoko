@@ -34,8 +34,7 @@ NS_ASSUME_NONNULL_END
         [stackView setTranslatesAutoresizingMaskIntoConstraints:NO];
         [self setStackViewCenterYConstraint:[[stackView centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
-            [[stackView centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [self stackViewCenterYConstraint],
+            [[stackView centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]], [self stackViewCenterYConstraint],
             [[stackView leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
             [[stackView trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24]
         ]];

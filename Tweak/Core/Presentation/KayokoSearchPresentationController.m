@@ -55,11 +55,11 @@ NS_ASSUME_NONNULL_END
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView
-                      historySearchBar:(UISearchBar *)historySearchBar
-                    favoritesSearchBar:(UISearchBar *)favoritesSearchBar
+                     historySearchBar:(UISearchBar *)historySearchBar
+                   favoritesSearchBar:(UISearchBar *)favoritesSearchBar
                      historyTableView:(KayokoHistoryListView *)historyTableView
-                    favoritesTableView:(KayokoHistoryListView *)favoritesTableView
-                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
+                   favoritesTableView:(KayokoHistoryListView *)favoritesTableView
+                 panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
     self = [super init];
     if (self) {
         _containerView = containerView;
@@ -226,7 +226,8 @@ NS_ASSUME_NONNULL_END
     [containerView layoutIfNeeded];
     if ([containerView isKindOfClass:[KayokoMainView class]]) {
         KayokoMainView *mainView = (KayokoMainView *)containerView;
-        [mainView setContentSafeAreaAdditionalInsets:[self contentSafeAreaAdditionalInsetsForFullscreenSuperview:superview]];
+        [mainView
+            setContentSafeAreaAdditionalInsets:[self contentSafeAreaAdditionalInsetsForFullscreenSuperview:superview]];
         [mainView setContentRespectsSafeArea:YES];
     }
 
@@ -250,13 +251,14 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
-                 activeTableView:(KayokoHistoryListView *)activeTableView
-                      completion:(void (^)(void))completion {
+                activeTableView:(KayokoHistoryListView *)activeTableView
+                     completion:(void (^)(void))completion {
     [self setSearchActive:NO];
     [self resetKeyboardInsets];
     [[self panGestureRecognizer] setEnabled:YES];
 
-    CGRect targetFrame = [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [[self containerView] frame];
+    CGRect targetFrame =
+        [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [[self containerView] frame];
     [self setHasNormalFrameBeforeSearch:NO];
 
     UIView *containerView = [self containerView];
@@ -352,7 +354,8 @@ NS_ASSUME_NONNULL_END
 
     CGRect keyboardEndFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     CGRect keyboardFrameInView = [[self containerView] convertRect:keyboardEndFrame fromView:nil];
-    [self setKeyboardBottomInset:MAX(CGRectGetMaxY([[self containerView] bounds]) - CGRectGetMinY(keyboardFrameInView), 0)];
+    [self setKeyboardBottomInset:MAX(CGRectGetMaxY([[self containerView] bounds]) - CGRectGetMinY(keyboardFrameInView),
+                                     0)];
     [self applyBottomInsetsToTableViews];
 }
 

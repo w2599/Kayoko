@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)clearConfirmationViewControllerDidCancel:(KayokoClearConfirmationViewController *)controller;
 - (void)clearConfirmationViewControllerDidClearHistoryKey:(NSString *)historyKey;
 - (void)clearConfirmationViewController:(KayokoClearConfirmationViewController *)controller
-         didFailClearingHistoryKey:(NSString *)historyKey;
+              didFailClearingHistoryKey:(NSString *)historyKey;
 
 @end
 

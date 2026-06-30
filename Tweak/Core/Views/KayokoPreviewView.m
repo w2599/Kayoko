@@ -45,7 +45,6 @@
             [[[self imageView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
             [[[self imageView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
-
     }
 
     return self;

@@ -25,7 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 @interface UIApplication (Private)
-- (SBApplication * _Nullable)_accessibilityFrontMostApplication;
+- (SBApplication *_Nullable)_accessibilityFrontMostApplication;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -45,9 +45,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSDictionary<NSString *, id> *)historyChangeUserInfoWithType:(NSString *)changeType
-                                                      historyKey:(NSString *)historyKey
-                                                  itemDictionary:(NSDictionary<NSString *, id> *)itemDictionary
-                                                           limit:(NSUInteger)limit {
+                                                     historyKey:(NSString *)historyKey
+                                                 itemDictionary:(NSDictionary<NSString *, id> *)itemDictionary
+                                                          limit:(NSUInteger)limit {
     NSMutableDictionary<NSString *, id> *userInfo = [[NSMutableDictionary alloc] init];
     userInfo[kPasteboardManagerHistoryChangeTypeKey] = changeType ?: kPasteboardManagerHistoryChangeTypeReload;
     if ([historyKey length] > 0) {
@@ -484,7 +484,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)getItemsFromHistoryWithKey:(NSString *)historyKey
-                         completion:(void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion {
+                        completion:(void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion {
     [self performHistoryAsync:^{
       NSError *error = nil;
       NSMutableArray<NSDictionary<NSString *, id> *> *history =
@@ -541,9 +541,9 @@ NS_ASSUME_NONNULL_END
                                      itemDictionary:(NSDictionary<NSString *, id> *)itemDictionary
                                               limit:(NSUInteger)limit {
     NSDictionary<NSString *, id> *userInfo = [self historyChangeUserInfoWithType:changeType
-                                                                       historyKey:historyKey
-                                                                   itemDictionary:itemDictionary
-                                                                            limit:limit];
+                                                                      historyKey:historyKey
+                                                                  itemDictionary:itemDictionary
+                                                                           limit:limit];
     dispatch_async(dispatch_get_main_queue(), ^{
       [[NSNotificationCenter defaultCenter] postNotificationName:kPasteboardManagerHistoryDidChangeNotification
                                                           object:self

@@ -32,8 +32,8 @@ NS_ASSUME_NONNULL_END
 @implementation KayokoPreviewViewController
 
 - (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
-                          backButton:(UIButton *)backButton
-                         clearButton:(UIButton *)clearButton {
+                             backButton:(UIButton *)backButton
+                            clearButton:(UIButton *)clearButton {
     self = [super init];
     if (self) {
         _previewView = [[KayokoPreviewView alloc]
@@ -49,9 +49,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateStyleForHeaderButton:(UIButton *)button
-                      withImageName:(NSString *)imageName
-                       andImageSize:(NSUInteger)imageSize
-                       andTintColor:(UIColor *)color {
+                     withImageName:(NSString *)imageName
+                      andImageSize:(NSUInteger)imageSize
+                      andTintColor:(UIColor *)color {
     UIImageSymbolConfiguration *configuration =
         [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
     UIImage *image = [UIImage systemImageNamed:imageName] ?: [UIImage systemImageNamed:@"doc.on.doc"];
@@ -59,8 +59,7 @@ NS_ASSUME_NONNULL_END
     [button setTintColor:color];
 }
 
-- (void)showPreviewWithItem:(PasteboardItem *)item
-           sourceHistoryKey:(NSString *)sourceHistoryKey {
+- (void)showPreviewWithItem:(PasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey {
     [self setPreviewItem:item];
     [self setSourceHistoryKey:sourceHistoryKey];
 
@@ -77,23 +76,22 @@ NS_ASSUME_NONNULL_END
     }
 
     [self updateStyleForHeaderButton:[self favoritesButton]
-                        withImageName:@"arrowshape.turn.up.backward"
-                         andImageSize:kFavoritesButtonImageSize
-                         andTintColor:[UIColor labelColor]];
+                       withImageName:@"arrowshape.turn.up.backward"
+                        andImageSize:kFavoritesButtonImageSize
+                        andTintColor:[UIColor labelColor]];
     [self updateStyleForHeaderButton:[self backButton]
-                        withImageName:@"doc.on.doc.fill"
-                         andImageSize:kBackButtonImageSize
-                         andTintColor:[UIColor labelColor]];
-    [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
-                                                                                                          value:nil
-                                                                                                          table:@"Tweak"]];
-    [[self backButton] setAccessibilityLabel:[[PasteboardManager localizationBundle]
-                                                 localizedStringForKey:@"Copy"
-                                                                 value:nil
-                                                                 table:@"Tweak"]];
+                       withImageName:@"doc.on.doc.fill"
+                        andImageSize:kBackButtonImageSize
+                        andTintColor:[UIColor labelColor]];
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
+    [[self backButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Copy"
+                                                                                                     value:nil
+                                                                                                     table:@"Tweak"]];
     [[self clearButton] setHidden:YES];
     [[self backButton] setHidden:YES];
-
 }
 
 - (void)prepareToHidePreview {
@@ -102,9 +100,10 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setEnabled:YES];
     [[self backButton] setAlpha:1.0];
     [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
-    [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                                          value:nil
-                                                                                                          table:@"Tweak"]];
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
 }
 
 - (void)hidePreview {
@@ -123,9 +122,10 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setEnabled:YES];
     [[self backButton] setAlpha:1.0];
     [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
-    [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                                          value:nil
-                                                                                                          table:@"Tweak"]];
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
     [self setPreviewItem:nil];
     [self setSourceHistoryKey:nil];
 }
@@ -139,9 +139,9 @@ NS_ASSUME_NONNULL_END
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
     UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     [self updateStyleForHeaderButton:[self favoritesButton]
-                        withImageName:imageName
-                         andImageSize:kFavoritesButtonImageSize
-                         andTintColor:tintColor];
+                       withImageName:imageName
+                        andImageSize:kFavoritesButtonImageSize
+                        andTintColor:tintColor];
 }
 
 @end

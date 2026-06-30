@@ -16,10 +16,10 @@
 #import <roothide.h>
 #import <substrate.h>
 
+#import "Controllers/KayokoMainViewController.h"
 #import "NotificationKeys.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
-#import "Controllers/KayokoMainViewController.h"
 
 static NSTimeInterval kKayokoMinimumFeedbackInterval = 0.6;
 
@@ -152,9 +152,9 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
         [outsideDismissOverlayView setUserInteractionEnabled:NO];
         [self addSubview:outsideDismissOverlayView];
 
-        kayokoMainViewController =
-            [[KayokoMainViewController alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
-                                                                       bounds.size.width, kayokoPrefsHeightInPoints)];
+        kayokoMainViewController = [[KayokoMainViewController alloc]
+            initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width,
+                                     kayokoPrefsHeightInPoints)];
         [kayokoMainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
         apply_preferences_to_view();
         [self addSubview:[kayokoMainViewController view]];

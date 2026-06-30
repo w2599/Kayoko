@@ -71,16 +71,18 @@ NS_ASSUME_NONNULL_END
         }
 
         [seenBundleIdentifiers addObject:bundleIdentifier];
-        [tokenItems addObject:@{ @"bundleIdentifier" : bundleIdentifier }];
+        [tokenItems addObject:@{@"bundleIdentifier" : bundleIdentifier}];
     }
     [self setAvailableAppTokenItems:tokenItems];
-    [self setSelectedBundleIdentifiers:[self validBundleIdentifiersFromBundleIdentifiers:[self selectedBundleIdentifiers]]];
+    [self
+        setSelectedBundleIdentifiers:[self
+                                         validBundleIdentifiersFromBundleIdentifiers:[self selectedBundleIdentifiers]]];
 }
 
 - (void)refreshDisplayedItems {
     NSArray<NSDictionary<NSString *, id> *> *items = [self items] ?: @[];
-    NSString *searchText = [[self searchText]
-        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *searchText =
+        [[self searchText] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSArray<NSString *> *selectedBundleIdentifiers = [self selectedBundleIdentifiers] ?: @[];
 
     if ([searchText length] == 0 && [selectedBundleIdentifiers count] == 0) {
@@ -98,10 +100,9 @@ NS_ASSUME_NONNULL_END
         if ([searchText length] > 0) {
             NSString *imageName = item[kItemKeyImageName];
             NSString *content = item[kItemKeyContent];
-            if ([imageName length] > 0 ||
-                [content rangeOfString:searchText
-                               options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch].location ==
-                    NSNotFound) {
+            if ([imageName length] > 0 || [content rangeOfString:searchText
+                                                         options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
+                                                  .location == NSNotFound) {
                 continue;
             }
         }

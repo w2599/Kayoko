@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
-          didRequestPreviewForItem:(PasteboardItem *)item;
+         didRequestPreviewForItem:(PasteboardItem *)item;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
     didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
@@ -54,8 +54,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)clearItems;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary limit:(NSUInteger)limit;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
-                             limit:(NSUInteger)limit
-                         animating:(BOOL)animating;
+                            limit:(NSUInteger)limit
+                        animating:(BOOL)animating;
 - (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary;
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(nullable void (^)(BOOL success))completion;
 - (void)scrollToTopAnimated:(BOOL)animated;

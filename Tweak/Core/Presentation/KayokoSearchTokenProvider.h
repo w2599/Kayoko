@@ -12,9 +12,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<NSDictionary<NSString *, id> *> *)appTokenItemsWithAvailableItems:
     (NSArray<NSDictionary<NSString *, id> *> *)availableItems;
 - (NSArray<NSString *> *)selectedBundleIdentifiersInSearchBar:(UISearchBar *)searchBar;
-- (NSArray<NSDictionary<NSString *, id> *> *)unselectedAppTokenSuggestionItemsWithAvailableItems:
-                                            (NSArray<NSDictionary<NSString *, id> *> *)availableItems
-                                                                                        searchBar:(UISearchBar *)searchBar;
+- (NSArray<NSDictionary<NSString *, id> *> *)
+    unselectedAppTokenSuggestionItemsWithAvailableItems:(NSArray<NSDictionary<NSString *, id> *> *)availableItems
+                                              searchBar:(UISearchBar *)searchBar;
 - (void)setSearchTokensWithBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers
                                  inSearchBar:(UISearchBar *)searchBar
                               availableItems:(NSArray<NSDictionary<NSString *, id> *> *)availableItems;

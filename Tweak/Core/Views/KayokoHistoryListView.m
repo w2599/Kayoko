@@ -88,8 +88,9 @@ static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
     }
 
     UIEdgeInsets contentInset = [self contentInset];
-    CGFloat requiredBottomInset = [self minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:
-                                            [self heightForRowRemovalAtIndexPath:indexPath]];
+    CGFloat requiredBottomInset =
+        [self minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:
+                  [self heightForRowRemovalAtIndexPath:indexPath]];
     if (contentInset.bottom >= requiredBottomInset) {
         return;
     }
@@ -120,7 +121,8 @@ static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
     NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoHistoryListViewMaximumPreviewLineCount);
     _previewLineCount = lineCount;
-    [self setRowHeight:kKayokoHistoryListViewBaseRowHeight + (lineCount - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight];
+    [self setRowHeight:kKayokoHistoryListViewBaseRowHeight +
+                       (lineCount - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight];
     [self reloadData];
 }
 

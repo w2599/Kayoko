@@ -16,9 +16,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithContainerView:(UIView *)containerView;
 - (void)layoutSuggestionTableViewWithHeaderView:(UIView *)headerView
-                                     itemCount:(NSUInteger)itemCount
-                                  searchActive:(BOOL)searchActive
-                            searchHeaderHeight:(CGFloat)searchHeaderHeight;
+                                      itemCount:(NSUInteger)itemCount
+                                   searchActive:(BOOL)searchActive
+                             searchHeaderHeight:(CGFloat)searchHeaderHeight;
 
 @end
 

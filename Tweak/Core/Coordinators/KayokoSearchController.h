@@ -14,7 +14,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol KayokoSearchControllerDelegate <NSObject>
 
-- (KayokoHistoryListViewController *)activeListViewControllerForSearchController:(KayokoSearchController *)searchController;
+- (KayokoHistoryListViewController *)activeListViewControllerForSearchController:
+    (KayokoSearchController *)searchController;
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController;
 - (void)searchControllerDidFinishAnimatingSearchState:(KayokoSearchController *)searchController;
 - (void)searchController:(KayokoSearchController *)searchController
@@ -29,15 +30,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readonly) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithContainerView:(UIView *)containerView
-                            headerView:(UIView *)headerView
+                           headerView:(UIView *)headerView
                  searchViewController:(KayokoSearchViewController *)searchViewController
-             historyListViewController:(KayokoHistoryListViewController *)historyListViewController
-           favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
-                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
+            historyListViewController:(KayokoHistoryListViewController *)historyListViewController
+          favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
+                 panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
 
 - (void)layout;
 - (void)attachToListViewController:(KayokoHistoryListViewController *)listViewController
-                     hidesSearchBar:(BOOL)hidesSearchBar;
+                    hidesSearchBar:(BOOL)hidesSearchBar;
 - (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)suspendSuggestions;

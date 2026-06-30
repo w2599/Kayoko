@@ -61,9 +61,9 @@ NS_ASSUME_NONNULL_END
     return @[];
 }
 
-- (NSArray<NSDictionary<NSString *, id> *> *)unselectedAppTokenSuggestionItemsWithAvailableItems:
-                                            (NSArray<NSDictionary<NSString *, id> *> *)availableItems
-                                                                                        searchBar:(UISearchBar *)searchBar {
+- (NSArray<NSDictionary<NSString *, id> *> *)
+    unselectedAppTokenSuggestionItemsWithAvailableItems:(NSArray<NSDictionary<NSString *, id> *> *)availableItems
+                                              searchBar:(UISearchBar *)searchBar {
     NSArray<NSString *> *selectedBundleIdentifiers = [self selectedBundleIdentifiersInSearchBar:searchBar];
     NSMutableArray<NSDictionary<NSString *, id> *> *suggestionItems = [[NSMutableArray alloc] init];
     for (NSDictionary<NSString *, id> *item in [self appTokenItemsWithAvailableItems:availableItems]) {
@@ -79,7 +79,8 @@ NS_ASSUME_NONNULL_END
                                  inSearchBar:(UISearchBar *)searchBar
                               availableItems:(NSArray<NSDictionary<NSString *, id> *> *)availableItems {
     if (@available(iOS 13.0, *)) {
-        NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *itemsByBundleIdentifier = [[NSMutableDictionary alloc] init];
+        NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *itemsByBundleIdentifier =
+            [[NSMutableDictionary alloc] init];
         for (NSDictionary<NSString *, id> *item in [self appTokenItemsWithAvailableItems:availableItems]) {
             NSString *bundleIdentifier = item[@"bundleIdentifier"];
             if ([bundleIdentifier length] > 0) {

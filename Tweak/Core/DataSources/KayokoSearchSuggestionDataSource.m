@@ -57,11 +57,11 @@ NS_ASSUME_NONNULL_END
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                       reuseIdentifier:@"KayokoAppTokenSuggestionCell"];
         [cell setBackgroundColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-          if ([traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark) {
-              return [UIColor colorWithWhite:0.12 alpha:0.92];
-          }
-          return [UIColor colorWithWhite:1 alpha:0.94];
-        }]];
+                if ([traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark) {
+                    return [UIColor colorWithWhite:0.12 alpha:0.92];
+                }
+                return [UIColor colorWithWhite:1 alpha:0.94];
+              }]];
         [[cell textLabel] setFont:[UIFont systemFontOfSize:15 weight:UIFontWeightMedium]];
         [[cell imageView] setContentMode:UIViewContentModeScaleAspectFit];
         [[[cell imageView] layer] setCornerRadius:6];

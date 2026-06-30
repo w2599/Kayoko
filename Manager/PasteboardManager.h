@@ -72,7 +72,7 @@ static NSString *const kPasteboardManagerHistoryChangeTypeClear = @"clear";
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)getItemsFromHistoryWithKey:(NSString *)historyKey
-                         completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
+                        completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
 - (nullable PasteboardItem *)getLatestHistoryItem;
 - (nullable UIImage *)getImageForItem:(PasteboardItem *)item;
 

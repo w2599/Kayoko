@@ -7,9 +7,9 @@
 
 #import "KayokoFavoritesTableView.h"
 #import "KayokoHistoryItemActionHandler.h"
+#import "KayokoHistoryListView.h"
 #import "KayokoHistoryTableView.h"
 #import "KayokoTableDataStore.h"
-#import "KayokoHistoryListView.h"
 #import "KayokoTableViewCell.h"
 #import "KayokoTableViewCellContent.h"
 #import "KayokoTableViewCellContentProvider.h"
@@ -92,7 +92,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)refreshSearchBackgroundView {
-    BOOL showsNoSearchResults = [self hasActiveSearch] && [[self items] count] > 0 && [[self displayedItems] count] == 0;
+    BOOL showsNoSearchResults =
+        [self hasActiveSearch] && [[self items] count] > 0 && [[self displayedItems] count] == 0;
     [[self tableView] setShowsNoSearchResultsBackground:showsNoSearchResults];
 }
 
@@ -222,7 +223,8 @@ NS_ASSUME_NONNULL_END
     }
 
     NSArray<NSIndexPath *> *insertedIndexPaths = [self indexPathsFromRow:0 count:insertedCount];
-    NSArray<NSIndexPath *> *removedIndexPaths = [self indexPathsFromRow:[oldItems count] - removedCount count:removedCount];
+    NSArray<NSIndexPath *> *removedIndexPaths = [self indexPathsFromRow:[oldItems count] - removedCount
+                                                                  count:removedCount];
     UITableViewRowAnimation insertionAnimation =
         [self rowAnimationForTopInsertionFromContentOffset:[[self tableView] contentOffset]];
 
@@ -236,9 +238,9 @@ NS_ASSUME_NONNULL_END
               [[self tableView] deleteRowsAtIndexPaths:removedIndexPaths withRowAnimation:UITableViewRowAnimationFade];
           }
         }
-                 completion:^(__unused BOOL finished) {
-                   [self refreshSearchBackgroundView];
-                 }];
+        completion:^(__unused BOOL finished) {
+          [self refreshSearchBackgroundView];
+        }];
 }
 
 - (void)applySearchText:(NSString *)searchText selectedBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
@@ -261,8 +263,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
-                             limit:(NSUInteger)limit
-                         animating:(BOOL)animating {
+                            limit:(NSUInteger)limit
+                        animating:(BOOL)animating {
     if (!dictionary || [dictionary[kItemKeyContent] length] == 0) {
         return;
     }
@@ -280,7 +282,8 @@ NS_ASSUME_NONNULL_END
         [newItems removeLastObject];
     }
 
-    if ([oldItems isEqualToArray:newItems] && [[self tableView] numberOfRowsInSection:0] == [[self displayedItems] count]) {
+    if ([oldItems isEqualToArray:newItems] &&
+        [[self tableView] numberOfRowsInSection:0] == [[self displayedItems] count]) {
         return;
     }
 
@@ -462,24 +465,24 @@ NS_ASSUME_NONNULL_END
                           handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
                                     void (^completionHandler)(BOOL)) {
                             BOOL maintainsSearchBarVisibility = [self shouldMaintainSearchBarVisibilityAfterSwipe];
-                            [[self actionHandler] deleteItem:item
-                                                  historyKey:[self historyKey]
-                                                  completion:^(BOOL success) {
-                              if (!success) {
-                                  completionHandler(NO);
-                                  return;
-                              }
-                              [self removeItemAtIndexPath:indexPath
-                                               completion:^(BOOL removed) {
-                                                 if (removed) {
-                                                     [[self delegate]
-                                                         historyListViewController:self
-                                                         didChangeContentStateMaintainingSearchBarVisibility:
-                                                             maintainsSearchBarVisibility];
-                                                 }
-                                                 completionHandler(removed);
-                                               }];
-                            }];
+                            [[self actionHandler]
+                                deleteItem:item
+                                historyKey:[self historyKey]
+                                completion:^(BOOL success) {
+                                  if (!success) {
+                                      completionHandler(NO);
+                                      return;
+                                  }
+                                  [self removeItemAtIndexPath:indexPath
+                                                   completion:^(BOOL removed) {
+                                                     if (removed) {
+                                                         [[self delegate] historyListViewController:self
+                                                             didChangeContentStateMaintainingSearchBarVisibility:
+                                                                 maintainsSearchBarVisibility];
+                                                     }
+                                                     completionHandler(removed);
+                                                   }];
+                                }];
                           }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];
     [deleteAction setBackgroundColor:[UIColor systemRedColor]];
@@ -487,8 +490,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIContextualAction *)moveActionForItem:(PasteboardItem *)item
-                                dictionary:(NSDictionary<NSString *, id> *)dictionary
-                                 indexPath:(NSIndexPath *)indexPath {
+                               dictionary:(NSDictionary<NSString *, id> *)dictionary
+                                indexPath:(NSIndexPath *)indexPath {
     NSString *sourceHistoryKey = [self historyKey];
     BOOL sourceIsFavorites = [sourceHistoryKey isEqualToString:kHistoryKeyFavorites];
     NSString *destinationHistoryKey = sourceIsFavorites ? kHistoryKeyHistory : kHistoryKeyFavorites;
@@ -500,29 +503,30 @@ NS_ASSUME_NONNULL_END
                           handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
                                     void (^completionHandler)(BOOL)) {
                             BOOL maintainsSearchBarVisibility = [self shouldMaintainSearchBarVisibilityAfterSwipe];
-                            [[self actionHandler] moveItem:item
-                                          sourceHistoryKey:sourceHistoryKey
-                                      destinationHistoryKey:destinationHistoryKey
-                                                completion:^(BOOL success) {
-                                  if (!success) {
-                                      completionHandler(NO);
-                                      return;
-                                  }
-                                  [[self delegate] historyListViewController:self
-                                                       didMoveItemDictionary:dictionary
-                                                          fromHistoryWithKey:sourceHistoryKey
-                                                            toHistoryWithKey:destinationHistoryKey];
-                                  [self removeItemAtIndexPath:indexPath
-                                                   completion:^(BOOL removed) {
-                                                     if (removed) {
-                                                         [[self delegate]
-                                                             historyListViewController:self
-                                                             didChangeContentStateMaintainingSearchBarVisibility:
-                                                                 maintainsSearchBarVisibility];
-                                                     }
-                                                     completionHandler(removed);
-                                                   }];
-                                }];
+                            [[self actionHandler]
+                                             moveItem:item
+                                     sourceHistoryKey:sourceHistoryKey
+                                destinationHistoryKey:destinationHistoryKey
+                                           completion:^(BOOL success) {
+                                             if (!success) {
+                                                 completionHandler(NO);
+                                                 return;
+                                             }
+                                             [[self delegate] historyListViewController:self
+                                                                  didMoveItemDictionary:dictionary
+                                                                     fromHistoryWithKey:sourceHistoryKey
+                                                                       toHistoryWithKey:destinationHistoryKey];
+                                             [self
+                                                 removeItemAtIndexPath:indexPath
+                                                            completion:^(BOOL removed) {
+                                                              if (removed) {
+                                                                  [[self delegate] historyListViewController:self
+                                                                      didChangeContentStateMaintainingSearchBarVisibility:
+                                                                          maintainsSearchBarVisibility];
+                                                              }
+                                                              completionHandler(removed);
+                                                            }];
+                                           }];
                           }];
     [moveAction setImage:[UIImage systemImageNamed:imageName]];
     [moveAction setBackgroundColor:[UIColor systemPinkColor]];
