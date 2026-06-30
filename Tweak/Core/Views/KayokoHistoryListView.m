@@ -38,14 +38,33 @@ static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
     return headerView ? CGRectGetHeight([headerView frame]) : 0;
 }
 
+- (CGFloat)effectiveRowHeight {
+    CGFloat height = [self rowHeight];
+    return height > 0 ? height : kKayokoHistoryListViewBaseRowHeight;
+}
+
+- (BOOL)isSearchHeaderExposedAtContentOffset:(CGPoint)contentOffset {
+    CGFloat headerHeight = [self hiddenHeaderOffsetY];
+    return headerHeight > 0 && contentOffset.y < headerHeight - 1;
+}
+
+- (BOOL)isContentOffsetAtHiddenSearchHeaderBoundary:(CGPoint)contentOffset {
+    CGFloat headerHeight = [self hiddenHeaderOffsetY];
+    if (headerHeight <= 0) {
+        return NO;
+    }
+
+    CGFloat rowHeight = [self effectiveRowHeight];
+    return contentOffset.y >= headerHeight - 1 && contentOffset.y <= headerHeight + rowHeight + 1;
+}
+
 - (CGFloat)heightForRowRemovalAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat height = CGRectGetHeight([self rectForRowAtIndexPath:indexPath]);
     if (height > 0) {
         return height;
     }
 
-    height = [self rowHeight];
-    return height > 0 ? height : kKayokoHistoryListViewBaseRowHeight;
+    return [self effectiveRowHeight];
 }
 
 - (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction {

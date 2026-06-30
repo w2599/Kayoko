@@ -25,7 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
-- (BOOL)isHiddenSearchHeaderBoundaryContentOffset:(CGPoint)contentOffset;
+- (UITableViewRowAnimation)rowAnimationForTopInsertionFromContentOffset:(CGPoint)contentOffset;
 - (BOOL)shouldRestoreContentOffsetAfterTopInsertionFromOffset:(CGPoint)contentOffset;
 - (BOOL)shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:(NSIndexPath *)indexPath
                                                      fromOffset:(CGPoint)contentOffset;
@@ -160,28 +160,22 @@ NS_ASSUME_NONNULL_END
     return limit == 0 ? NSUIntegerMax : limit;
 }
 
-- (BOOL)isHiddenSearchHeaderBoundaryContentOffset:(CGPoint)contentOffset {
-    UIView *headerView = [[self tableView] tableHeaderView];
-    CGFloat headerHeight = headerView ? CGRectGetHeight([headerView frame]) : 0;
-    if (headerHeight <= 0 || [self hasActiveSearch]) {
-        return NO;
-    }
-
-    CGFloat rowHeight = [[self tableView] rowHeight];
-    if (rowHeight <= 0) {
-        rowHeight = 65;
-    }
-
-    return contentOffset.y >= headerHeight - 1 && contentOffset.y <= headerHeight + rowHeight + 1;
-}
-
 - (BOOL)shouldRestoreContentOffsetAfterTopInsertionFromOffset:(CGPoint)contentOffset {
-    return [self isHiddenSearchHeaderBoundaryContentOffset:contentOffset];
+    return ![self hasActiveSearch] && [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset];
 }
 
 - (BOOL)shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:(NSIndexPath *)indexPath
                                                      fromOffset:(CGPoint)contentOffset {
-    return [indexPath row] == 0 && [self isHiddenSearchHeaderBoundaryContentOffset:contentOffset];
+    return [indexPath row] == 0 && ![self hasActiveSearch] &&
+           [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset];
+}
+
+- (UITableViewRowAnimation)rowAnimationForTopInsertionFromContentOffset:(CGPoint)contentOffset {
+    if ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset]) {
+        return UITableViewRowAnimationFade;
+    }
+
+    return UITableViewRowAnimationTop;
 }
 
 - (nullable NSDictionary<NSString *, id> *)itemDictionaryAtIndexPath:(NSIndexPath *)indexPath {
@@ -225,12 +219,14 @@ NS_ASSUME_NONNULL_END
 
     NSArray<NSIndexPath *> *insertedIndexPaths = [self indexPathsFromRow:0 count:insertedCount];
     NSArray<NSIndexPath *> *removedIndexPaths = [self indexPathsFromRow:[oldItems count] - removedCount count:removedCount];
+    UITableViewRowAnimation insertionAnimation =
+        [self rowAnimationForTopInsertionFromContentOffset:[[self tableView] contentOffset]];
 
     [[self tableView]
         performBatchUpdates:^{
           [self setItems:newItems];
           if ([insertedIndexPaths count] > 0) {
-              [[self tableView] insertRowsAtIndexPaths:insertedIndexPaths withRowAnimation:UITableViewRowAnimationTop];
+              [[self tableView] insertRowsAtIndexPaths:insertedIndexPaths withRowAnimation:insertionAnimation];
           }
           if ([removedIndexPaths count] > 0) {
               [[self tableView] deleteRowsAtIndexPaths:removedIndexPaths withRowAnimation:UITableViewRowAnimationFade];
@@ -324,12 +320,14 @@ NS_ASSUME_NONNULL_END
     CGPoint contentOffsetBeforeInsertion = [[self tableView] contentOffset];
     BOOL restoresContentOffsetAfterInsertion =
         [self shouldRestoreContentOffsetAfterTopInsertionFromOffset:contentOffsetBeforeInsertion];
+    UITableViewRowAnimation insertionAnimation =
+        [self rowAnimationForTopInsertionFromContentOffset:contentOffsetBeforeInsertion];
 
     [[self tableView]
         performBatchUpdates:^{
           [self setItems:newItems];
           [[self tableView] insertRowsAtIndexPaths:@[ [NSIndexPath indexPathForRow:0 inSection:0] ]
-                                  withRowAnimation:UITableViewRowAnimationTop];
+                                  withRowAnimation:insertionAnimation];
           if ([removedIndexPaths count] > 0) {
               [[self tableView] deleteRowsAtIndexPaths:removedIndexPaths withRowAnimation:UITableViewRowAnimationFade];
           }
@@ -387,14 +385,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)shouldMaintainSearchBarVisibilityAfterSwipe {
-    UIView *headerView = [[self tableView] tableHeaderView];
-    CGFloat headerHeight = headerView ? CGRectGetHeight([headerView frame]) : 0;
-    if (headerHeight <= 0) {
-        return NO;
-    }
-
-    CGFloat offsetY = [[self tableView] contentOffset].y;
-    return fabs(offsetY - headerHeight) <= 1;
+    return ![self hasActiveSearch] &&
+           [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:[[self tableView] contentOffset]];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
