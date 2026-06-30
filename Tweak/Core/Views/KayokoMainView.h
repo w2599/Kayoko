@@ -34,6 +34,7 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
 @property(nonatomic, strong) UIButton *favoritesButton;
 @property(nonatomic, assign, getter=isAnimating) BOOL animating;
 @property(nonatomic, assign) BOOL contentRespectsSafeArea;
+@property(nonatomic, assign) UIEdgeInsets contentSafeAreaAdditionalInsets;
 
 @property(nonatomic, copy, nullable) void (^layoutHandler)(void);
 
@@ -43,6 +44,7 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
                       andTintColor:(UIColor *)color;
 - (void)setTitleText:(NSString *)title;
 - (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount;
+- (UIEdgeInsets)effectiveContentSafeAreaInsets;
 - (void)installContentView:(UIView *)contentView hidden:(BOOL)hidden;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide

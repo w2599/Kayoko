@@ -14,6 +14,25 @@ static CGFloat const kKayokoSearchBarHorizontalInset = 16;
 static NSTimeInterval const kKayokoSearchFullscreenAnimationDuration = 0.34;
 static CGFloat const kKayokoSearchFullscreenAnimationDamping = 0.86;
 
+static CGRect KayokoStatusBarFrameForWindow(UIWindow *window) {
+    CGRect statusBarFrame = CGRectZero;
+    if (@available(iOS 13.0, *)) {
+        UIWindowScene *windowScene = [window windowScene];
+        if (windowScene) {
+            statusBarFrame = [[windowScene statusBarManager] statusBarFrame];
+        }
+    }
+
+    if (CGRectIsEmpty(statusBarFrame)) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        statusBarFrame = [[UIApplication sharedApplication] statusBarFrame];
+#pragma clang diagnostic pop
+    }
+
+    return statusBarFrame;
+}
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchPresentationController ()
@@ -165,6 +184,25 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (UIEdgeInsets)contentSafeAreaAdditionalInsetsForFullscreenSuperview:(UIView *)superview {
+    UIView *containerView = [self containerView];
+    UIEdgeInsets safeAreaInsets = [superview safeAreaInsets];
+    UIEdgeInsets additionalInsets = UIEdgeInsetsZero;
+    if (safeAreaInsets.top > 0) {
+        return additionalInsets;
+    }
+
+    CGRect statusBarFrame = KayokoStatusBarFrameForWindow([containerView window]);
+    if (CGRectIsEmpty(statusBarFrame)) {
+        return additionalInsets;
+    }
+
+    CGRect statusBarFrameInSuperview = [superview convertRect:statusBarFrame fromView:nil];
+    CGFloat statusBarBottom = CGRectGetMaxY(statusBarFrameInSuperview) - CGRectGetMinY([superview bounds]);
+    additionalInsets.top = ceil(MAX(statusBarBottom, 0));
+    return additionalInsets;
+}
+
 - (void)beginSearchWithActiveTableView:(KayokoHistoryListView *)activeTableView completion:(void (^)(void))completion {
     if ([self isSearchActive]) {
         return;
@@ -187,7 +225,9 @@ NS_ASSUME_NONNULL_END
     UIView *containerView = [self containerView];
     [containerView layoutIfNeeded];
     if ([containerView isKindOfClass:[KayokoMainView class]]) {
-        [(KayokoMainView *)containerView setContentRespectsSafeArea:YES];
+        KayokoMainView *mainView = (KayokoMainView *)containerView;
+        [mainView setContentSafeAreaAdditionalInsets:[self contentSafeAreaAdditionalInsetsForFullscreenSuperview:superview]];
+        [mainView setContentRespectsSafeArea:YES];
     }
 
     CGRect fullscreenBounds = [superview bounds];
@@ -222,7 +262,9 @@ NS_ASSUME_NONNULL_END
     UIView *containerView = [self containerView];
     [containerView layoutIfNeeded];
     if ([containerView isKindOfClass:[KayokoMainView class]]) {
-        [(KayokoMainView *)containerView setContentRespectsSafeArea:NO];
+        KayokoMainView *mainView = (KayokoMainView *)containerView;
+        [mainView setContentRespectsSafeArea:NO];
+        [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
     }
 
     if (restoresFrame && !CGRectEqualToRect([[self containerView] frame], targetFrame)) {

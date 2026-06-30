@@ -205,12 +205,77 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [self constrainContentView:contentView];
 }
 
+- (UIEdgeInsets)effectiveContentSafeAreaInsets {
+    UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
+    UIEdgeInsets additionalInsets = [self contentSafeAreaAdditionalInsets];
+    safeAreaInsets.top += additionalInsets.top;
+    safeAreaInsets.left += additionalInsets.left;
+    safeAreaInsets.bottom += additionalInsets.bottom;
+    safeAreaInsets.right += additionalInsets.right;
+    return safeAreaInsets;
+}
+
+- (UIEdgeInsets)contentSafeAreaAdditionalInsetsRemovingRedundantSystemInsets:(UIEdgeInsets)additionalInsets {
+    UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
+    if (safeAreaInsets.top > 0) {
+        additionalInsets.top = 0;
+    }
+    if (safeAreaInsets.left > 0) {
+        additionalInsets.left = 0;
+    }
+    if (safeAreaInsets.bottom > 0) {
+        additionalInsets.bottom = 0;
+    }
+    if (safeAreaInsets.right > 0) {
+        additionalInsets.right = 0;
+    }
+    return additionalInsets;
+}
+
+- (void)safeAreaInsetsDidChange {
+    [super safeAreaInsetsDidChange];
+    UIEdgeInsets normalizedInsets =
+        [self contentSafeAreaAdditionalInsetsRemovingRedundantSystemInsets:[self contentSafeAreaAdditionalInsets]];
+    if (!UIEdgeInsetsEqualToEdgeInsets(normalizedInsets, [self contentSafeAreaAdditionalInsets])) {
+        [self setContentSafeAreaAdditionalInsets:normalizedInsets];
+    }
+}
+
+- (void)applyContentSafeAreaAdditionalInsets {
+    UIEdgeInsets insets = [self contentSafeAreaAdditionalInsets];
+    [[self headerSafeAreaTopConstraint] setConstant:insets.top];
+    [[self headerSafeAreaLeadingConstraint] setConstant:insets.left];
+    [[self headerSafeAreaTrailingConstraint] setConstant:-insets.right];
+    for (NSLayoutConstraint *constraint in [self contentSafeAreaLeadingConstraints]) {
+        [constraint setConstant:insets.left];
+    }
+    for (NSLayoutConstraint *constraint in [self contentSafeAreaTrailingConstraints]) {
+        [constraint setConstant:-insets.right];
+    }
+    for (NSLayoutConstraint *constraint in [self contentSafeAreaBottomConstraints]) {
+        [constraint setConstant:-insets.bottom];
+    }
+}
+
+- (void)setContentSafeAreaAdditionalInsets:(UIEdgeInsets)contentSafeAreaAdditionalInsets {
+    contentSafeAreaAdditionalInsets =
+        [self contentSafeAreaAdditionalInsetsRemovingRedundantSystemInsets:contentSafeAreaAdditionalInsets];
+    if (UIEdgeInsetsEqualToEdgeInsets(_contentSafeAreaAdditionalInsets, contentSafeAreaAdditionalInsets)) {
+        return;
+    }
+
+    _contentSafeAreaAdditionalInsets = contentSafeAreaAdditionalInsets;
+    [self applyContentSafeAreaAdditionalInsets];
+    [self setNeedsLayout];
+}
+
 - (void)setContentRespectsSafeArea:(BOOL)contentRespectsSafeArea {
     if (_contentRespectsSafeArea == contentRespectsSafeArea) {
         return;
     }
 
     _contentRespectsSafeArea = contentRespectsSafeArea;
+    [self applyContentSafeAreaAdditionalInsets];
     [[self headerTopConstraint] setActive:!contentRespectsSafeArea];
     [[self headerSafeAreaTopConstraint] setActive:contentRespectsSafeArea];
     [[self headerLeadingConstraint] setActive:!contentRespectsSafeArea];

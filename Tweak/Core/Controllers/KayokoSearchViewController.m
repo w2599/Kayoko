@@ -5,6 +5,7 @@
 
 #import "KayokoSearchViewController.h"
 
+#import "KayokoMainView.h"
 #import "KayokoSearchView.h"
 
 static CGFloat const kKayokoAppTokenSuggestionMaximumHeight = 220;
@@ -45,6 +46,9 @@ NS_ASSUME_NONNULL_END
     }
 
     UIEdgeInsets safeAreaInsets = [[self containerView] safeAreaInsets];
+    if ([[self containerView] isKindOfClass:[KayokoMainView class]]) {
+        safeAreaInsets = [(KayokoMainView *)[self containerView] effectiveContentSafeAreaInsets];
+    }
     CGFloat horizontalInset = 16;
     CGFloat x = safeAreaInsets.left + horizontalInset;
     CGFloat width = MAX(CGRectGetWidth([[self containerView] bounds]) - safeAreaInsets.left - safeAreaInsets.right -
