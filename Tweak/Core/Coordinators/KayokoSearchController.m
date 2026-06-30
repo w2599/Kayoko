@@ -168,8 +168,13 @@ NS_ASSUME_NONNULL_END
                             }];
 }
 
-- (void)endSearchRestoringFrame:(BOOL)restoresFrame clearsSearch:(BOOL)clearsSearch {
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                    clearsSearch:(BOOL)clearsSearch
+                      completion:(void (^)(void))completion {
     if (![self isSearchActive] && !clearsSearch) {
+        if (completion) {
+            completion();
+        }
         return;
     }
 
@@ -191,7 +196,18 @@ NS_ASSUME_NONNULL_END
                                            activeTableView:[[self activeListViewController] tableView]
                                                 completion:^{
                                                   [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
+                                                  if (completion) {
+                                                      completion();
+                                                  }
                                                 }];
+}
+
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame clearsSearch:(BOOL)clearsSearch {
+    [self endSearchRestoringFrame:restoresFrame clearsSearch:clearsSearch completion:nil];
+}
+
+- (void)cancelSearchWithCompletion:(void (^)(void))completion {
+    [self endSearchRestoringFrame:YES clearsSearch:YES completion:completion];
 }
 
 - (void)resetBeforeHide {

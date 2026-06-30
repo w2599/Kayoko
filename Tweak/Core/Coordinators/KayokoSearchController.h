@@ -39,6 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
                     hidesSearchBar:(BOOL)hidesSearchBar;
 - (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController;
+- (void)cancelSearchWithCompletion:(nullable void (^)(void))completion;
 - (void)resignSearchFirstResponder;
 - (void)resetBeforeHide;
 

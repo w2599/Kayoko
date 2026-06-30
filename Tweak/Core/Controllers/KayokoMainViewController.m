@@ -36,7 +36,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoHistoryController *historyController;
 @property(nonatomic, strong) KayokoHistoryListViewController *historyListViewController;
 @property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
-@property(nonatomic, strong) KayokoEmptyStateView *emptyStateView;
+@property(nonatomic, strong) KayokoEmptyStateView *historyEmptyStateView;
+@property(nonatomic, strong) KayokoEmptyStateView *favoritesEmptyStateView;
 @property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
@@ -55,6 +56,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isWordSelectionActive;
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey;
 - (void)handleTitleTapControlPressed;
+- (KayokoEmptyStateView *)emptyStateViewForHistoryKey:(NSString *)historyKey;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
               direction:(KayokoContentTransitionDirection)direction
@@ -126,8 +128,13 @@ NS_ASSUME_NONNULL_END
         [_mainView installContentView:[_clearConfirmationViewController confirmationView] hidden:YES];
         [_clearConfirmationViewController didMoveToParentViewController:self];
 
-        _emptyStateView = [[KayokoEmptyStateView alloc] init];
-        [_mainView installContentView:_emptyStateView hidden:YES];
+        _historyEmptyStateView = [[KayokoEmptyStateView alloc] init];
+        [_historyEmptyStateView updateWithHistoryKey:kHistoryKeyHistory];
+        [_mainView installContentView:_historyEmptyStateView hidden:YES];
+
+        _favoritesEmptyStateView = [[KayokoEmptyStateView alloc] init];
+        [_favoritesEmptyStateView updateWithHistoryKey:kHistoryKeyFavorites];
+        [_mainView installContentView:_favoritesEmptyStateView hidden:YES];
 
         _previewViewController =
             [[KayokoPreviewViewController alloc] initWithFavoritesButton:[_mainView favoritesButton]
@@ -177,7 +184,8 @@ NS_ASSUME_NONNULL_END
         [[childViewController view] setOverrideUserInterfaceStyle:style];
     }
 
-    [[self emptyStateView] setOverrideUserInterfaceStyle:style];
+    [[self historyEmptyStateView] setOverrideUserInterfaceStyle:style];
+    [[self favoritesEmptyStateView] setOverrideUserInterfaceStyle:style];
 }
 
 - (void)setDismissOnOutsideTouch:(BOOL)dismissOnOutsideTouch {
@@ -235,6 +243,8 @@ NS_ASSUME_NONNULL_END
 - (void)searchController:(KayokoSearchController *)searchController
     didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset {
     [[[self clearConfirmationViewController] confirmationView] setKeyboardBottomInset:keyboardBottomInset];
+    [[self historyEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
+    [[self favoritesEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
 }
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
@@ -285,14 +295,20 @@ NS_ASSUME_NONNULL_END
     return [[self historyController] tableViewForHistoryKey:historyKey];
 }
 
+- (KayokoEmptyStateView *)emptyStateViewForHistoryKey:(NSString *)historyKey {
+    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesEmptyStateView]
+                                                             : [self historyEmptyStateView];
+}
+
 - (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
     KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
     if ([[listViewController items] count] > 0) {
         return [listViewController tableView];
     }
 
-    [[self emptyStateView] updateWithHistoryKey:historyKey];
-    return [self emptyStateView];
+    KayokoEmptyStateView *emptyStateView = [self emptyStateViewForHistoryKey:historyKey];
+    [emptyStateView setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
+    return emptyStateView;
 }
 
 - (UIView *)activeHistoryContentView {
@@ -304,7 +320,15 @@ NS_ASSUME_NONNULL_END
         return [[self favoritesListViewController] tableView];
     }
 
-    return [self emptyStateView];
+    if (![[self historyEmptyStateView] isHidden]) {
+        return [self historyEmptyStateView];
+    }
+
+    if (![[self favoritesEmptyStateView] isHidden]) {
+        return [self favoritesEmptyStateView];
+    }
+
+    return [self emptyStateViewForHistoryKey:[self effectiveActiveHistoryKey]];
 }
 
 - (NSString *)titleForContentView:(UIView *)view {
@@ -328,8 +352,12 @@ NS_ASSUME_NONNULL_END
         return [[self favoritesListViewController] name];
     }
 
-    if (view == [self emptyStateView]) {
-        return [[self emptyStateView] name];
+    if (view == [self historyEmptyStateView]) {
+        return [[self historyEmptyStateView] name];
+    }
+
+    if (view == [self favoritesEmptyStateView]) {
+        return [[self favoritesEmptyStateView] name];
     }
 
     return nil;
@@ -342,7 +370,8 @@ NS_ASSUME_NONNULL_END
         setHidden:contentView != [[self historyListViewController] tableView]];
     [[[self favoritesListViewController] tableView]
         setHidden:contentView != [[self favoritesListViewController] tableView]];
-    [[self emptyStateView] setHidden:contentView != [self emptyStateView]];
+    [[self historyEmptyStateView] setHidden:contentView != [self historyEmptyStateView]];
+    [[self favoritesEmptyStateView] setHidden:contentView != [self favoritesEmptyStateView]];
     [contentView setAlpha:1];
     [contentView setTransform:CGAffineTransformIdentity];
     [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:historyKey]
@@ -359,6 +388,15 @@ NS_ASSUME_NONNULL_END
 - (void)updateActiveTableViewState:(KayokoHistoryListView *)tableView {
     if (tableView == [self activeTableView]) {
         KayokoHistoryListViewController *activeListViewController = [self activeListViewController];
+        if ([[activeListViewController items] count] == 0 && [[self searchController] isSearchActive]) {
+            [[self mainView] setClearButtonEnabledForItemCount:0];
+            [[self searchController] cancelSearchWithCompletion:^{
+              if (tableView == [self activeTableView]) {
+                  [self updateContentStateMaintainingSearchBarVisibility:NO];
+              }
+            }];
+            return;
+        }
         if ([[self searchController] isSearchActive] || [activeListViewController hasActiveSearch]) {
             [[self searchController] refreshForListViewController:activeListViewController];
         }
@@ -558,6 +596,16 @@ NS_ASSUME_NONNULL_END
                             completion:^(KayokoHistoryListView *targetTableView) {
                               if (![[self effectiveActiveHistoryKey] isEqualToString:historyKey] ||
                                   [[self panelPresentationController] isAnimating]) {
+                                  return;
+                              }
+
+                              if ([[[self listViewControllerForHistoryKey:targetKey] items] count] == 0 &&
+                                  [[self searchController] isSearchActive]) {
+                                  [[self searchController] cancelSearchWithCompletion:^{
+                                    if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
+                                        [self handleFavoritesButtonPressed];
+                                    }
+                                  }];
                                   return;
                               }
 

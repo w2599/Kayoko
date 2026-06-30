@@ -9,12 +9,14 @@
 #import "KayokoWordSelectionTokenizer.h"
 #import "KayokoWordTokenView.h"
 
-static CGFloat const kKayokoWordSelectionHorizontalInset = 16;
-static CGFloat const kKayokoWordSelectionTopInset = 12;
-static CGFloat const kKayokoWordSelectionTokenSpacing = 9;
+static CGFloat const kKayokoWordSelectionHorizontalInset = 20;
+static CGFloat const kKayokoWordSelectionTopInset = 8;
+static CGFloat const kKayokoWordSelectionTokenSpacing = 2;
 static CGFloat const kKayokoWordSelectionLineSpacing = 9;
 static CGFloat const kKayokoWordSelectionTokenHeight = 34;
-static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
+static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 3;
+static CGFloat const kKayokoWordSelectionTokenCornerRadius = 4;
+static CGFloat const kKayokoWordSelectionTokenBorderWidth = 0.5;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -94,8 +96,8 @@ NS_ASSUME_NONNULL_END
         [button setKayokoContentInsets:UIEdgeInsetsMake(0, kKayokoWordSelectionTokenHorizontalInset, 0,
                                                         kKayokoWordSelectionTokenHorizontalInset)];
         [button setUserInteractionEnabled:NO];
-        [[button layer] setCornerRadius:7];
-        [[button layer] setBorderWidth:0.5];
+        [[button layer] setCornerRadius:kKayokoWordSelectionTokenCornerRadius];
+        [[button layer] setBorderWidth:kKayokoWordSelectionTokenBorderWidth];
         [[self contentView] addSubview:button];
         [[self tokenButtons] addObject:button];
     }
@@ -313,7 +315,7 @@ NS_ASSUME_NONNULL_END
     for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
         KayokoWordTokenView *button = [self tokenButtons][index];
         BOOL selected = [[self selectedTokenIndexes] containsIndex:index];
-        [[button layer] setBorderWidth:selected ? 0.75 : 0.5];
+        [[button layer] setBorderWidth:kKayokoWordSelectionTokenBorderWidth];
         UIColor *textColor = selected ? selectedTextColor : normalTextColor;
         UIColor *backgroundColor = selected ? selectedBackgroundColor : normalBackgroundColor;
         [button setTitleColor:textColor forState:UIControlStateNormal];

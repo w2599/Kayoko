@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoEmptyStateView ()
 @property(nonatomic, strong) UILabel *messageLabel;
+@property(nonatomic, strong) NSLayoutConstraint *messageLabelCenterYConstraint;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -30,9 +31,11 @@ NS_ASSUME_NONNULL_END
         [self addSubview:[self messageLabel]];
 
         [[self messageLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [self setMessageLabelCenterYConstraint:[[[self messageLabel] centerYAnchor]
+                                                   constraintEqualToAnchor:[self centerYAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
             [[[self messageLabel] centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [[[self messageLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
+            [self messageLabelCenterYConstraint],
             [[[self messageLabel] leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
             [[[self messageLabel] trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24],
             [[[self messageLabel] widthAnchor] constraintLessThanOrEqualToAnchor:[self widthAnchor] constant:-48]
@@ -40,6 +43,17 @@ NS_ASSUME_NONNULL_END
     }
 
     return self;
+}
+
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [[self messageLabelCenterYConstraint] setConstant:-keyboardBottomInset / 2.0];
+    [self setNeedsLayout];
 }
 
 - (void)updateWithHistoryKey:(NSString *)historyKey {
