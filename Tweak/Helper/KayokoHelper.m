@@ -17,6 +17,81 @@
 #import <libSandy.h>
 #import <substrate.h>
 
+@interface TIKeyboardCandidate : NSObject
+@end
+
+@interface TIAutocorrectionList : NSObject
++ (TIAutocorrectionList *)listWithAutocorrection:(TIKeyboardCandidate *)arg1
+                                     predictions:(NSArray<TIKeyboardCandidate *> *)predictions
+                                       emojiList:(NSArray<TIKeyboardCandidate *> *)emojiList;
+@end
+
+@interface UIKeyboardAutocorrectionController : NSObject
+- (void)setTextSuggestionList:(TIAutocorrectionList *)textSuggestionList;
+- (void)setAutocorrectionList:(TIAutocorrectionList *)textSuggestionList;
+@end
+
+@interface TUIPredictionView : UIView
+@end
+
+@interface TIKeyboardCandidateSingle : TIKeyboardCandidate
+@property(nonatomic, copy) NSString *candidate;
+@property(nonatomic, copy) NSString *input;
+@end
+
+@interface TIZephyrCandidate : TIKeyboardCandidateSingle
+@property(nonatomic, copy) NSString *label;
+@property(nonatomic, copy) NSString *fromBundleId;
+@end
+
+@interface UIPredictionViewController : UIViewController
+@end
+
+@class UIKBInputDelegateManager;
+
+@interface UIKeyboardImpl : UIView
+@property(nonatomic, strong, readonly) UIKeyboardAutocorrectionController *autocorrectionController;
+@property(nonatomic, strong) UIKBInputDelegateManager *inputDelegateManager;
+@property(nonatomic, strong, readonly) UIResponder<UITextInput> *inputDelegate;
++ (instancetype)activeInstance;
+- (void)insertText:(NSString *)text;
+@end
+
+@interface UIKBInputDelegateManager : NSObject
+- (UITextRange *)selectedTextRange;
+- (NSString *)textInRange:(UITextRange *)range;
+- (void)insertText:(NSString *)text;
+@end
+
+@interface UIKeyboardLayout : UIView
+@end
+
+@interface UIKeyboardLayoutStar : UIKeyboardLayout
+@end
+
+@interface UIKBTree : NSObject
+@property(nonatomic, copy) NSString *name;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, id> *properties;
+@end
+
+@interface UIKBInputBackdropView : UIView
+@end
+
+@interface UISystemKeyboardDockController : NSObject
+@end
+
+@interface UIMenu (Kayoko)
+- (UIMenu *)menuByReplacingChildren:(NSArray<UIMenuElement *> *)children;
+@end
+
+@interface _UICalloutBarSystemButtonDescription : NSObject
+@property(nonatomic, readonly) SEL action;
++ (instancetype)buttonDescriptionWithTitle:(NSString *)arg1 action:(SEL)arg2 type:(int)arg3;
+@end
+
+@interface UICalloutBar : UIView
+@end
+
 NSUserDefaults *kayokoHelperPreferences = nil;
 
 BOOL kayokoHelperPrefsEnabled = NO;

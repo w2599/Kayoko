@@ -3,7 +3,7 @@ TWEAK_NAME := KayokoCore
 KayokoCore_USE_MODULES := 0
 
 KayokoCore_FILES += KayokoCore.m
-KayokoCore_FILES += KayokoCoreLogos.xm
+KayokoCore_FILES += KayokoCoreHooks.m
 KayokoCore_FILES += $(wildcard ../../Manager/*.m Actions/*.m Controllers/*.m Coordinators/*.m DataSources/*.m Models/*.m Presentation/*.m Views/*.m ../../Utils/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc
@@ -25,6 +25,7 @@ KayokoCore_FRAMEWORKS += QuartzCore
 KayokoCore_FRAMEWORKS += UIKit
 
 KayokoCore_LIBRARIES += sqlite3
+KayokoCore_LIBRARIES += substrate
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 KayokoCore_LIBRARIES += roothide
 endif
