@@ -71,6 +71,7 @@ NS_ASSUME_NONNULL_END
 - (void)layout {
     [self layoutSearchBarForTableView:[self historyTableView]];
     [self layoutSearchBarForTableView:[self favoritesTableView]];
+    [self applyBottomInsetsToTableViews];
 }
 
 - (void)layoutSearchBarForTableView:(KayokoTableView *)tableView {
@@ -126,6 +127,8 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self applyBottomInsetToTableView:tableView];
+
     CGPoint contentOffset = [tableView contentOffset];
     contentOffset.y = [self searchHeaderHeight];
     [tableView setContentOffset:contentOffset animated:animated];
@@ -136,6 +139,8 @@ NS_ASSUME_NONNULL_END
     if (!tableView || [tableView tableHeaderView] != searchBar) {
         return;
     }
+
+    [self applyBottomInsetToTableView:tableView];
 
     CGPoint contentOffset = [tableView contentOffset];
     contentOffset.y = 0;
@@ -220,12 +225,21 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (void)applyKeyboardBottomInsetToTableView:(KayokoTableView *)tableView {
+- (CGFloat)hiddenSearchBottomInsetForTableView:(KayokoTableView *)tableView {
+    if ([self isSearchActive]) {
+        return 0;
+    }
+
+    return [tableView minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:0];
+}
+
+- (void)applyBottomInsetToTableView:(KayokoTableView *)tableView {
     UIEdgeInsets contentInset = [tableView contentInset];
-    contentInset.bottom = [self keyboardBottomInset];
+    CGFloat bottomInset = [self keyboardBottomInset] + [self hiddenSearchBottomInsetForTableView:tableView];
+    contentInset.bottom = bottomInset;
     [tableView setContentInset:contentInset];
 
-    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, [self keyboardBottomInset], 0);
+    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
     if (@available(iOS 13.0, *)) {
         [tableView setVerticalScrollIndicatorInsets:indicatorInsets];
     } else {
@@ -236,14 +250,14 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (void)applyKeyboardBottomInsetToTableViews {
-    [self applyKeyboardBottomInsetToTableView:[self historyTableView]];
-    [self applyKeyboardBottomInsetToTableView:[self favoritesTableView]];
+- (void)applyBottomInsetsToTableViews {
+    [self applyBottomInsetToTableView:[self historyTableView]];
+    [self applyBottomInsetToTableView:[self favoritesTableView]];
 }
 
 - (void)resetKeyboardInsets {
     [self setKeyboardBottomInset:0];
-    [self applyKeyboardBottomInsetToTableViews];
+    [self applyBottomInsetsToTableViews];
 }
 
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
@@ -254,7 +268,7 @@ NS_ASSUME_NONNULL_END
     CGRect keyboardEndFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     CGRect keyboardFrameInView = [[self containerView] convertRect:keyboardEndFrame fromView:nil];
     [self setKeyboardBottomInset:MAX(CGRectGetMaxY([[self containerView] bounds]) - CGRectGetMinY(keyboardFrameInView), 0)];
-    [self applyKeyboardBottomInsetToTableViews];
+    [self applyBottomInsetsToTableViews];
 }
 
 - (void)handleKeyboardWillHideNotification:(NSNotification *)notification {

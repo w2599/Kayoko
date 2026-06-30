@@ -217,6 +217,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)tableViewControllerDidChangeContentState:(KayokoTableViewController *)controller {
+    [[self searchController] maintainSearchBarVisibilityForTableView:[self activeTableView]];
     [self updateContentState];
 }
 

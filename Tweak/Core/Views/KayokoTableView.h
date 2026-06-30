@@ -33,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
                              limit:(NSUInteger)limit
                          animating:(BOOL)animating;
+- (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction;
 - (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary;
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(nullable void (^)(BOOL success))completion;
 

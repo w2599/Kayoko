@@ -14,6 +14,8 @@
 static CGFloat const kKayokoTableViewBaseRowHeight = 65;
 static CGFloat const kKayokoTableViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
+static CGFloat const kKayokoTableViewHiddenHeaderOffsetTolerance = 1;
+static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
 
 @implementation KayokoTableView
 {
@@ -148,6 +150,53 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 
 - (NSUInteger)normalizedLimit:(NSUInteger)limit {
     return limit == 0 ? NSUIntegerMax : limit;
+}
+
+- (CGFloat)hiddenHeaderOffsetY {
+    UIView *headerView = [self tableHeaderView];
+    return headerView ? CGRectGetHeight([headerView frame]) : 0;
+}
+
+- (CGFloat)heightForRowRemovalAtIndexPath:(NSIndexPath *)indexPath {
+    CGFloat height = CGRectGetHeight([self rectForRowAtIndexPath:indexPath]);
+    if (height > 0) {
+        return height;
+    }
+
+    height = [self rowHeight];
+    return height > 0 ? height : kKayokoTableViewBaseRowHeight;
+}
+
+- (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction {
+    CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
+    if (hiddenHeaderOffsetY <= 0) {
+        return 0;
+    }
+
+    [self layoutIfNeeded];
+
+    CGFloat projectedContentHeight = MAX([self contentSize].height - heightReduction, 0);
+    CGFloat requiredContentHeight =
+        CGRectGetHeight([self bounds]) + hiddenHeaderOffsetY + kKayokoTableViewHiddenHeaderInsetPadding;
+    return ceil(MAX(requiredContentHeight - projectedContentHeight, 0));
+}
+
+- (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath {
+    CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
+    if (hiddenHeaderOffsetY <= 0 ||
+        [self contentOffset].y < hiddenHeaderOffsetY - kKayokoTableViewHiddenHeaderOffsetTolerance) {
+        return;
+    }
+
+    UIEdgeInsets contentInset = [self contentInset];
+    CGFloat requiredBottomInset = [self minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:
+                                            [self heightForRowRemovalAtIndexPath:indexPath]];
+    if (contentInset.bottom >= requiredBottomInset) {
+        return;
+    }
+
+    contentInset.bottom = requiredBottomInset;
+    [self setContentInset:contentInset];
 }
 
 - (instancetype)initWithName:(NSString *)name {
@@ -325,6 +374,8 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
         }
         return;
     }
+
+    [self prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:indexPath];
 
     [self
         performBatchUpdates:^{
