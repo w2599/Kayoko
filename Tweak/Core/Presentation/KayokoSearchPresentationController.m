@@ -99,6 +99,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)layoutSearchBarForTableView:(KayokoHistoryListView *)tableView {
+    [tableView updateNoSearchResultsPlaceholderLayout];
+
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
     if ([tableView tableHeaderView] != searchBar) {
         return;
@@ -307,6 +309,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)applyBottomInsetToTableView:(KayokoHistoryListView *)tableView {
     [tableView setKeyboardBottomInset:[self keyboardBottomInset]];
+    [tableView updateNoSearchResultsPlaceholderLayout];
 
     UIEdgeInsets contentInset = [tableView contentInset];
     CGFloat bottomInset = [self keyboardBottomInset] + [self hiddenSearchBottomInsetForTableView:tableView];

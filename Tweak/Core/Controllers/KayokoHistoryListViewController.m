@@ -83,15 +83,15 @@ NS_ASSUME_NONNULL_END
     return [[self tableView] previewLineCount];
 }
 
-- (void)refreshSearchBackgroundView {
+- (void)refreshSearchPlaceholder {
     BOOL showsNoSearchResults =
         [self hasActiveSearch] && [[self items] count] > 0 && [[self displayedItems] count] == 0;
-    [[self tableView] setShowsNoSearchResultsBackground:showsNoSearchResults];
+    [[self tableView] setShowsNoSearchResultsPlaceholder:showsNoSearchResults];
 }
 
 - (void)reloadTableView {
     [[self tableView] reloadData];
-    [self refreshSearchBackgroundView];
+    [self refreshSearchPlaceholder];
 }
 
 - (void)scrollToTopAnimated:(BOOL)animated {
@@ -231,7 +231,7 @@ NS_ASSUME_NONNULL_END
           }
         }
         completion:^(__unused BOOL finished) {
-          [self refreshSearchBackgroundView];
+          [self refreshSearchPlaceholder];
         }];
 }
 
@@ -293,7 +293,7 @@ NS_ASSUME_NONNULL_END
         [self setItems:newItems];
         [[self tableView] reloadRowsAtIndexPaths:@[ [NSIndexPath indexPathForRow:0 inSection:0] ]
                                 withRowAnimation:UITableViewRowAnimationNone];
-        [self refreshSearchBackgroundView];
+        [self refreshSearchPlaceholder];
         return;
     }
 
@@ -305,7 +305,7 @@ NS_ASSUME_NONNULL_END
                                        toIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
             }
             completion:^(__unused BOOL finished) {
-              [self refreshSearchBackgroundView];
+              [self refreshSearchPlaceholder];
             }];
         return;
     }
@@ -335,7 +335,7 @@ NS_ASSUME_NONNULL_END
           if (restoresContentOffsetAfterInsertion) {
               [[self tableView] setContentOffset:contentOffsetBeforeInsertion animated:NO];
           }
-          [self refreshSearchBackgroundView];
+          [self refreshSearchPlaceholder];
         }];
 }
 
@@ -376,7 +376,7 @@ NS_ASSUME_NONNULL_END
           if (restoresContentOffsetAfterRemoval) {
               [[self tableView] setContentOffset:contentOffsetBeforeRemoval animated:NO];
           }
-          [self refreshSearchBackgroundView];
+          [self refreshSearchPlaceholder];
           if (completion) {
               completion(YES);
           }

@@ -16,18 +16,18 @@ static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoNoSearchResultsBackgroundView : UIView
-@property(nonatomic, assign) CGFloat keyboardBottomInset;
+@interface KayokoNoSearchResultsFooterView : UIView
+@property(nonatomic, strong) UILabel *label;
 @end
 
-@interface KayokoNoSearchResultsBackgroundView ()
-@property(nonatomic, strong) UILabel *label;
-@property(nonatomic, strong) NSLayoutConstraint *labelCenterYConstraint;
+@interface KayokoHistoryListView ()
+@property(nonatomic, assign, getter=isUpdatingNoSearchResultsPlaceholderLayout)
+    BOOL updatingNoSearchResultsPlaceholderLayout;
 @end
 
 NS_ASSUME_NONNULL_END
 
-@implementation KayokoNoSearchResultsBackgroundView
+@implementation KayokoNoSearchResultsFooterView
 
 - (instancetype)init {
     self = [super init];
@@ -43,10 +43,9 @@ NS_ASSUME_NONNULL_END
         [self addSubview:[self label]];
 
         [[self label] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [self setLabelCenterYConstraint:[[[self label] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
             [[[self label] centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [self labelCenterYConstraint],
+            [[[self label] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
             [[[self label] leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
             [[[self label] trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24]
         ]];
@@ -54,30 +53,51 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
-- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
-    keyboardBottomInset = MAX(keyboardBottomInset, 0);
-    if (_keyboardBottomInset == keyboardBottomInset) {
-        return;
-    }
-
-    _keyboardBottomInset = keyboardBottomInset;
-    [[self labelCenterYConstraint] setConstant:-keyboardBottomInset / 2.0];
-    [self setNeedsLayout];
-}
-
 @end
 
 @implementation KayokoHistoryListView
 
-- (void)setShowsNoSearchResultsBackground:(BOOL)showsNoSearchResultsBackground {
-    if (!showsNoSearchResultsBackground) {
-        [self setBackgroundView:nil];
+- (void)setShowsNoSearchResultsPlaceholder:(BOOL)showsNoSearchResultsPlaceholder {
+    UIView *footerView = [self tableFooterView];
+    BOOL isShowingPlaceholder = [footerView isKindOfClass:[KayokoNoSearchResultsFooterView class]];
+    if (!showsNoSearchResultsPlaceholder) {
+        if (isShowingPlaceholder) {
+            [self setTableFooterView:nil];
+        }
         return;
     }
 
-    KayokoNoSearchResultsBackgroundView *backgroundView = [[KayokoNoSearchResultsBackgroundView alloc] init];
-    [backgroundView setKeyboardBottomInset:[self keyboardBottomInset]];
-    [self setBackgroundView:backgroundView];
+    if (!isShowingPlaceholder) {
+        [self setTableFooterView:[[KayokoNoSearchResultsFooterView alloc] init]];
+    }
+    [self updateNoSearchResultsPlaceholderLayout];
+}
+
+- (CGFloat)noSearchResultsPlaceholderHeight {
+    CGFloat headerHeight = [self hiddenHeaderOffsetY];
+    CGFloat availableHeight = CGRectGetHeight([self bounds]) - headerHeight - [self keyboardBottomInset];
+    return ceil(MAX(availableHeight, 1));
+}
+
+- (void)updateNoSearchResultsPlaceholderLayout {
+    if ([self isUpdatingNoSearchResultsPlaceholderLayout]) {
+        return;
+    }
+
+    UIView *footerView = [self tableFooterView];
+    if (![footerView isKindOfClass:[KayokoNoSearchResultsFooterView class]]) {
+        return;
+    }
+
+    CGRect targetFrame = CGRectMake(0, 0, CGRectGetWidth([self bounds]), [self noSearchResultsPlaceholderHeight]);
+    if (CGRectEqualToRect([footerView frame], targetFrame)) {
+        return;
+    }
+
+    [self setUpdatingNoSearchResultsPlaceholderLayout:YES];
+    [footerView setFrame:targetFrame];
+    [self setTableFooterView:footerView];
+    [self setUpdatingNoSearchResultsPlaceholderLayout:NO];
 }
 
 - (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
@@ -87,10 +107,7 @@ NS_ASSUME_NONNULL_END
     }
 
     _keyboardBottomInset = keyboardBottomInset;
-    UIView *backgroundView = [self backgroundView];
-    if ([backgroundView isKindOfClass:[KayokoNoSearchResultsBackgroundView class]]) {
-        [(KayokoNoSearchResultsBackgroundView *)backgroundView setKeyboardBottomInset:keyboardBottomInset];
-    }
+    [self updateNoSearchResultsPlaceholderLayout];
 }
 
 - (CGFloat)hiddenHeaderOffsetY {

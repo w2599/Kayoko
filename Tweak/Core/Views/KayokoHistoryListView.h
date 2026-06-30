@@ -16,7 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithName:(NSString *)name;
-- (void)setShowsNoSearchResultsBackground:(BOOL)showsNoSearchResultsBackground;
+- (void)setShowsNoSearchResultsPlaceholder:(BOOL)showsNoSearchResultsPlaceholder;
+- (void)updateNoSearchResultsPlaceholderLayout;
 - (BOOL)isSearchHeaderExposedAtContentOffset:(CGPoint)contentOffset;
 - (BOOL)isContentOffsetAtHiddenSearchHeaderBoundary:(CGPoint)contentOffset;
 - (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction;
