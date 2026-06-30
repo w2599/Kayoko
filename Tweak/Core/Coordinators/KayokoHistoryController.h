@@ -5,10 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
-@class KayokoEmptyStateView;
-@class KayokoFavoritesTableView;
 @class KayokoHistoryController;
-@class KayokoHistoryTableView;
+@class KayokoHistoryListViewController;
 @class KayokoTableView;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -26,17 +24,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable) id<KayokoHistoryControllerDelegate> delegate;
 @property(nonatomic, copy) NSString *activeHistoryKey;
 
-- (instancetype)initWithHistoryTableView:(KayokoHistoryTableView *)historyTableView
-                      favoritesTableView:(KayokoFavoritesTableView *)favoritesTableView
-                          emptyStateView:(KayokoEmptyStateView *)emptyStateView;
+- (instancetype)initWithHistoryListViewController:(KayokoHistoryListViewController *)historyListViewController
+                      favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController;
 
 - (NSString *)effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:(nullable NSString *)clearConfirmationHistoryKey;
+- (KayokoHistoryListViewController *)listViewControllerForHistoryKey:(NSString *)historyKey;
 - (KayokoTableView *)tableViewForHistoryKey:(NSString *)historyKey;
 - (KayokoTableView *)activeTableViewWithClearConfirmationHistoryKey:(nullable NSString *)clearConfirmationHistoryKey;
-- (UIView *)contentViewForHistoryKey:(NSString *)historyKey;
-- (UIView *)activeHistoryContentView;
-- (UIView *)setHistoryContentVisibleForKey:(NSString *)historyKey;
-- (nullable NSString *)titleForContentView:(UIView *)view;
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey;
 - (void)handleHistoryChanged;

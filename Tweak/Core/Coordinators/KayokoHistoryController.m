@@ -5,9 +5,7 @@
 
 #import "KayokoHistoryController.h"
 
-#import "KayokoEmptyStateView.h"
-#import "KayokoFavoritesTableView.h"
-#import "KayokoHistoryTableView.h"
+#import "KayokoHistoryListViewController.h"
 #import "KayokoTableView.h"
 #import "PasteboardManager.h"
 
@@ -17,9 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) NSMutableSet<NSString *> *loadedHistoryKeys;
 @property(nonatomic, strong) NSMutableSet<NSString *> *dirtyHistoryKeys;
 @property(nonatomic, assign) NSUInteger pendingLocalHistoryChangeNotificationCount;
-@property(nonatomic, weak) KayokoHistoryTableView *historyTableView;
-@property(nonatomic, weak) KayokoFavoritesTableView *favoritesTableView;
-@property(nonatomic, weak) KayokoEmptyStateView *emptyStateView;
+@property(nonatomic, weak) KayokoHistoryListViewController *historyListViewController;
+@property(nonatomic, weak) KayokoHistoryListViewController *favoritesListViewController;
 - (void)loadTableViewForHistoryKey:(NSString *)historyKey
             animatingTopInsertions:(BOOL)animatingTopInsertions
                    notifiesDelegate:(BOOL)notifiesDelegate
@@ -30,17 +27,15 @@ NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryController
 
-- (instancetype)initWithHistoryTableView:(KayokoHistoryTableView *)historyTableView
-                      favoritesTableView:(KayokoFavoritesTableView *)favoritesTableView
-                          emptyStateView:(KayokoEmptyStateView *)emptyStateView {
+- (instancetype)initWithHistoryListViewController:(KayokoHistoryListViewController *)historyListViewController
+                      favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController {
     self = [super init];
     if (self) {
         _activeHistoryKey = kHistoryKeyHistory;
         _loadedHistoryKeys = [[NSMutableSet alloc] init];
         _dirtyHistoryKeys = [NSMutableSet setWithObjects:kHistoryKeyHistory, kHistoryKeyFavorites, nil];
-        _historyTableView = historyTableView;
-        _favoritesTableView = favoritesTableView;
-        _emptyStateView = emptyStateView;
+        _historyListViewController = historyListViewController;
+        _favoritesListViewController = favoritesListViewController;
 
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(handleLocalHistoryChangeNotification:)
@@ -58,62 +53,16 @@ NS_ASSUME_NONNULL_END
     return clearConfirmationHistoryKey ?: [self activeHistoryKey] ?: kHistoryKeyHistory;
 }
 
+- (KayokoHistoryListViewController *)listViewControllerForHistoryKey:(NSString *)historyKey {
+    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesListViewController] : [self historyListViewController];
+}
+
 - (KayokoTableView *)tableViewForHistoryKey:(NSString *)historyKey {
-    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesTableView] : [self historyTableView];
+    return [[self listViewControllerForHistoryKey:historyKey] tableView];
 }
 
 - (KayokoTableView *)activeTableViewWithClearConfirmationHistoryKey:(NSString *)clearConfirmationHistoryKey {
     return [self tableViewForHistoryKey:[self effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:clearConfirmationHistoryKey]];
-}
-
-- (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
-    KayokoTableView *tableView = [self tableViewForHistoryKey:historyKey];
-    if ([[tableView items] count] > 0) {
-        return tableView;
-    }
-
-    [[self emptyStateView] updateWithHistoryKey:historyKey];
-    return [self emptyStateView];
-}
-
-- (UIView *)activeHistoryContentView {
-    if (![[self historyTableView] isHidden]) {
-        return [self historyTableView];
-    }
-
-    if (![[self favoritesTableView] isHidden]) {
-        return [self favoritesTableView];
-    }
-
-    return [self emptyStateView];
-}
-
-- (UIView *)setHistoryContentVisibleForKey:(NSString *)historyKey {
-    [self setActiveHistoryKey:historyKey];
-    UIView *contentView = [self contentViewForHistoryKey:historyKey];
-    [[self historyTableView] setHidden:contentView != [self historyTableView]];
-    [[self favoritesTableView] setHidden:contentView != [self favoritesTableView]];
-    [[self emptyStateView] setHidden:contentView != [self emptyStateView]];
-    [contentView setAlpha:1];
-    [contentView setTransform:CGAffineTransformIdentity];
-    [[self delegate] historyController:self didUpdateActiveTableView:[self tableViewForHistoryKey:historyKey]];
-    return contentView;
-}
-
-- (NSString *)titleForContentView:(UIView *)view {
-    if (view == [self historyTableView]) {
-        return [[self historyTableView] name];
-    }
-
-    if (view == [self favoritesTableView]) {
-        return [[self favoritesTableView] name];
-    }
-
-    if (view == [self emptyStateView]) {
-        return [[self emptyStateView] name];
-    }
-
-    return nil;
 }
 
 - (BOOL)hasLoadedHistoryKey:(NSString *)historyKey {
@@ -155,15 +104,16 @@ NS_ASSUME_NONNULL_END
     return [[self activeHistoryKey] isEqualToString:historyKey] && [[self delegate] historyControllerIsPanelVisible:self];
 }
 
-- (BOOL)shouldDeferEmptyInactiveUpsertForHistoryKey:(NSString *)historyKey tableView:(KayokoTableView *)tableView {
-    return ![[self activeHistoryKey] isEqualToString:historyKey] && [[tableView items] count] == 0;
+- (BOOL)shouldDeferEmptyInactiveUpsertForHistoryKey:(NSString *)historyKey
+                                 listViewController:(KayokoHistoryListViewController *)listViewController {
+    return ![[self activeHistoryKey] isEqualToString:historyKey] && [[listViewController items] count] == 0;
 }
 
 - (void)updateCachedTableViewForHistoryKey:(NSString *)historyKey
                                 changeType:(NSString *)changeType
                             itemDictionary:(NSDictionary<NSString *, id> *)dictionary
                                      limit:(NSUInteger)limit {
-    KayokoTableView *tableView = [self tableViewForHistoryKey:historyKey];
+    KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
     if (![self hasLoadedHistoryKey:historyKey]) {
         [self markHistoryKeyDirty:historyKey];
         if ([[self delegate] historyControllerIsPanelVisible:self] &&
@@ -174,17 +124,17 @@ NS_ASSUME_NONNULL_END
     }
 
     if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeClear]) {
-        [tableView clearItems];
+        [listViewController clearItems];
     } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeUpsertTop]) {
-        if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:historyKey tableView:tableView]) {
+        if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:historyKey listViewController:listViewController]) {
             [self markHistoryKeyDirty:historyKey];
             return;
         }
-        [tableView upsertItemDictionaryAtTop:dictionary
-                                       limit:(limit ?: [self limitForHistoryKey:historyKey])
-                                   animating:[self shouldAnimateUpdatesForHistoryKey:historyKey]];
+        [listViewController upsertItemDictionaryAtTop:dictionary
+                                                limit:(limit ?: [self limitForHistoryKey:historyKey])
+                                            animating:[self shouldAnimateUpdatesForHistoryKey:historyKey]];
     } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeRemove]) {
-        [tableView removeItemDictionary:dictionary];
+        [listViewController removeItemDictionary:dictionary];
     } else {
         [self markHistoryKeyDirty:historyKey];
         return;
@@ -192,7 +142,7 @@ NS_ASSUME_NONNULL_END
 
     [self markHistoryKeyLoaded:historyKey];
     if ([[self activeHistoryKey] isEqualToString:historyKey]) {
-        [[self delegate] historyController:self didUpdateActiveTableView:tableView];
+        [[self delegate] historyController:self didUpdateActiveTableView:[listViewController tableView]];
     }
 }
 
@@ -243,7 +193,8 @@ NS_ASSUME_NONNULL_END
             animatingTopInsertions:(BOOL)animatingTopInsertions
                    notifiesDelegate:(BOOL)notifiesDelegate
                          completion:(void (^)(KayokoTableView *tableView))completion {
-    KayokoTableView *tableView = [self tableViewForHistoryKey:historyKey];
+    KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
+    KayokoTableView *tableView = [listViewController tableView];
     if (![self needsReloadForHistoryKey:historyKey]) {
         if (completion) {
             completion(tableView);
@@ -253,8 +204,8 @@ NS_ASSUME_NONNULL_END
 
     [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:historyKey
                                                         completion:^(NSMutableArray<NSDictionary<NSString *, id> *> *items) {
-                                                          [tableView updateDataWithItems:items
-                                                                  animatingTopInsertions:animatingTopInsertions];
+                                                          [listViewController updateDataWithItems:items
+                                                                            animatingTopInsertions:animatingTopInsertions];
                                                           [self markHistoryKeyLoaded:historyKey];
                                                           if (notifiesDelegate &&
                                                               [[self activeHistoryKey] isEqualToString:historyKey]) {
@@ -295,18 +246,21 @@ NS_ASSUME_NONNULL_END
     }
 
     if ([self hasLoadedHistoryKey:destinationHistoryKey]) {
-        KayokoTableView *destinationTableView = [self tableViewForHistoryKey:destinationHistoryKey];
-        if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:destinationHistoryKey tableView:destinationTableView]) {
+        KayokoHistoryListViewController *destinationListViewController =
+            [self listViewControllerForHistoryKey:destinationHistoryKey];
+        if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:destinationHistoryKey
+                                           listViewController:destinationListViewController]) {
             [self markHistoryKeyDirty:destinationHistoryKey];
             return;
         }
 
-        [destinationTableView upsertItemDictionaryAtTop:dictionary
-                                                  limit:[self limitForHistoryKey:destinationHistoryKey]
-                                              animating:[self shouldAnimateUpdatesForHistoryKey:destinationHistoryKey]];
+        [destinationListViewController upsertItemDictionaryAtTop:dictionary
+                                                           limit:[self limitForHistoryKey:destinationHistoryKey]
+                                                       animating:[self shouldAnimateUpdatesForHistoryKey:destinationHistoryKey]];
         [self markHistoryKeyLoaded:destinationHistoryKey];
         if ([[self activeHistoryKey] isEqualToString:destinationHistoryKey]) {
-            [[self delegate] historyController:self didUpdateActiveTableView:destinationTableView];
+            [[self delegate] historyController:self
+                      didUpdateActiveTableView:[destinationListViewController tableView]];
         }
     } else {
         [self markHistoryKeyDirty:destinationHistoryKey];

@@ -97,16 +97,17 @@ static void apply_height_preference_to_view(BOOL applyWhenHidden) {
         return;
     }
 
-    UIView *containerView = [kayokoMainViewController superview];
+    UIView *panelView = [kayokoMainViewController view];
+    UIView *containerView = [panelView superview];
     CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
     CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
     CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
-    if (!CGRectEqualToRect([kayokoMainViewController frame], newFrame)) {
-        if (!CGAffineTransformIsIdentity([kayokoMainViewController transform])) {
-            [kayokoMainViewController setTransform:CGAffineTransformIdentity];
+    if (!CGRectEqualToRect([panelView frame], newFrame)) {
+        if (!CGAffineTransformIsIdentity([panelView transform])) {
+            [panelView setTransform:CGAffineTransformIdentity];
         }
-        [kayokoMainViewController setFrame:newFrame];
-        [kayokoMainViewController setNeedsLayout];
+        [panelView setFrame:newFrame];
+        [panelView setNeedsLayout];
     }
 }
 
@@ -235,14 +236,17 @@ static void kayokoCopy() {
     });
 }
 
+static void apply_user_interface_style_to_view(UIUserInterfaceStyle style) {
+    [kayokoMainViewController applyUserInterfaceStyle:style];
+}
+
 static void show() {
     if (!kayokoMainViewController || ![kayokoMainViewController isHidden]) {
         return;
     }
 
     apply_height_preference_to_view(YES);
-
-    [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
+    apply_user_interface_style_to_view(UIUserInterfaceStyleUnspecified);
 
     /* iOS 15 */
     SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
@@ -252,9 +256,9 @@ static void show() {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
             if (isKindOfDark) {
-                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+                apply_user_interface_style_to_view(UIUserInterfaceStyleDark);
             } else {
-                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
+                apply_user_interface_style_to_view(UIUserInterfaceStyleLight);
             }
         }
     }
@@ -268,9 +272,9 @@ static void show() {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
             if (isKindOfDark) {
-                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+                apply_user_interface_style_to_view(UIUserInterfaceStyleDark);
             } else {
-                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
+                apply_user_interface_style_to_view(UIUserInterfaceStyleLight);
             }
         }
     }

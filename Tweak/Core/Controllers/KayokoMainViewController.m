@@ -8,19 +8,17 @@
 #import "KayokoClearConfirmationView.h"
 #import "KayokoClearConfirmationViewController.h"
 #import "KayokoEmptyStateView.h"
-#import "KayokoFavoritesTableView.h"
 #import "KayokoHistoryController.h"
+#import "KayokoHistoryListViewController.h"
 #import "KayokoHeaderButtonStyle.h"
-#import "KayokoHistoryTableView.h"
 #import "KayokoPanelPresentationController.h"
 #import "KayokoPreviewView.h"
 #import "KayokoPreviewViewController.h"
 #import "KayokoSearchController.h"
+#import "KayokoSearchViewController.h"
 #import "KayokoTableView.h"
-#import "KayokoTableViewController.h"
 #import "KayokoView.h"
 #import "KayokoWordSelectionView.h"
-#import "KayokoWordSelectionViewController.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
@@ -29,16 +27,18 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoMainViewController () <KayokoClearConfirmationViewControllerDelegate,
                                         KayokoHistoryControllerDelegate, KayokoPreviewViewControllerDelegate,
                                         KayokoPanelPresentationControllerDelegate, KayokoSearchControllerDelegate,
-                                        KayokoTableViewControllerDelegate>
+                                        KayokoHistoryListViewControllerDelegate>
 @property(nonatomic, strong) KayokoView *panelView;
 @property(nonatomic, copy, nullable) NSString *clearConfirmationHistoryKey;
 @property(nonatomic, strong) KayokoHistoryController *historyController;
-@property(nonatomic, strong) KayokoTableViewController *tableViewController;
+@property(nonatomic, strong) KayokoHistoryListViewController *historyListViewController;
+@property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
+@property(nonatomic, strong) KayokoEmptyStateView *emptyStateView;
 @property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
+@property(nonatomic, strong) KayokoSearchViewController *searchViewController;
 @property(nonatomic, strong) KayokoSearchController *searchController;
-@property(nonatomic, strong) KayokoWordSelectionViewController *wordSelectionViewController;
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
 
@@ -55,12 +55,35 @@ NS_ASSUME_NONNULL_END
 @implementation KayokoMainViewController
 
 - (instancetype)initWithFrame:(CGRect)frame {
-    self = [super init];
+    self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _panelView = [[KayokoView alloc] initWithFrame:frame];
-        _historyController = [[KayokoHistoryController alloc] initWithHistoryTableView:[_panelView historyTableView]
-                                                                    favoritesTableView:[_panelView favoritesTableView]
-                                                                        emptyStateView:[_panelView emptyStateView]];
+        [self setView:_panelView];
+        _historyListViewController =
+            [[KayokoHistoryListViewController alloc]
+                initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"History"
+                                                                                     value:nil
+                                                                                     table:@"Tweak"]
+                  historyKey:kHistoryKeyHistory];
+        [_historyListViewController setDelegate:self];
+        [self addChildViewController:_historyListViewController];
+        [_panelView installContentView:[_historyListViewController tableView] hidden:NO];
+        [_historyListViewController didMoveToParentViewController:self];
+
+        _favoritesListViewController =
+            [[KayokoHistoryListViewController alloc]
+                initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                     value:nil
+                                                                                     table:@"Tweak"]
+                  historyKey:kHistoryKeyFavorites];
+        [_favoritesListViewController setDelegate:self];
+        [self addChildViewController:_favoritesListViewController];
+        [_panelView installContentView:[_favoritesListViewController tableView] hidden:YES];
+        [_favoritesListViewController didMoveToParentViewController:self];
+
+        _historyController =
+            [[KayokoHistoryController alloc] initWithHistoryListViewController:_historyListViewController
+                                                   favoritesListViewController:_favoritesListViewController];
         [_historyController setDelegate:self];
 
         __weak typeof(self) weakSelf = self;
@@ -80,30 +103,33 @@ NS_ASSUME_NONNULL_END
         _panelPresentationController = [[KayokoPanelPresentationController alloc] initWithPanelView:_panelView];
         [_panelPresentationController setDelegate:self];
 
-        _tableViewController = [[KayokoTableViewController alloc]
-            initWithTableViews:@[ [_panelView historyTableView], [_panelView favoritesTableView] ]];
-        [_tableViewController setDelegate:self];
-
-        _clearConfirmationViewController =
-            [[KayokoClearConfirmationViewController alloc] initWithView:[_panelView clearConfirmationView]];
+        _clearConfirmationViewController = [[KayokoClearConfirmationViewController alloc] init];
         [_clearConfirmationViewController setDelegate:self];
+        [self addChildViewController:_clearConfirmationViewController];
+        [_panelView installContentView:[_clearConfirmationViewController confirmationView] hidden:YES];
+        [_clearConfirmationViewController didMoveToParentViewController:self];
 
-        _previewViewController = [[KayokoPreviewViewController alloc] initWithPreviewView:[_panelView previewView]
-                                                                          favoritesButton:[_panelView favoritesButton]
-                                                                               backButton:[_panelView backButton]
-                                                                              clearButton:[_panelView clearButton]];
+        _emptyStateView = [[KayokoEmptyStateView alloc] init];
+        [_panelView installContentView:_emptyStateView hidden:YES];
+
+        _previewViewController = [[KayokoPreviewViewController alloc] initWithFavoritesButton:[_panelView favoritesButton]
+                                                                                  backButton:[_panelView backButton]
+                                                                                 clearButton:[_panelView clearButton]];
         [_previewViewController setDelegate:self];
+        [self addChildViewController:_previewViewController];
+        [_panelView installContentView:[_previewViewController previewView] hidden:YES];
+        [_previewViewController didMoveToParentViewController:self];
 
-        _wordSelectionViewController =
-            [[KayokoWordSelectionViewController alloc] initWithWordSelectionView:[[_panelView previewView] wordSelectionView]];
-        [_wordSelectionViewController setSelectionChangedHandler:^{
-          [weakSelf updatePreviewActionButtonState];
-        }];
+        _searchViewController = [[KayokoSearchViewController alloc] initWithContainerView:_panelView];
+        [self addChildViewController:_searchViewController];
+        [_panelView addSubview:[_searchViewController view]];
+        [_searchViewController didMoveToParentViewController:self];
 
         _searchController = [[KayokoSearchController alloc] initWithContainerView:_panelView
                                                                        headerView:[_panelView headerView]
-                                                                 historyTableView:[_panelView historyTableView]
-                                                                favoritesTableView:[_panelView favoritesTableView]
+                                                           searchViewController:_searchViewController
+                                                     historyListViewController:_historyListViewController
+                                                   favoritesListViewController:_favoritesListViewController
                                                               panGestureRecognizer:[_panelPresentationController panGestureRecognizer]];
         [_searchController setDelegate:self];
 
@@ -111,44 +137,24 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
-- (UIView *)view {
-    return [self panelView];
-}
-
 - (BOOL)isHidden {
     return [[self panelView] isHidden];
 }
 
-- (CGRect)frame {
-    return [[self panelView] frame];
-}
-
-- (void)setFrame:(CGRect)frame {
-    [[self panelView] setFrame:frame];
-}
-
-- (CGAffineTransform)transform {
-    return [[self panelView] transform];
-}
-
-- (void)setTransform:(CGAffineTransform)transform {
-    [[self panelView] setTransform:transform];
-}
-
-- (void)setNeedsLayout {
-    [[self panelView] setNeedsLayout];
-}
-
-- (UIView *)superview {
-    return [[self panelView] superview];
-}
-
-- (void)setOverrideUserInterfaceStyle:(UIUserInterfaceStyle)style {
-    [[self panelView] setOverrideUserInterfaceStyle:style];
-}
-
 - (void)setOutsideDismissOverlayView:(UIControl *)outsideDismissOverlayView {
     [[self panelPresentationController] setOutsideDismissOverlayView:outsideDismissOverlayView];
+}
+
+- (void)applyUserInterfaceStyle:(UIUserInterfaceStyle)style {
+    [self setOverrideUserInterfaceStyle:style];
+    [[self view] setOverrideUserInterfaceStyle:style];
+
+    for (UIViewController *childViewController in [self childViewControllers]) {
+        [childViewController setOverrideUserInterfaceStyle:style];
+        [[childViewController view] setOverrideUserInterfaceStyle:style];
+    }
+
+    [[self emptyStateView] setOverrideUserInterfaceStyle:style];
 }
 
 - (void)setDismissOnOutsideTouch:(BOOL)dismissOnOutsideTouch {
@@ -158,8 +164,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
     _previewLineCount = previewLineCount;
-    [[[self panelView] historyTableView] setPreviewLineCount:previewLineCount];
-    [[[self panelView] favoritesTableView] setPreviewLineCount:previewLineCount];
+    [[self historyListViewController] setPreviewLineCount:previewLineCount];
+    [[self favoritesListViewController] setPreviewLineCount:previewLineCount];
 }
 
 - (void)setShouldPlayFeedback:(BOOL)shouldPlayFeedback {
@@ -179,8 +185,16 @@ NS_ASSUME_NONNULL_END
     return [[self historyController] activeTableViewWithClearConfirmationHistoryKey:[self clearConfirmationHistoryKey]];
 }
 
-- (KayokoTableView *)activeTableViewForSearchController:(KayokoSearchController *)searchController {
-    return [self activeTableView];
+- (KayokoHistoryListViewController *)activeListViewController {
+    return [[self historyController] listViewControllerForHistoryKey:[self effectiveActiveHistoryKey]];
+}
+
+- (KayokoHistoryListViewController *)listViewControllerForHistoryKey:(NSString *)historyKey {
+    return [[self historyController] listViewControllerForHistoryKey:historyKey];
+}
+
+- (KayokoHistoryListViewController *)activeListViewControllerForSearchController:(KayokoSearchController *)searchController {
+    return [self activeListViewController];
 }
 
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController {
@@ -209,23 +223,24 @@ NS_ASSUME_NONNULL_END
     [self updateActiveTableViewState:tableView];
 }
 
-- (void)tableViewControllerDidRequestHide:(KayokoTableViewController *)controller {
+- (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
     [self hide];
 }
 
-- (void)tableViewController:(KayokoTableViewController *)controller didRequestPreviewForItem:(PasteboardItem *)item {
+- (void)historyListViewController:(KayokoHistoryListViewController *)controller
+          didRequestPreviewForItem:(PasteboardItem *)item {
     [self showPreviewWithItem:item];
 }
 
-- (void)tableViewController:(KayokoTableViewController *)controller
+- (void)historyListViewController:(KayokoHistoryListViewController *)controller
     didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
     [self updateContentStateMaintainingSearchBarVisibility:maintainsSearchBarVisibility];
 }
 
-- (void)tableViewController:(KayokoTableViewController *)controller
-      didMoveItemDictionary:(NSDictionary<NSString *, id> *)dictionary
-         fromHistoryWithKey:(NSString *)sourceHistoryKey
-           toHistoryWithKey:(NSString *)destinationHistoryKey {
+- (void)historyListViewController:(KayokoHistoryListViewController *)controller
+            didMoveItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+               fromHistoryWithKey:(NSString *)sourceHistoryKey
+                 toHistoryWithKey:(NSString *)destinationHistoryKey {
     [self handlePasteboardItemDictionary:dictionary
                      movedFromHistoryKey:sourceHistoryKey
                              toHistoryKey:destinationHistoryKey];
@@ -236,30 +251,62 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
-    return [[self historyController] contentViewForHistoryKey:historyKey];
+    KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
+    if ([[listViewController items] count] > 0) {
+        return [listViewController tableView];
+    }
+
+    [[self emptyStateView] updateWithHistoryKey:historyKey];
+    return [self emptyStateView];
 }
 
 - (UIView *)activeHistoryContentView {
-    return [[self historyController] activeHistoryContentView];
+    if (![[[self historyListViewController] tableView] isHidden]) {
+        return [[self historyListViewController] tableView];
+    }
+
+    if (![[[self favoritesListViewController] tableView] isHidden]) {
+        return [[self favoritesListViewController] tableView];
+    }
+
+    return [self emptyStateView];
 }
 
 - (NSString *)titleForContentView:(UIView *)view {
-    if (view == [[self panelView] clearConfirmationView]) {
+    if (view == [[self clearConfirmationViewController] confirmationView]) {
         return [[[[self panelView] titleLabel] text] copy];
     }
 
-    if (view == [[self panelView] previewView]) {
-        return [[[self panelView] previewView] name];
+    if (view == [[self previewViewController] previewView]) {
+        return [[[self previewViewController] previewView] name];
     }
 
-    return [[self historyController] titleForContentView:view];
+    if (view == [[self historyListViewController] tableView]) {
+        return [[self historyListViewController] name];
+    }
+
+    if (view == [[self favoritesListViewController] tableView]) {
+        return [[self favoritesListViewController] name];
+    }
+
+    if (view == [self emptyStateView]) {
+        return [[self emptyStateView] name];
+    }
+
+    return nil;
 }
 
 - (void)setHistoryContentVisibleForKey:(NSString *)historyKey {
-    UIView *contentView = [[self historyController] setHistoryContentVisibleForKey:historyKey];
-    [[self searchController] attachToTableView:[self tableViewForHistoryKey:historyKey]
-                                hidesSearchBar:![[self searchController] isSearchActive]];
-    [[self searchController] refreshForTableView:[self activeTableView]];
+    [[self historyController] setActiveHistoryKey:historyKey];
+    UIView *contentView = [self contentViewForHistoryKey:historyKey];
+    [[[self historyListViewController] tableView] setHidden:contentView != [[self historyListViewController] tableView]];
+    [[[self favoritesListViewController] tableView] setHidden:contentView != [[self favoritesListViewController] tableView]];
+    [[self emptyStateView] setHidden:contentView != [self emptyStateView]];
+    [contentView setAlpha:1];
+    [contentView setTransform:CGAffineTransformIdentity];
+    [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:historyKey]
+                                         hidesSearchBar:![[self searchController] isSearchActive]];
+    [[self searchController] refreshForListViewController:[self activeListViewController]];
     [[self panelView] setTitleText:[self titleForContentView:contentView]];
 }
 
@@ -269,8 +316,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)updateActiveTableViewState:(KayokoTableView *)tableView {
     if (tableView == [self activeTableView]) {
-        [[self searchController] refreshForTableView:tableView];
-        [[self panelView] setClearButtonEnabledForTableView:tableView];
+        [[self searchController] refreshForListViewController:[self activeListViewController]];
+        [[self panelView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
         [self updateContentState];
     }
 }
@@ -297,34 +344,34 @@ NS_ASSUME_NONNULL_END
     [[self clearConfirmationViewController] beginWithHistoryKey:historyKey];
     [[[self panelView] clearButton] setHidden:YES];
 
-    [[self panelView] showContentView:[[self panelView] clearConfirmationView]
+    [[self panelView] showContentView:[[self clearConfirmationViewController] confirmationView]
                  hideContentView:[self activeHistoryContentView]
-                           title:[self titleForContentView:[[self panelView] clearConfirmationView]]
+                           title:[self titleForContentView:[[self clearConfirmationViewController] confirmationView]]
                          reverse:NO];
 }
 
 - (void)finishHidingClearConfirmationForHistoryKey:(NSString *)historyKey {
     [self setClearConfirmationHistoryKey:nil];
     [[[self panelView] clearButton] setHidden:NO];
-    [[self panelView] setClearButtonEnabledForTableView:[self tableViewForHistoryKey:historyKey]];
+    [[self panelView] setClearButtonEnabledForItemCount:[[[self listViewControllerForHistoryKey:historyKey] items] count]];
     UIView *contentView = [self contentViewForHistoryKey:historyKey];
     [[self panelView] showContentView:contentView
-                 hideContentView:[[self panelView] clearConfirmationView]
+                 hideContentView:[[self clearConfirmationViewController] confirmationView]
                            title:[self titleForContentView:contentView]
                          reverse:YES];
 }
 
 - (void)hideClearConfirmationWithReload:(BOOL)reload {
-    if ([[[self panelView] clearConfirmationView] isHidden] || ![self clearConfirmationHistoryKey]) {
+    if ([[[self clearConfirmationViewController] confirmationView] isHidden] || ![self clearConfirmationHistoryKey]) {
         return;
     }
 
     NSString *historyKey = [self clearConfirmationHistoryKey];
     if (reload) {
-        [[self tableViewForHistoryKey:historyKey] clearItems];
+        [[self listViewControllerForHistoryKey:historyKey] clearItems];
         [self markHistoryKeyLoaded:historyKey];
         if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
-            [[self searchController] refreshForTableView:[self activeTableView]];
+            [[self searchController] refreshForListViewController:[self activeListViewController]];
         }
     }
     [self finishHidingClearConfirmationForHistoryKey:historyKey];
@@ -335,9 +382,9 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [[[self panelView] clearConfirmationView] setHidden:YES];
-    [[[self panelView] clearConfirmationView] setAlpha:1];
-    [[[self panelView] clearConfirmationView] setTransform:CGAffineTransformIdentity];
+    [[[self clearConfirmationViewController] confirmationView] setHidden:YES];
+    [[[self clearConfirmationViewController] confirmationView] setAlpha:1];
+    [[[self clearConfirmationViewController] confirmationView] setTransform:CGAffineTransformIdentity];
     [self setHistoryContentVisibleForKey:[self clearConfirmationHistoryKey]];
     [[[self panelView] clearButton] setHidden:NO];
     [self setClearConfirmationHistoryKey:nil];
@@ -345,11 +392,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)isShowingClearConfirmation {
-    return [self clearConfirmationHistoryKey] && ![[[self panelView] clearConfirmationView] isHidden];
+    return [self clearConfirmationHistoryKey] && ![[[self clearConfirmationViewController] confirmationView] isHidden];
 }
 
 - (void)updateClearButtonState {
-    [[self panelView] setClearButtonEnabledForTableView:[self tableViewForHistoryKey:[self effectiveActiveHistoryKey]]];
+    [[self panelView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
 }
 
 - (void)updateContentState {
@@ -357,7 +404,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
-    if (![self isShowingClearConfirmation] && [[[self panelView] previewView] isHidden]) {
+    if (![self isShowingClearConfirmation] && [[[self previewViewController] previewView] isHidden]) {
         UIView *viewToHide = [self activeHistoryContentView];
         UIView *viewToShow = [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]];
 
@@ -373,7 +420,7 @@ NS_ASSUME_NONNULL_END
 
     [self updateClearButtonState];
     if (maintainsSearchBarVisibility) {
-        [[self searchController] maintainSearchBarVisibilityForTableView:[self activeTableView]];
+        [[self searchController] maintainSearchBarVisibilityForListViewController:[self activeListViewController]];
     }
 }
 
@@ -388,7 +435,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    if (![[[self panelView] previewView] isHidden]) {
+    if (![[[self previewViewController] previewView] isHidden]) {
         [self hidePreview];
         [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
         return;
@@ -410,10 +457,11 @@ NS_ASSUME_NONNULL_END
                               }
 
                               [[self historyController] setActiveHistoryKey:targetKey];
-                              [[self searchController] attachToTableView:targetTableView
-                                                           hidesSearchBar:![[self searchController] isSearchActive]];
-                              [[self searchController] refreshForTableView:[self activeTableView]];
-                              [[self panelView] setClearButtonEnabledForTableView:targetTableView];
+                              [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:targetKey]
+                                                                   hidesSearchBar:![[self searchController] isSearchActive]];
+                              [[self searchController] refreshForListViewController:[self activeListViewController]];
+                              [[self panelView]
+                                  setClearButtonEnabledForItemCount:[[[self listViewControllerForHistoryKey:targetKey] items] count]];
 
                               UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
                               if (viewToShow != viewToHide) {
@@ -442,7 +490,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)handleClearButtonPressed {
-    if ([[self panelPresentationController] isAnimating] || ![[[self panelView] previewView] isHidden] ||
+    if ([[self panelPresentationController] isAnimating] || ![[[self previewViewController] previewView] isHidden] ||
         [self isShowingClearConfirmation]) {
         return;
     }
@@ -463,12 +511,13 @@ NS_ASSUME_NONNULL_END
     [[self searchController] suspendSuggestions];
     [[self previewViewController] showPreviewWithItem:item
                                       sourceTableView:[self tableViewForHistoryKey:[self effectiveActiveHistoryKey]]
+                                    sourceHistoryKey:[self effectiveActiveHistoryKey]
                                  enablesWordSelection:[self swipeToSelectWords]
                                    automaticallyPaste:[self automaticallyPaste]];
 }
 
 - (void)hidePreview {
-    if ([[[self panelView] previewView] isHidden] || [[self panelPresentationController] isAnimating]) {
+    if ([[[self previewViewController] previewView] isHidden] || [[self panelPresentationController] isAnimating]) {
         return;
     }
 
@@ -515,7 +564,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)previewViewControllerDidEndPreview:(KayokoPreviewViewController *)controller {
     if ([[self searchController] isSearchActive]) {
-        [[self searchController] refreshForTableView:[self activeTableView]];
+        [[self searchController] refreshForListViewController:[self activeListViewController]];
     }
 }
 
@@ -527,12 +576,13 @@ NS_ASSUME_NONNULL_END
                               if (![[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
                                   return;
                               }
-                              if ([self isShowingClearConfirmation] || ![[[self panelView] previewView] isHidden]) {
+                              if ([self isShowingClearConfirmation] || ![[[self previewViewController] previewView] isHidden]) {
                                   return;
                               }
                               [self setHistoryContentVisibleForKey:historyKey];
-                              [[self searchController] refreshForTableView:[self activeTableView]];
-                              [[self panelView] setClearButtonEnabledForTableView:tableView];
+                              [[self searchController] refreshForListViewController:[self activeListViewController]];
+                              [[self panelView]
+                                  setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
                             }];
 }
 
@@ -550,8 +600,8 @@ NS_ASSUME_NONNULL_END
     [self setShowRequestIdentifier:showRequestIdentifier];
     [self resetClearConfirmationIfNeeded];
 
-    [[[self panelView] historyTableView] setAutomaticallyPaste:[self automaticallyPaste]];
-    [[[self panelView] favoritesTableView] setAutomaticallyPaste:[self automaticallyPaste]];
+    [[self historyListViewController] setAutomaticallyPaste:[self automaticallyPaste]];
+    [[self favoritesListViewController] setAutomaticallyPaste:[self automaticallyPaste]];
 
     NSString *historyKey = [self effectiveActiveHistoryKey];
     [self reloadTableViewForHistoryKey:historyKey
@@ -567,8 +617,10 @@ NS_ASSUME_NONNULL_END
                               }
 
                               [self setHistoryContentVisibleForKey:historyKey];
-                              [[self searchController] attachToTableView:[self activeTableView] hidesSearchBar:YES];
-                              [[self panelView] setClearButtonEnabledForTableView:tableView];
+                              [[self searchController] attachToListViewController:[self activeListViewController]
+                                                                   hidesSearchBar:YES];
+                              [[self panelView]
+                                  setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
                               [[self panelPresentationController] showPanelWithCompletion:nil];
                             }];
 }
@@ -586,7 +638,12 @@ NS_ASSUME_NONNULL_END
     }
 
     [[self searchController] resetBeforeHide];
-    [[self panelPresentationController] hidePanelWithCompletion:completion];
+    [[self panelPresentationController] hidePanelWithCompletion:^{
+      [[self previewViewController] resetPreviewState];
+      if (completion) {
+          completion();
+      }
+    }];
 }
 
 @end

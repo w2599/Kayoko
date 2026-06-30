@@ -1,22 +1,21 @@
 //
-//  KayokoAppTokenController.m
+//  KayokoSearchTokenProvider.m
 //  Kayoko
 //
 
-#import "KayokoAppTokenController.h"
+#import "KayokoSearchTokenProvider.h"
 
 #import "KayokoApplicationMetadataProvider.h"
-#import "KayokoTableView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoAppTokenController ()
+@interface KayokoSearchTokenProvider ()
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
 @end
 
 NS_ASSUME_NONNULL_END
 
-@implementation KayokoAppTokenController
+@implementation KayokoSearchTokenProvider
 
 - (instancetype)init {
     self = [super init];
@@ -26,9 +25,10 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
-- (NSArray<NSDictionary<NSString *, id> *> *)appTokenItemsForTableView:(KayokoTableView *)tableView {
+- (NSArray<NSDictionary<NSString *, id> *> *)appTokenItemsWithAvailableItems:
+    (NSArray<NSDictionary<NSString *, id> *> *)availableItems {
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
-    for (NSDictionary<NSString *, id> *tokenItem in [tableView availableAppTokenItems]) {
+    for (NSDictionary<NSString *, id> *tokenItem in availableItems) {
         NSString *bundleIdentifier = tokenItem[@"bundleIdentifier"];
         if ([bundleIdentifier length] == 0) {
             continue;
@@ -61,11 +61,12 @@ NS_ASSUME_NONNULL_END
     return @[];
 }
 
-- (NSArray<NSDictionary<NSString *, id> *> *)unselectedAppTokenSuggestionItemsForTableView:(KayokoTableView *)tableView
-                                                                                  searchBar:(UISearchBar *)searchBar {
+- (NSArray<NSDictionary<NSString *, id> *> *)unselectedAppTokenSuggestionItemsWithAvailableItems:
+                                            (NSArray<NSDictionary<NSString *, id> *> *)availableItems
+                                                                                        searchBar:(UISearchBar *)searchBar {
     NSArray<NSString *> *selectedBundleIdentifiers = [self selectedBundleIdentifiersInSearchBar:searchBar];
     NSMutableArray<NSDictionary<NSString *, id> *> *suggestionItems = [[NSMutableArray alloc] init];
-    for (NSDictionary<NSString *, id> *item in [self appTokenItemsForTableView:tableView]) {
+    for (NSDictionary<NSString *, id> *item in [self appTokenItemsWithAvailableItems:availableItems]) {
         NSString *bundleIdentifier = item[@"bundleIdentifier"];
         if (![selectedBundleIdentifiers containsObject:bundleIdentifier]) {
             [suggestionItems addObject:item];
@@ -76,10 +77,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)setSearchTokensWithBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers
                                  inSearchBar:(UISearchBar *)searchBar
-                                forTableView:(KayokoTableView *)tableView {
+                              availableItems:(NSArray<NSDictionary<NSString *, id> *> *)availableItems {
     if (@available(iOS 13.0, *)) {
         NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *itemsByBundleIdentifier = [[NSMutableDictionary alloc] init];
-        for (NSDictionary<NSString *, id> *item in [self appTokenItemsForTableView:tableView]) {
+        for (NSDictionary<NSString *, id> *item in [self appTokenItemsWithAvailableItems:availableItems]) {
             NSString *bundleIdentifier = item[@"bundleIdentifier"];
             if ([bundleIdentifier length] > 0) {
                 itemsByBundleIdentifier[bundleIdentifier] = item;

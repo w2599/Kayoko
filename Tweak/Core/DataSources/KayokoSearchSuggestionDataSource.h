@@ -1,24 +1,24 @@
 //
-//  KayokoSearchSuggestionController.h
+//  KayokoSearchSuggestionDataSource.h
 //  Kayoko
 //
 
 #import <UIKit/UIKit.h>
 
-@class KayokoSearchSuggestionController;
+@class KayokoSearchSuggestionDataSource;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol KayokoSearchSuggestionControllerDelegate <NSObject>
+@protocol KayokoSearchSuggestionDataSourceDelegate <NSObject>
 
-- (void)searchSuggestionController:(KayokoSearchSuggestionController *)controller
+- (void)searchSuggestionDataSource:(KayokoSearchSuggestionDataSource *)controller
         didSelectBundleIdentifier:(NSString *)bundleIdentifier;
 
 @end
 
-@interface KayokoSearchSuggestionController : NSObject
+@interface KayokoSearchSuggestionDataSource : NSObject
 
-@property(nonatomic, weak, nullable) id<KayokoSearchSuggestionControllerDelegate> delegate;
+@property(nonatomic, weak, nullable) id<KayokoSearchSuggestionDataSourceDelegate> delegate;
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *suggestionItems;
 
 - (instancetype)initWithSuggestionTableView:(UITableView *)suggestionTableView;

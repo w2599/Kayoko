@@ -1,20 +1,20 @@
 //
-//  KayokoSearchSuggestionController.m
+//  KayokoSearchSuggestionDataSource.m
 //  Kayoko
 //
 
-#import "KayokoSearchSuggestionController.h"
+#import "KayokoSearchSuggestionDataSource.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoSearchSuggestionController () <UITableViewDelegate, UITableViewDataSource>
+@interface KayokoSearchSuggestionDataSource () <UITableViewDelegate, UITableViewDataSource>
 @property(nonatomic, weak) UITableView *suggestionTableView;
 @property(nonatomic, copy, readwrite) NSArray<NSDictionary<NSString *, id> *> *suggestionItems;
 @end
 
 NS_ASSUME_NONNULL_END
 
-@implementation KayokoSearchSuggestionController
+@implementation KayokoSearchSuggestionDataSource
 
 - (instancetype)initWithSuggestionTableView:(UITableView *)suggestionTableView {
     self = [super init];
@@ -83,7 +83,7 @@ NS_ASSUME_NONNULL_END
     NSDictionary<NSString *, id> *item = [self suggestionItems][[indexPath row]];
     NSString *bundleIdentifier = item[@"bundleIdentifier"];
     if ([bundleIdentifier length] > 0) {
-        [[self delegate] searchSuggestionController:self didSelectBundleIdentifier:bundleIdentifier];
+        [[self delegate] searchSuggestionDataSource:self didSelectBundleIdentifier:bundleIdentifier];
     }
 }
 

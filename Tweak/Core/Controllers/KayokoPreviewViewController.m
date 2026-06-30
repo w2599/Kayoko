@@ -8,34 +8,45 @@
 #import "KayokoHeaderButtonStyle.h"
 #import "KayokoPreviewView.h"
 #import "KayokoTableView.h"
+#import "KayokoWordSelectionView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPreviewViewController ()
-@property(nonatomic, weak) KayokoPreviewView *previewView;
+@property(nonatomic, strong, readwrite) KayokoPreviewView *previewView;
 @property(nonatomic, weak) UIButton *favoritesButton;
 @property(nonatomic, weak) UIButton *backButton;
 @property(nonatomic, weak) UIButton *clearButton;
 @property(nonatomic, weak, nullable, readwrite) KayokoTableView *sourceTableView;
+@property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) PasteboardItem *previewItem;
+
+- (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoPreviewViewController
 
-- (instancetype)initWithPreviewView:(KayokoPreviewView *)previewView
-                     favoritesButton:(UIButton *)favoritesButton
+- (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
                           backButton:(UIButton *)backButton
                          clearButton:(UIButton *)clearButton {
     self = [super init];
     if (self) {
-        _previewView = previewView;
+        _previewView = [[KayokoPreviewView alloc]
+            initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Preview"
+                                                                                 value:nil
+                                                                                 table:@"Tweak"]];
         _favoritesButton = favoritesButton;
         _backButton = backButton;
         _clearButton = clearButton;
+        [self setView:_previewView];
+        __weak typeof(self) weakSelf = self;
+        [[_previewView wordSelectionView] setSelectionChangedHandler:^{
+          [weakSelf updateActionButtonState];
+        }];
     }
     return self;
 }
@@ -53,10 +64,12 @@ NS_ASSUME_NONNULL_END
 
 - (void)showPreviewWithItem:(PasteboardItem *)item
             sourceTableView:(KayokoTableView *)sourceTableView
+           sourceHistoryKey:(NSString *)sourceHistoryKey
        enablesWordSelection:(BOOL)enablesWordSelection
          automaticallyPaste:(BOOL)automaticallyPaste {
     [self setPreviewItem:item];
     [self setSourceTableView:sourceTableView];
+    [self setSourceHistoryKey:sourceHistoryKey];
 
     if (![[item imageName] isEqualToString:@""]) {
         NSData *imageData = [[NSFileManager defaultManager]
@@ -104,13 +117,7 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setAlpha:1.0];
     [self setPreviewItem:nil];
 
-    BOOL showingFavorites = [[[self sourceTableView] historyKey] isEqualToString:kHistoryKeyFavorites];
-    NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
-    UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
-    [self updateStyleForHeaderButton:[self favoritesButton]
-                        withImageName:imageName
-                         andImageSize:kFavoritesButtonImageSize
-                         andTintColor:tintColor];
+    [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
     [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
                                                                                                           value:nil
                                                                                                           table:@"Tweak"]];
@@ -129,7 +136,7 @@ NS_ASSUME_NONNULL_END
     PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[previewItem bundleIdentifier]
                                                                          andContent:text
                                                                      withImageNamed:@""];
-    NSString *historyKey = [[self sourceTableView] historyKey] ?: kHistoryKeyHistory;
+    NSString *historyKey = [self sourceHistoryKey] ?: kHistoryKeyHistory;
     if (automaticallyPaste) {
         [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
                                                                      historyItem:previewItem
@@ -150,6 +157,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)restoreSourceAfterAction {
+    [self resetPreviewState];
+}
+
+- (void)resetPreviewState {
+    BOOL wasShowingPreview = ![[self previewView] isHidden] || [self previewItem] != nil;
     [[self previewView] reset];
     [[self previewView] setHidden:YES];
     [[self sourceTableView] setHidden:NO];
@@ -159,14 +171,25 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setHidden:YES];
     [[self backButton] setEnabled:YES];
     [[self backButton] setAlpha:1.0];
-    BOOL showingFavorites = [[[self sourceTableView] historyKey] isEqualToString:kHistoryKeyFavorites];
+    [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
+    [[self favoritesButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                                          value:nil
+                                                                                                          table:@"Tweak"]];
+    [self setPreviewItem:nil];
+
+    if (wasShowingPreview) {
+        [[self delegate] previewViewControllerDidEndPreview:self];
+    }
+}
+
+- (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
+    BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
     UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     [self updateStyleForHeaderButton:[self favoritesButton]
                         withImageName:imageName
                          andImageSize:kFavoritesButtonImageSize
                          andTintColor:tintColor];
-    [self setPreviewItem:nil];
 }
 
 - (void)updateActionButtonState {

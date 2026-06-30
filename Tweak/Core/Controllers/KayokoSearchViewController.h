@@ -7,7 +7,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoSearchViewController : NSObject
+@interface KayokoSearchViewController : UIViewController
 
 @property(nonatomic, strong, readonly) UITableView *suggestionTableView;
 

@@ -3,7 +3,7 @@
 //  Kayoko
 //
 
-#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 @class KayokoClearConfirmationView;
 @class KayokoClearConfirmationViewController;
@@ -19,12 +19,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface KayokoClearConfirmationViewController : NSObject
+@interface KayokoClearConfirmationViewController : UIViewController
 
 @property(nonatomic, weak, nullable) id<KayokoClearConfirmationViewControllerDelegate> delegate;
 @property(nonatomic, copy, nullable) NSString *historyKey;
+@property(nonatomic, strong, readonly) KayokoClearConfirmationView *confirmationView;
 
-- (instancetype)initWithView:(KayokoClearConfirmationView *)view;
 - (void)beginWithHistoryKey:(NSString *)historyKey;
 - (void)handleCancel;
 - (void)handleConfirm;

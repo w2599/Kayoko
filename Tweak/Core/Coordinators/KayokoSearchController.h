@@ -6,13 +6,15 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoSearchController;
+@class KayokoHistoryListViewController;
+@class KayokoSearchViewController;
 @class KayokoTableView;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol KayokoSearchControllerDelegate <NSObject>
 
-- (KayokoTableView *)activeTableViewForSearchController:(KayokoSearchController *)searchController;
+- (KayokoHistoryListViewController *)activeListViewControllerForSearchController:(KayokoSearchController *)searchController;
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController;
 - (void)searchControllerDidFinishAnimatingSearchState:(KayokoSearchController *)searchController;
 
@@ -25,14 +27,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                             headerView:(UIView *)headerView
-                     historyTableView:(KayokoTableView *)historyTableView
-                    favoritesTableView:(KayokoTableView *)favoritesTableView
+                 searchViewController:(KayokoSearchViewController *)searchViewController
+             historyListViewController:(KayokoHistoryListViewController *)historyListViewController
+           favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
                   panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
 
 - (void)layout;
-- (void)attachToTableView:(KayokoTableView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
-- (void)refreshForTableView:(KayokoTableView *)tableView;
-- (void)maintainSearchBarVisibilityForTableView:(KayokoTableView *)tableView;
+- (void)attachToListViewController:(KayokoHistoryListViewController *)listViewController
+                     hidesSearchBar:(BOOL)hidesSearchBar;
+- (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController;
+- (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)suspendSuggestions;
 - (void)resetBeforeHide;
 

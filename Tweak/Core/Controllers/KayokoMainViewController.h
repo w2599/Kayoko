@@ -7,9 +7,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoMainViewController : NSObject
+@interface KayokoMainViewController : UIViewController
 
-@property(nonatomic, strong, readonly) UIView *view;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
@@ -19,14 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithFrame:(CGRect)frame;
 
 - (BOOL)isHidden;
-- (CGRect)frame;
-- (void)setFrame:(CGRect)frame;
-- (CGAffineTransform)transform;
-- (void)setTransform:(CGAffineTransform)transform;
-- (void)setNeedsLayout;
-- (nullable UIView *)superview;
-- (void)setOverrideUserInterfaceStyle:(UIUserInterfaceStyle)style;
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
+- (void)applyUserInterfaceStyle:(UIUserInterfaceStyle)style;
 
 - (void)handleHistoryChanged;
 - (void)preloadHistoryIfNeeded;

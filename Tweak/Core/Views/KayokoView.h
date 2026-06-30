@@ -7,11 +7,6 @@
 
 #import <UIKit/UIKit.h>
 
-@class KayokoClearConfirmationView;
-@class KayokoEmptyStateView;
-@class KayokoFavoritesTableView;
-@class KayokoHistoryTableView;
-@class KayokoPreviewView;
 @class KayokoTableView;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -29,11 +24,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UIButton *clearButton;
 @property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;
-@property(nonatomic, strong) KayokoHistoryTableView *historyTableView;
-@property(nonatomic, strong) KayokoFavoritesTableView *favoritesTableView;
-@property(nonatomic, strong) KayokoClearConfirmationView *clearConfirmationView;
-@property(nonatomic, strong) KayokoEmptyStateView *emptyStateView;
-@property(nonatomic, strong) KayokoPreviewView *previewView;
 @property(nonatomic, assign, getter=isAnimating) BOOL animating;
 
 @property(nonatomic, copy, nullable) void (^layoutHandler)(void);
@@ -43,7 +33,8 @@ NS_ASSUME_NONNULL_BEGIN
                       andImageSize:(NSUInteger)imageSize
                       andTintColor:(UIColor *)color;
 - (void)setTitleText:(NSString *)title;
-- (void)setClearButtonEnabledForTableView:(KayokoTableView *)tableView;
+- (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount;
+- (void)installContentView:(UIView *)contentView hidden:(BOOL)hidden;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title

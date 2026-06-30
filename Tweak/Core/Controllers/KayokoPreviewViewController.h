@@ -26,25 +26,28 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface KayokoPreviewViewController : NSObject
+@interface KayokoPreviewViewController : UIViewController
 
 @property(nonatomic, weak, nullable) id<KayokoPreviewViewControllerDelegate> delegate;
+@property(nonatomic, strong, readonly) KayokoPreviewView *previewView;
 @property(nonatomic, weak, nullable, readonly) KayokoTableView *sourceTableView;
+@property(nonatomic, copy, nullable, readonly) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readonly) PasteboardItem *previewItem;
 
-- (instancetype)initWithPreviewView:(KayokoPreviewView *)previewView
-                     favoritesButton:(UIButton *)favoritesButton
+- (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
                           backButton:(UIButton *)backButton
                          clearButton:(UIButton *)clearButton;
 
 - (void)showPreviewWithItem:(PasteboardItem *)item
             sourceTableView:(KayokoTableView *)sourceTableView
+           sourceHistoryKey:(NSString *)sourceHistoryKey
        enablesWordSelection:(BOOL)enablesWordSelection
          automaticallyPaste:(BOOL)automaticallyPaste;
 - (void)hidePreview;
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste;
 - (void)updateActionButtonState;
 - (void)restoreSourceAfterAction;
+- (void)resetPreviewState;
 
 @end
 

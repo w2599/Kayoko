@@ -31,7 +31,7 @@ NS_ASSUME_NONNULL_END
         [_suggestionTableView setHidden:YES];
         [_suggestionTableView setClipsToBounds:YES];
         [[_suggestionTableView layer] setCornerRadius:12];
-        [containerView addSubview:_suggestionTableView];
+        [self setView:_suggestionTableView];
     }
     return self;
 }

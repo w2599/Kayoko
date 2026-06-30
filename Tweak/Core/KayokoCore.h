@@ -7,11 +7,11 @@
 
 #import <UIKit/UIKit.h>
 
-@class KayokoView;
+@class KayokoMainViewController;
 
 NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN KayokoView *kayokoView;
+OBJC_EXTERN KayokoMainViewController *kayokoMainViewController;
 
 OBJC_EXTERN NSUserDefaults *kayokoPreferences;
 OBJC_EXTERN BOOL kayokoPrefsEnabled;

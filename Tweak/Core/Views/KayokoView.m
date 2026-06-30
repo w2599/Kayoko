@@ -7,12 +7,7 @@
 
 #import "KayokoView.h"
 
-#import "KayokoClearConfirmationView.h"
-#import "KayokoEmptyStateView.h"
-#import "KayokoFavoritesTableView.h"
 #import "KayokoHeaderButtonStyle.h"
-#import "KayokoHistoryTableView.h"
-#import "KayokoPreviewView.h"
 #import "KayokoTableView.h"
 #import "PasteboardManager.h"
 
@@ -120,41 +115,6 @@
                                                               constant:-kTrailingHeaderButtonCenterXInset]
         ]];
 
-        [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:[[PasteboardManager localizationBundle]
-                                                                                   localizedStringForKey:@"History"
-                                                                                                   value:nil
-                                                                                                   table:@"Tweak"]]];
-        [self addSubview:[self historyTableView]];
-        [self constrainContentView:[self historyTableView]];
-
-        [self
-            setFavoritesTableView:[[KayokoFavoritesTableView alloc] initWithName:[[PasteboardManager localizationBundle]
-                                                                                     localizedStringForKey:@"Favorites"
-                                                                                                     value:nil
-                                                                                                     table:@"Tweak"]]];
-        [[self favoritesTableView] setHistoryKey:kHistoryKeyFavorites];
-        [[self favoritesTableView] setHidden:YES];
-        [[self favoritesTableView] reloadDataWithItems:@[]];
-        [self addSubview:[self favoritesTableView]];
-        [self constrainContentView:[self favoritesTableView]];
-
-        [self setClearConfirmationView:[[KayokoClearConfirmationView alloc] init]];
-        [[self clearConfirmationView] setHidden:YES];
-        [self addSubview:[self clearConfirmationView]];
-        [self constrainContentView:[self clearConfirmationView]];
-
-        [self setEmptyStateView:[[KayokoEmptyStateView alloc] init]];
-        [[self emptyStateView] setHidden:YES];
-        [self addSubview:[self emptyStateView]];
-        [self constrainContentView:[self emptyStateView]];
-
-        [self setPreviewView:[[KayokoPreviewView alloc]
-                                 initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Preview"
-                                                                                                      value:nil
-                                                                                                      table:@"Tweak"]]];
-        [[self previewView] setHidden:YES];
-        [self addSubview:[self previewView]];
-        [self constrainContentView:[self previewView]];
     }
 
     return self;
@@ -177,6 +137,12 @@
     ]];
 }
 
+- (void)installContentView:(UIView *)contentView hidden:(BOOL)hidden {
+    [contentView setHidden:hidden];
+    [self addSubview:contentView];
+    [self constrainContentView:contentView];
+}
+
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
@@ -194,8 +160,8 @@
     }
 }
 
-- (void)setClearButtonEnabledForTableView:(KayokoTableView *)tableView {
-    BOOL enabled = [[tableView items] count] > 0;
+- (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount {
+    BOOL enabled = itemCount > 0;
     [[self clearButton] setEnabled:enabled];
     [[self clearButton] setAlpha:enabled ? 1.0 : 0.35];
 }
