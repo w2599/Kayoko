@@ -342,6 +342,52 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
                   title:(NSString *)title
               direction:(KayokoContentTransitionDirection)direction
              completion:(void (^)(void))completion {
+    [self prepareContentTransitionToView:viewToShow hideContentView:viewToHide title:title direction:direction];
+
+    [UIView animateWithDuration:0.3
+        delay:0
+        usingSpringWithDamping:1
+        initialSpringVelocity:0
+        options:UIViewAnimationOptionCurveEaseOut
+        animations:^{
+          [self applyPreparedContentTransitionToView:viewToShow hideContentView:viewToHide direction:direction];
+        }
+        completion:^(__unused BOOL finished) {
+          [self completePreparedContentTransitionHidingView:viewToHide completion:completion];
+        }];
+}
+
+- (void)preparedTransformsForDirection:(KayokoContentTransitionDirection)direction
+                       viewToShowTransform:(CGAffineTransform *)viewToShowTransform
+                       viewToHideTransform:(CGAffineTransform *)viewToHideTransform {
+    *viewToShowTransform = CGAffineTransformIdentity;
+    *viewToHideTransform = CGAffineTransformIdentity;
+    switch (direction) {
+    case KayokoContentTransitionDirectionForward:
+    case KayokoContentTransitionDirectionModalPresenting:
+        *viewToShowTransform = CGAffineTransformMakeTranslation(0, -10);
+        *viewToHideTransform = CGAffineTransformMakeTranslation(0, 10);
+        break;
+    case KayokoContentTransitionDirectionBackward:
+    case KayokoContentTransitionDirectionModalDismissing:
+        *viewToShowTransform = CGAffineTransformMakeTranslation(0, 10);
+        *viewToHideTransform = CGAffineTransformMakeTranslation(0, -10);
+        break;
+    case KayokoContentTransitionDirectionSiblingForward:
+        *viewToShowTransform = CGAffineTransformMakeTranslation(10, 0);
+        *viewToHideTransform = CGAffineTransformMakeTranslation(-10, 0);
+        break;
+    case KayokoContentTransitionDirectionSiblingBackward:
+        *viewToShowTransform = CGAffineTransformMakeTranslation(-10, 0);
+        *viewToHideTransform = CGAffineTransformMakeTranslation(10, 0);
+        break;
+    }
+}
+
+- (void)prepareContentTransitionToView:(UIView *)viewToShow
+                       hideContentView:(UIView *)viewToHide
+                                 title:(NSString *)title
+                             direction:(KayokoContentTransitionDirection)direction {
     [UIView transitionWithView:[self titleLabel]
                       duration:0.1
                        options:UIViewAnimationOptionTransitionCrossDissolve
@@ -352,51 +398,40 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
     CGAffineTransform viewToShowTransform = CGAffineTransformIdentity;
     CGAffineTransform viewToHideTransform = CGAffineTransformIdentity;
-    switch (direction) {
-    case KayokoContentTransitionDirectionForward:
-    case KayokoContentTransitionDirectionModalPresenting:
-        viewToShowTransform = CGAffineTransformMakeTranslation(0, -10);
-        viewToHideTransform = CGAffineTransformMakeTranslation(0, 10);
-        break;
-    case KayokoContentTransitionDirectionBackward:
-    case KayokoContentTransitionDirectionModalDismissing:
-        viewToShowTransform = CGAffineTransformMakeTranslation(0, 10);
-        viewToHideTransform = CGAffineTransformMakeTranslation(0, -10);
-        break;
-    case KayokoContentTransitionDirectionSiblingForward:
-        viewToShowTransform = CGAffineTransformMakeTranslation(10, 0);
-        viewToHideTransform = CGAffineTransformMakeTranslation(-10, 0);
-        break;
-    case KayokoContentTransitionDirectionSiblingBackward:
-        viewToShowTransform = CGAffineTransformMakeTranslation(-10, 0);
-        viewToHideTransform = CGAffineTransformMakeTranslation(10, 0);
-        break;
-    }
+    [self preparedTransformsForDirection:direction
+                     viewToShowTransform:&viewToShowTransform
+                     viewToHideTransform:&viewToHideTransform];
 
     [viewToShow setTransform:viewToShowTransform];
     [viewToShow setAlpha:0];
     [viewToShow setHidden:NO];
 
     [self setAnimating:YES];
-    [UIView animateWithDuration:0.3
-        delay:0
-        usingSpringWithDamping:1
-        initialSpringVelocity:0
-        options:UIViewAnimationOptionCurveEaseOut
-        animations:^{
-          [viewToShow setTransform:CGAffineTransformIdentity];
-          [viewToShow setAlpha:1];
+}
 
-          [viewToHide setTransform:viewToHideTransform];
-          [viewToHide setAlpha:0];
-        }
-        completion:^(__unused BOOL finished) {
-          [viewToHide setHidden:YES];
-          [self setAnimating:NO];
-          if (completion) {
-              completion();
-          }
-        }];
+- (void)applyPreparedContentTransitionToView:(UIView *)viewToShow
+                             hideContentView:(UIView *)viewToHide
+                                   direction:(KayokoContentTransitionDirection)direction {
+    CGAffineTransform viewToShowTransform = CGAffineTransformIdentity;
+    CGAffineTransform viewToHideTransform = CGAffineTransformIdentity;
+    [self preparedTransformsForDirection:direction
+                     viewToShowTransform:&viewToShowTransform
+                     viewToHideTransform:&viewToHideTransform];
+
+    [viewToShow setTransform:CGAffineTransformIdentity];
+    [viewToShow setAlpha:1];
+
+    [viewToHide setTransform:viewToHideTransform];
+    [viewToHide setAlpha:0];
+}
+
+- (void)completePreparedContentTransitionHidingView:(UIView *)viewToHide
+                                         completion:(void (^)(void))completion {
+    [viewToHide setHidden:YES];
+    [self setAnimating:NO];
+    if (completion) {
+        completion();
+    }
 }
 
 @end

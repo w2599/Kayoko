@@ -55,6 +55,15 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
                   title:(NSString *)title
               direction:(KayokoContentTransitionDirection)direction
              completion:(nullable void (^)(void))completion;
+- (void)prepareContentTransitionToView:(UIView *)viewToShow
+                       hideContentView:(UIView *)viewToHide
+                                 title:(NSString *)title
+                             direction:(KayokoContentTransitionDirection)direction;
+- (void)applyPreparedContentTransitionToView:(UIView *)viewToShow
+                             hideContentView:(UIView *)viewToHide
+                                   direction:(KayokoContentTransitionDirection)direction;
+- (void)completePreparedContentTransitionHidingView:(UIView *)viewToHide
+                                         completion:(nullable void (^)(void))completion;
 
 @end
 

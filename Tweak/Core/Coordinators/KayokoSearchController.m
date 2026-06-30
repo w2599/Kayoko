@@ -170,8 +170,12 @@ NS_ASSUME_NONNULL_END
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                     clearsSearch:(BOOL)clearsSearch
+                      animations:(void (^)(void))animations
                       completion:(void (^)(void))completion {
     if (![self isSearchActive] && !clearsSearch) {
+        if (animations) {
+            animations();
+        }
         if (completion) {
             completion();
         }
@@ -194,6 +198,7 @@ NS_ASSUME_NONNULL_END
     [[self delegate] searchControllerWillAnimateSearchState:self];
     [[self presentationController] endSearchRestoringFrame:restoresFrame
                                            activeTableView:[[self activeListViewController] tableView]
+                                                animations:animations
                                                 completion:^{
                                                   [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
                                                   if (completion) {
@@ -202,12 +207,22 @@ NS_ASSUME_NONNULL_END
                                                 }];
 }
 
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                    clearsSearch:(BOOL)clearsSearch
+                      completion:(void (^)(void))completion {
+    [self endSearchRestoringFrame:restoresFrame clearsSearch:clearsSearch animations:nil completion:completion];
+}
+
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame clearsSearch:(BOOL)clearsSearch {
     [self endSearchRestoringFrame:restoresFrame clearsSearch:clearsSearch completion:nil];
 }
 
 - (void)cancelSearchWithCompletion:(void (^)(void))completion {
     [self endSearchRestoringFrame:YES clearsSearch:YES completion:completion];
+}
+
+- (void)cancelSearchWithAnimations:(void (^)(void))animations completion:(void (^)(void))completion {
+    [self endSearchRestoringFrame:YES clearsSearch:YES animations:animations completion:completion];
 }
 
 - (void)resetBeforeHide {

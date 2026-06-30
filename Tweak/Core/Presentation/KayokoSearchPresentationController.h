@@ -42,6 +42,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                 activeTableView:(KayokoHistoryListView *)activeTableView
                      completion:(nullable void (^)(void))completion;
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                activeTableView:(KayokoHistoryListView *)activeTableView
+                      animations:(nullable void (^)(void))animations
+                      completion:(nullable void (^)(void))completion;
 - (void)resetKeyboardInsets;
 
 @end

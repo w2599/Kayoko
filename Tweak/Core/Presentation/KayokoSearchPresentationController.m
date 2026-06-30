@@ -255,6 +255,13 @@ NS_ASSUME_NONNULL_END
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                 activeTableView:(KayokoHistoryListView *)activeTableView
                      completion:(void (^)(void))completion {
+    [self endSearchRestoringFrame:restoresFrame activeTableView:activeTableView animations:nil completion:completion];
+}
+
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                activeTableView:(KayokoHistoryListView *)activeTableView
+                      animations:(void (^)(void))animations
+                      completion:(void (^)(void))completion {
     [self setSearchActive:NO];
     [self resetKeyboardInsets];
     [[self panGestureRecognizer] setEnabled:YES];
@@ -282,6 +289,9 @@ NS_ASSUME_NONNULL_END
               [containerView setNeedsLayout];
               [containerView layoutIfNeeded];
               [self hideSearchBarInTableView:activeTableView animated:NO];
+              if (animations) {
+                  animations();
+              }
             }
             completion:^(__unused BOOL finished) {
               if (completion) {
@@ -293,6 +303,9 @@ NS_ASSUME_NONNULL_END
         [containerView setNeedsLayout];
         [containerView layoutIfNeeded];
         [self hideSearchBarInTableView:activeTableView animated:NO];
+        if (animations) {
+            animations();
+        }
         if (completion) {
             completion();
         }

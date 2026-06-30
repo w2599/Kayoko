@@ -57,6 +57,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey;
 - (void)handleTitleTapControlPressed;
 - (KayokoEmptyStateView *)emptyStateViewForHistoryKey:(NSString *)historyKey;
+- (BOOL)cancelSearchForEmptyActiveHistoryIfNeededHidingView:(UIView *)viewToHide
+                                                  direction:(KayokoContentTransitionDirection)direction
+                                                 completion:(nullable void (^)(void))completion;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
               direction:(KayokoContentTransitionDirection)direction
@@ -388,13 +391,9 @@ NS_ASSUME_NONNULL_END
 - (void)updateActiveTableViewState:(KayokoHistoryListView *)tableView {
     if (tableView == [self activeTableView]) {
         KayokoHistoryListViewController *activeListViewController = [self activeListViewController];
-        if ([[activeListViewController items] count] == 0 && [[self searchController] isSearchActive]) {
-            [[self mainView] setClearButtonEnabledForItemCount:0];
-            [[self searchController] cancelSearchWithCompletion:^{
-              if (tableView == [self activeTableView]) {
-                  [self updateContentStateMaintainingSearchBarVisibility:NO];
-              }
-            }];
+        if ([self cancelSearchForEmptyActiveHistoryIfNeededHidingView:[self activeHistoryContentView]
+                                                            direction:KayokoContentTransitionDirectionForward
+                                                           completion:nil]) {
             return;
         }
         if ([[self searchController] isSearchActive] || [activeListViewController hasActiveSearch]) {
@@ -461,6 +460,16 @@ NS_ASSUME_NONNULL_END
         [[self listViewControllerForHistoryKey:historyKey] clearItems];
         [self markHistoryKeyLoaded:historyKey];
         if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
+            [self setClearConfirmationHistoryKey:nil];
+            [[[self mainView] clearButton] setHidden:NO];
+            [[self mainView] setClearButtonEnabledForItemCount:0];
+            if ([self
+                    cancelSearchForEmptyActiveHistoryIfNeededHidingView:
+                        [[self clearConfirmationViewController] confirmationView]
+                                                            direction:KayokoContentTransitionDirectionModalDismissing
+                                                           completion:nil]) {
+                return;
+            }
             [[self searchController] refreshForListViewController:[self activeListViewController]];
         }
     }
@@ -540,9 +549,45 @@ NS_ASSUME_NONNULL_END
                           completion:completion];
 }
 
+- (BOOL)cancelSearchForEmptyActiveHistoryIfNeededHidingView:(UIView *)viewToHide
+                                                  direction:(KayokoContentTransitionDirection)direction
+                                                 completion:(void (^)(void))completion {
+    if (![[self searchController] isSearchActive] || [[[self activeListViewController] items] count] > 0) {
+        return NO;
+    }
+
+    [[self mainView] setClearButtonEnabledForItemCount:0];
+    UIView *viewToShow = [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]];
+    if (viewToShow == viewToHide) {
+        [[self searchController] cancelSearchWithCompletion:completion];
+        return YES;
+    }
+
+    [[self mainView] prepareContentTransitionToView:viewToShow
+                                    hideContentView:viewToHide
+                                              title:[self titleForContentView:viewToShow]
+                                          direction:direction];
+    [[self searchController]
+        cancelSearchWithAnimations:^{
+          [[self mainView] applyPreparedContentTransitionToView:viewToShow
+                                                hideContentView:viewToHide
+                                                      direction:direction];
+        }
+        completion:^{
+          [[self mainView] completePreparedContentTransitionHidingView:viewToHide completion:completion];
+        }];
+    return YES;
+}
+
 - (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
     if (![self isShowingClearConfirmation] && [[[self previewViewController] previewView] isHidden] &&
         [[[self wordSelectionViewController] view] isHidden]) {
+        if ([self cancelSearchForEmptyActiveHistoryIfNeededHidingView:[self activeHistoryContentView]
+                                                            direction:KayokoContentTransitionDirectionForward
+                                                           completion:nil]) {
+            return;
+        }
+
         UIView *viewToHide = [self activeHistoryContentView];
         UIView *viewToShow = [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]];
 
@@ -601,11 +646,31 @@ NS_ASSUME_NONNULL_END
 
                               if ([[[self listViewControllerForHistoryKey:targetKey] items] count] == 0 &&
                                   [[self searchController] isSearchActive]) {
-                                  [[self searchController] cancelSearchWithCompletion:^{
-                                    if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
-                                        [self handleFavoritesButtonPressed];
-                                    }
-                                  }];
+                                  UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
+                                  [[self mainView] setClearButtonEnabledForItemCount:0];
+                                  [[self mainView] prepareContentTransitionToView:viewToShow
+                                                                  hideContentView:viewToHide
+                                                                            title:[self titleForContentView:viewToShow]
+                                                                        direction:direction];
+                                  [[self searchController]
+                                      cancelSearchWithAnimations:^{
+                                        [[self historyController] setActiveHistoryKey:targetKey];
+                                        [[self searchController]
+                                            attachToListViewController:[self listViewControllerForHistoryKey:targetKey]
+                                                        hidesSearchBar:YES];
+                                        [[self searchController]
+                                            refreshForListViewController:[self activeListViewController]];
+                                        [[self mainView] applyPreparedContentTransitionToView:viewToShow
+                                                                              hideContentView:viewToHide
+                                                                                    direction:direction];
+                                      }
+                                      completion:^{
+                                        [[self mainView] completePreparedContentTransitionHidingView:viewToHide
+                                                                                          completion:nil];
+                                      }];
+                                  [self updateFavoritesButtonForHistoryKey:targetKey];
+                                  [[self panelPresentationController]
+                                      triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
                                   return;
                               }
 
