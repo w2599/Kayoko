@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
 
 - (void)handleHistoryChanged;
+- (void)preloadHistoryIfNeeded;
 - (void)show;
 - (void)hide;
 - (void)reload;

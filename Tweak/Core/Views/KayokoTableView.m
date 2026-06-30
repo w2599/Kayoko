@@ -158,6 +158,7 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
         [self setName:name];
         [self setHistoryKey:kHistoryKeyHistory];
         [self setBackgroundColor:[UIColor clearColor]];
+        [self setAlwaysBounceVertical:YES];
         [self setPreviewLineCount:1];
     }
 
@@ -230,6 +231,12 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
 }
 
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary limit:(NSUInteger)limit {
+    [self upsertItemDictionaryAtTop:dictionary limit:limit animating:YES];
+}
+
+- (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
+                             limit:(NSUInteger)limit
+                         animating:(BOOL)animating {
     if (!dictionary || [dictionary[kItemKeyContent] length] == 0) {
         return;
     }
@@ -248,6 +255,11 @@ static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
     }
 
     if ([oldItems isEqualToArray:newItems] && [self numberOfRowsInSection:0] == [[self displayedItems] count]) {
+        return;
+    }
+
+    if (!animating) {
+        [self updateDataWithItems:newItems animatingTopInsertions:NO];
         return;
     }
 

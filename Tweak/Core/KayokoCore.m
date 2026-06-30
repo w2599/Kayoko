@@ -51,11 +51,15 @@ static AVAudioPlayer *copySoundPlayer = nil;
 static AVAudioPlayer *pasteSoundPlayer = nil;
 static BOOL didPreparePasteboardQueue = NO;
 static BOOL pendingHeightPreferenceApply = NO;
+static BOOL didRequestInitialHistoryPreload = NO;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
+@end
+
+@interface UIStatusBarWindow : UIWindow
 @end
 
 @interface SBStatusBarManager : NSObject
@@ -68,7 +72,21 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
 
+@interface SpringBoard : UIApplication
+- (void)applicationDidFinishLaunching:(id)application;
+@end
+
 NS_ASSUME_NONNULL_END
+
+static void preload_initial_history() {
+    didRequestInitialHistoryPreload = YES;
+
+    PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+    [pasteboardManager prepareHistoryStore];
+    if (kayokoMainViewController) {
+        [kayokoMainViewController preloadHistoryIfNeeded];
+    }
+}
 
 static void apply_height_preference_to_view(BOOL applyWhenHidden) {
     if (!kayokoMainViewController) {
@@ -139,7 +157,18 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
         [kayokoMainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
         apply_preferences_to_view();
         [self addSubview:[kayokoMainViewController view]];
+        if (didRequestInitialHistoryPreload) {
+            [kayokoMainViewController preloadHistoryIfNeeded];
+        }
     }
+}
+
+#pragma mark - SpringBoard class hooks
+
+static void (*orig_SpringBoard_applicationDidFinishLaunching)(SpringBoard *self, SEL _cmd, id application);
+static void override_SpringBoard_applicationDidFinishLaunching(SpringBoard *self, SEL _cmd, id application) {
+    orig_SpringBoard_applicationDidFinishLaunching(self, _cmd, application);
+    preload_initial_history();
 }
 
 #pragma mark - Notification callbacks
@@ -381,6 +410,9 @@ __attribute((constructor)) static void initialize() {
 
         MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:), (IMP)&override_UIStatusBarWindow_initWithFrame,
                         (IMP *)&orig_UIStatusBarWindow_initWithFrame);
+        MSHookMessageEx(objc_getClass("SpringBoard"), @selector(applicationDidFinishLaunching:),
+                        (IMP)&override_SpringBoard_applicationDidFinishLaunching,
+                        (IMP *)&orig_SpringBoard_applicationDidFinishLaunching);
 
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,

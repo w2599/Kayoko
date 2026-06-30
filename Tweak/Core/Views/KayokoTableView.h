@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) NSString *searchText;
 @property(nonatomic, copy) NSArray<NSString *> *selectedBundleIdentifiers;
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *availableAppTokenItems;
+@property(nonatomic, assign, readonly) BOOL hasActiveSearch;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, copy) NSString *historyKey;
@@ -29,6 +30,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable NSDictionary<NSString *, id> *)itemDictionaryAtIndexPath:(NSIndexPath *)indexPath;
 - (void)clearItems;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary limit:(NSUInteger)limit;
+- (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
+                             limit:(NSUInteger)limit
+                         animating:(BOOL)animating;
 - (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary;
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(nullable void (^)(BOOL success))completion;
 

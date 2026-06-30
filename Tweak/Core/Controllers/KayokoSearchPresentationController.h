@@ -15,7 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView
-                            searchBar:(UISearchBar *)searchBar
+                      historySearchBar:(UISearchBar *)historySearchBar
+                    favoritesSearchBar:(UISearchBar *)favoritesSearchBar
                      historyTableView:(KayokoTableView *)historyTableView
                     favoritesTableView:(KayokoTableView *)favoritesTableView
                   panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
@@ -23,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGFloat)searchHeaderHeight;
 - (void)layout;
 - (void)attachToTableView:(KayokoTableView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
+- (void)maintainSearchBarVisibilityForTableView:(KayokoTableView *)tableView;
 - (void)hideSearchBarInTableView:(nullable KayokoTableView *)tableView animated:(BOOL)animated;
 - (void)revealSearchBarInTableView:(nullable KayokoTableView *)tableView animated:(BOOL)animated;
 - (void)beginSearchWithActiveTableView:(KayokoTableView *)activeTableView

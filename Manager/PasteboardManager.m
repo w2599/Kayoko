@@ -145,6 +145,12 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)prepareHistoryStore {
+    [self performHistoryAsync:^{
+      [self ensureResourcesExistOnHistoryQueue];
+    }];
+}
+
 - (void)pullPasteboardChanges {
     if (@available(iOS 16, *)) {
         dispatch_async(_queue, ^{

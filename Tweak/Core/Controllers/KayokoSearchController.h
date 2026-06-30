@@ -32,6 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)layout;
 - (void)attachToTableView:(KayokoTableView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
 - (void)refreshForTableView:(KayokoTableView *)tableView;
+- (void)maintainSearchBarVisibilityForTableView:(KayokoTableView *)tableView;
 - (void)suspendSuggestions;
 - (void)resetBeforeHide;
 

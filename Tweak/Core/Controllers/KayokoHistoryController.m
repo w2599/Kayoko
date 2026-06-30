@@ -20,6 +20,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) KayokoHistoryTableView *historyTableView;
 @property(nonatomic, weak) KayokoFavoritesTableView *favoritesTableView;
 @property(nonatomic, weak) KayokoEmptyStateView *emptyStateView;
+- (void)loadTableViewForHistoryKey:(NSString *)historyKey
+            animatingTopInsertions:(BOOL)animatingTopInsertions
+                   notifiesDelegate:(BOOL)notifiesDelegate
+                         completion:(nullable void (^)(KayokoTableView *tableView))completion;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -147,6 +151,14 @@ NS_ASSUME_NONNULL_END
     return [[PasteboardManager sharedInstance] maximumHistoryAmount];
 }
 
+- (BOOL)shouldAnimateUpdatesForHistoryKey:(NSString *)historyKey {
+    return [[self activeHistoryKey] isEqualToString:historyKey] && [[self delegate] historyControllerIsPanelVisible:self];
+}
+
+- (BOOL)shouldDeferEmptyInactiveUpsertForHistoryKey:(NSString *)historyKey tableView:(KayokoTableView *)tableView {
+    return ![[self activeHistoryKey] isEqualToString:historyKey] && [[tableView items] count] == 0;
+}
+
 - (void)updateCachedTableViewForHistoryKey:(NSString *)historyKey
                                 changeType:(NSString *)changeType
                             itemDictionary:(NSDictionary<NSString *, id> *)dictionary
@@ -164,7 +176,13 @@ NS_ASSUME_NONNULL_END
     if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeClear]) {
         [tableView clearItems];
     } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeUpsertTop]) {
-        [tableView upsertItemDictionaryAtTop:dictionary limit:(limit ?: [self limitForHistoryKey:historyKey])];
+        if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:historyKey tableView:tableView]) {
+            [self markHistoryKeyDirty:historyKey];
+            return;
+        }
+        [tableView upsertItemDictionaryAtTop:dictionary
+                                       limit:(limit ?: [self limitForHistoryKey:historyKey])
+                                   animating:[self shouldAnimateUpdatesForHistoryKey:historyKey]];
     } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeRemove]) {
         [tableView removeItemDictionary:dictionary];
     } else {
@@ -215,6 +233,16 @@ NS_ASSUME_NONNULL_END
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
               animatingTopInsertions:(BOOL)animatingTopInsertions
                            completion:(void (^)(KayokoTableView *tableView))completion {
+    [self loadTableViewForHistoryKey:historyKey
+              animatingTopInsertions:animatingTopInsertions
+                     notifiesDelegate:YES
+                           completion:completion];
+}
+
+- (void)loadTableViewForHistoryKey:(NSString *)historyKey
+            animatingTopInsertions:(BOOL)animatingTopInsertions
+                   notifiesDelegate:(BOOL)notifiesDelegate
+                         completion:(void (^)(KayokoTableView *tableView))completion {
     KayokoTableView *tableView = [self tableViewForHistoryKey:historyKey];
     if (![self needsReloadForHistoryKey:historyKey]) {
         if (completion) {
@@ -228,7 +256,8 @@ NS_ASSUME_NONNULL_END
                                                           [tableView updateDataWithItems:items
                                                                   animatingTopInsertions:animatingTopInsertions];
                                                           [self markHistoryKeyLoaded:historyKey];
-                                                          if ([[self activeHistoryKey] isEqualToString:historyKey]) {
+                                                          if (notifiesDelegate &&
+                                                              [[self activeHistoryKey] isEqualToString:historyKey]) {
                                                               [[self delegate] historyController:self
                                                                            didUpdateActiveTableView:tableView];
                                                           }
@@ -242,6 +271,22 @@ NS_ASSUME_NONNULL_END
     [self reloadTableViewForHistoryKey:historyKey animatingTopInsertions:NO completion:completion];
 }
 
+- (void)preloadHistoryWithCompletion:(void (^)(void))completion {
+    [self loadTableViewForHistoryKey:kHistoryKeyHistory
+              animatingTopInsertions:NO
+                     notifiesDelegate:NO
+                           completion:^(__unused KayokoTableView *historyTableView) {
+                             [self loadTableViewForHistoryKey:kHistoryKeyFavorites
+                                           animatingTopInsertions:NO
+                                                  notifiesDelegate:NO
+                                                        completion:^(__unused KayokoTableView *favoritesTableView) {
+                                                          if (completion) {
+                                                              completion();
+                                                          }
+                                                        }];
+                           }];
+}
+
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
                            toHistoryKey:(NSString *)destinationHistoryKey {
@@ -250,11 +295,18 @@ NS_ASSUME_NONNULL_END
     }
 
     if ([self hasLoadedHistoryKey:destinationHistoryKey]) {
-        [[self tableViewForHistoryKey:destinationHistoryKey] upsertItemDictionaryAtTop:dictionary
-                                                                                 limit:[self limitForHistoryKey:destinationHistoryKey]];
+        KayokoTableView *destinationTableView = [self tableViewForHistoryKey:destinationHistoryKey];
+        if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:destinationHistoryKey tableView:destinationTableView]) {
+            [self markHistoryKeyDirty:destinationHistoryKey];
+            return;
+        }
+
+        [destinationTableView upsertItemDictionaryAtTop:dictionary
+                                                  limit:[self limitForHistoryKey:destinationHistoryKey]
+                                              animating:[self shouldAnimateUpdatesForHistoryKey:destinationHistoryKey]];
         [self markHistoryKeyLoaded:destinationHistoryKey];
         if ([[self activeHistoryKey] isEqualToString:destinationHistoryKey]) {
-            [[self delegate] historyController:self didUpdateActiveTableView:[self tableViewForHistoryKey:destinationHistoryKey]];
+            [[self delegate] historyController:self didUpdateActiveTableView:destinationTableView];
         }
     } else {
         [self markHistoryKeyDirty:destinationHistoryKey];

@@ -39,6 +39,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
 @property(nonatomic, strong) KayokoSearchController *searchController;
 @property(nonatomic, strong) KayokoWordSelectionViewController *wordSelectionViewController;
+@property(nonatomic, assign) BOOL preparingToShow;
+@property(nonatomic, assign) NSUInteger showRequestIdentifier;
 
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
@@ -364,6 +366,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [self updateClearButtonState];
+    [[self searchController] maintainSearchBarVisibilityForTableView:[self activeTableView]];
 }
 
 - (void)handleFavoritesButtonPressed {
@@ -525,19 +528,41 @@ NS_ASSUME_NONNULL_END
                             }];
 }
 
+- (void)preloadHistoryIfNeeded {
+    [[self historyController] preloadHistoryWithCompletion:nil];
+}
+
 - (void)show {
-    if ([[self panelPresentationController] isAnimating]) {
+    if ([[self panelPresentationController] isAnimating] || [self preparingToShow]) {
         return;
     }
 
+    [self setPreparingToShow:YES];
+    NSUInteger showRequestIdentifier = [self showRequestIdentifier] + 1;
+    [self setShowRequestIdentifier:showRequestIdentifier];
     [self resetClearConfirmationIfNeeded];
 
     [[[self panelView] historyTableView] setAutomaticallyPaste:[self automaticallyPaste]];
     [[[self panelView] favoritesTableView] setAutomaticallyPaste:[self automaticallyPaste]];
 
-    [self reload];
-    [[self searchController] attachToTableView:[self activeTableView] hidesSearchBar:YES];
-    [[self panelPresentationController] showPanelWithCompletion:nil];
+    NSString *historyKey = [self effectiveActiveHistoryKey];
+    [self reloadTableViewForHistoryKey:historyKey
+                animatingTopInsertions:NO
+                            completion:^(KayokoTableView *tableView) {
+                              if ([self showRequestIdentifier] != showRequestIdentifier) {
+                                  return;
+                              }
+                              [self setPreparingToShow:NO];
+                              if (![[self effectiveActiveHistoryKey] isEqualToString:historyKey] ||
+                                  ![self isHidden] || [[self panelPresentationController] isAnimating]) {
+                                  return;
+                              }
+
+                              [self setHistoryContentVisibleForKey:historyKey];
+                              [[self searchController] attachToTableView:[self activeTableView] hidesSearchBar:YES];
+                              [[self panelView] setClearButtonEnabledForTableView:tableView];
+                              [[self panelPresentationController] showPanelWithCompletion:nil];
+                            }];
 }
 
 - (void)hide {
@@ -545,6 +570,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)hideWithCompletion:(void (^)(void))completion {
+    [self setShowRequestIdentifier:[self showRequestIdentifier] + 1];
+    [self setPreparingToShow:NO];
+
     if ([[self panelPresentationController] isAnimating]) {
         return;
     }

@@ -33,6 +33,7 @@ static NSString *const kPasteboardManagerHistoryChangeTypeClear = @"clear";
 + (instancetype)sharedInstance;
 - (instancetype)init NS_UNAVAILABLE;
 - (void)preparePasteboardQueue;
+- (void)prepareHistoryStore;
 
 + (NSString *)historyPath;
 + (NSString *)historyDatabasePath;

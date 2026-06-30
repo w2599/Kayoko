@@ -40,6 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey;
 - (void)handleHistoryChanged;
+- (void)preloadHistoryWithCompletion:(nullable void (^)(void))completion;
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
               animatingTopInsertions:(BOOL)animatingTopInsertions
                            completion:(nullable void (^)(KayokoTableView *tableView))completion;

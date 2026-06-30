@@ -5,8 +5,6 @@
 
 #import "KayokoSearchViewController.h"
 
-#import "PasteboardManager.h"
-
 static CGFloat const kKayokoAppTokenSuggestionRowHeight = 44;
 static CGFloat const kKayokoAppTokenSuggestionMaximumHeight = 220;
 
@@ -14,7 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchViewController ()
 @property(nonatomic, weak) UIView *containerView;
-@property(nonatomic, strong, readwrite) UISearchBar *searchBar;
 @property(nonatomic, strong, readwrite) UITableView *suggestionTableView;
 @end
 
@@ -26,12 +23,6 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     if (self) {
         _containerView = containerView;
-        _searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
-        [_searchBar setPlaceholder:[[PasteboardManager localizationBundle] localizedStringForKey:@"Search"
-                                                                                           value:nil
-                                                                                           table:@"Tweak"]];
-        [_searchBar setSearchBarStyle:UISearchBarStyleMinimal];
-        [_searchBar setBackgroundImage:[[UIImage alloc] init]];
 
         _suggestionTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
         [_suggestionTableView setRowHeight:kKayokoAppTokenSuggestionRowHeight];

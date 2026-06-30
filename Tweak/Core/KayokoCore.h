@@ -30,7 +30,4 @@ OBJC_EXTERN CGFloat kayokoPrefsHeightInPoints;
 
 OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
 
-@interface UIStatusBarWindow : UIWindow
-@end
-
 NS_ASSUME_NONNULL_END
