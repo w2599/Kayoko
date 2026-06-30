@@ -306,6 +306,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)applyBottomInsetToTableView:(KayokoHistoryListView *)tableView {
+    [tableView setKeyboardBottomInset:[self keyboardBottomInset]];
+
     UIEdgeInsets contentInset = [tableView contentInset];
     CGFloat bottomInset = [self keyboardBottomInset] + [self hiddenSearchBottomInsetForTableView:tableView];
     contentInset.bottom = bottomInset;

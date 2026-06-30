@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic, assign) NSUInteger previewLineCount;
+@property(nonatomic, assign) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithName:(NSString *)name;
 - (void)setShowsNoSearchResultsBackground:(BOOL)showsNoSearchResultsBackground;

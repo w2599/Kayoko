@@ -14,6 +14,59 @@ static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 
+NS_ASSUME_NONNULL_BEGIN
+
+@interface KayokoNoSearchResultsBackgroundView : UIView
+@property(nonatomic, assign) CGFloat keyboardBottomInset;
+@end
+
+@interface KayokoNoSearchResultsBackgroundView ()
+@property(nonatomic, strong) UILabel *label;
+@property(nonatomic, strong) NSLayoutConstraint *labelCenterYConstraint;
+@end
+
+NS_ASSUME_NONNULL_END
+
+@implementation KayokoNoSearchResultsBackgroundView
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        [self setLabel:[[UILabel alloc] init]];
+        [[self label] setFont:[UIFont systemFontOfSize:17 weight:UIFontWeightMedium]];
+        [[self label] setTextColor:[UIColor secondaryLabelColor]];
+        [[self label] setTextAlignment:NSTextAlignmentCenter];
+        [[self label] setNumberOfLines:0];
+        [[self label] setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"No Search Results"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
+        [self addSubview:[self label]];
+
+        [[self label] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [self setLabelCenterYConstraint:[[[self label] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self label] centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
+            [self labelCenterYConstraint],
+            [[[self label] leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
+            [[[self label] trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24]
+        ]];
+    }
+    return self;
+}
+
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [[self labelCenterYConstraint] setConstant:-keyboardBottomInset / 2.0];
+    [self setNeedsLayout];
+}
+
+@end
+
 @implementation KayokoHistoryListView
 
 - (void)setShowsNoSearchResultsBackground:(BOOL)showsNoSearchResultsBackground {
@@ -22,15 +75,22 @@ static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
         return;
     }
 
-    UILabel *label = [[UILabel alloc] init];
-    [label setFont:[UIFont systemFontOfSize:17 weight:UIFontWeightMedium]];
-    [label setTextColor:[UIColor secondaryLabelColor]];
-    [label setTextAlignment:NSTextAlignmentCenter];
-    [label setNumberOfLines:0];
-    [label setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"No Search Results"
-                                                                           value:nil
-                                                                           table:@"Tweak"]];
-    [self setBackgroundView:label];
+    KayokoNoSearchResultsBackgroundView *backgroundView = [[KayokoNoSearchResultsBackgroundView alloc] init];
+    [backgroundView setKeyboardBottomInset:[self keyboardBottomInset]];
+    [self setBackgroundView:backgroundView];
+}
+
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    UIView *backgroundView = [self backgroundView];
+    if ([backgroundView isKindOfClass:[KayokoNoSearchResultsBackgroundView class]]) {
+        [(KayokoNoSearchResultsBackgroundView *)backgroundView setKeyboardBottomInset:keyboardBottomInset];
+    }
 }
 
 - (CGFloat)hiddenHeaderOffsetY {
