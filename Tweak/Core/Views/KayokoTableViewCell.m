@@ -88,11 +88,21 @@
         }
 
         [self setContentLabel:[[UILabel alloc] init]];
-        [[self contentLabel] setText:[content contentText] ?: @""];
         [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
         [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
         [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
         [[self contentLabel] setNumberOfLines:lineCount];
+        if ([content attributedContentText]) {
+            NSMutableAttributedString *attributedText = [[content attributedContentText] mutableCopy];
+            NSRange fullRange = NSMakeRange(0, [attributedText length]);
+            [attributedText addAttribute:NSFontAttributeName value:[[self contentLabel] font] range:fullRange];
+            [attributedText addAttribute:NSForegroundColorAttributeName
+                                   value:[[self contentLabel] textColor]
+                                   range:fullRange];
+            [[self contentLabel] setAttributedText:attributedText];
+        } else {
+            [[self contentLabel] setText:[content contentText] ?: @""];
+        }
         [self addSubview:[self contentLabel]];
 
         [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];

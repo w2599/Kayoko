@@ -399,7 +399,8 @@ NS_ASSUME_NONNULL_END
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
     KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
-                                                                        previewLineCount:[self previewLineCount]];
+                                                                        previewLineCount:[self previewLineCount]
+                                                                              searchText:[self searchText]];
 
     KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                                    content:content
