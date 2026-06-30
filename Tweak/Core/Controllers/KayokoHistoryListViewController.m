@@ -25,6 +25,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+- (BOOL)isHiddenSearchHeaderBoundaryContentOffset:(CGPoint)contentOffset;
+- (BOOL)shouldRestoreContentOffsetAfterTopInsertionFromOffset:(CGPoint)contentOffset;
+- (BOOL)shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:(NSIndexPath *)indexPath
+                                                     fromOffset:(CGPoint)contentOffset;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -154,6 +158,30 @@ NS_ASSUME_NONNULL_END
 
 - (NSUInteger)normalizedLimit:(NSUInteger)limit {
     return limit == 0 ? NSUIntegerMax : limit;
+}
+
+- (BOOL)isHiddenSearchHeaderBoundaryContentOffset:(CGPoint)contentOffset {
+    UIView *headerView = [[self tableView] tableHeaderView];
+    CGFloat headerHeight = headerView ? CGRectGetHeight([headerView frame]) : 0;
+    if (headerHeight <= 0 || [self hasActiveSearch]) {
+        return NO;
+    }
+
+    CGFloat rowHeight = [[self tableView] rowHeight];
+    if (rowHeight <= 0) {
+        rowHeight = 65;
+    }
+
+    return contentOffset.y >= headerHeight - 1 && contentOffset.y <= headerHeight + rowHeight + 1;
+}
+
+- (BOOL)shouldRestoreContentOffsetAfterTopInsertionFromOffset:(CGPoint)contentOffset {
+    return [self isHiddenSearchHeaderBoundaryContentOffset:contentOffset];
+}
+
+- (BOOL)shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:(NSIndexPath *)indexPath
+                                                     fromOffset:(CGPoint)contentOffset {
+    return [indexPath row] == 0 && [self isHiddenSearchHeaderBoundaryContentOffset:contentOffset];
 }
 
 - (nullable NSDictionary<NSString *, id> *)itemDictionaryAtIndexPath:(NSIndexPath *)indexPath {
@@ -293,6 +321,10 @@ NS_ASSUME_NONNULL_END
         [removedIndexPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
     }
 
+    CGPoint contentOffsetBeforeInsertion = [[self tableView] contentOffset];
+    BOOL restoresContentOffsetAfterInsertion =
+        [self shouldRestoreContentOffsetAfterTopInsertionFromOffset:contentOffsetBeforeInsertion];
+
     [[self tableView]
         performBatchUpdates:^{
           [self setItems:newItems];
@@ -303,6 +335,9 @@ NS_ASSUME_NONNULL_END
           }
         }
         completion:^(__unused BOOL finished) {
+          if (restoresContentOffsetAfterInsertion) {
+              [[self tableView] setContentOffset:contentOffsetBeforeInsertion animated:NO];
+          }
           [self refreshSearchBackgroundView];
         }];
 }
@@ -327,6 +362,10 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    CGPoint contentOffsetBeforeRemoval = [[self tableView] contentOffset];
+    BOOL restoresContentOffsetAfterRemoval =
+        [self shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:indexPath fromOffset:contentOffsetBeforeRemoval];
+
     [[self tableView] prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:indexPath];
 
     [[self tableView]
@@ -337,6 +376,9 @@ NS_ASSUME_NONNULL_END
           [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
         }
         completion:^(__unused BOOL finished) {
+          if (restoresContentOffsetAfterRemoval) {
+              [[self tableView] setContentOffset:contentOffsetBeforeRemoval animated:NO];
+          }
           [self refreshSearchBackgroundView];
           if (completion) {
               completion(YES);

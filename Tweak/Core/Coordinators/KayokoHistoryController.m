@@ -114,6 +114,11 @@ NS_ASSUME_NONNULL_END
                             itemDictionary:(NSDictionary<NSString *, id> *)dictionary
                                      limit:(NSUInteger)limit {
     KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
+    if ([[self delegate] historyControllerShouldSuppressVisibleUpdates:self]) {
+        [self markHistoryKeyDirty:historyKey];
+        return;
+    }
+
     if (![self hasLoadedHistoryKey:historyKey]) {
         [self markHistoryKeyDirty:historyKey];
         if ([[self delegate] historyControllerIsPanelVisible:self] &&

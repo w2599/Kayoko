@@ -47,6 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoSearchController *searchController;
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
+@property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
 @property(nonatomic, weak, nullable) UIView *activeSourceContentView;
 
 - (void)showContentForItem:(PasteboardItem *)item;
@@ -244,6 +245,10 @@ NS_ASSUME_NONNULL_END
     return ![self isHidden];
 }
 
+- (BOOL)historyControllerShouldSuppressVisibleUpdates:(KayokoHistoryController *)controller {
+    return [self isDismissingPanel];
+}
+
 - (void)historyControllerNeedsVisibleReload:(KayokoHistoryController *)controller {
     [self reload];
 }
@@ -350,9 +355,14 @@ NS_ASSUME_NONNULL_END
 
 - (void)updateActiveTableViewState:(KayokoHistoryListView *)tableView {
     if (tableView == [self activeTableView]) {
-        [[self searchController] refreshForListViewController:[self activeListViewController]];
+        KayokoHistoryListViewController *activeListViewController = [self activeListViewController];
+        if ([[self searchController] isSearchActive] || [activeListViewController hasActiveSearch]) {
+            [[self searchController] refreshForListViewController:activeListViewController];
+        }
         [[self mainView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
-        [self updateContentState];
+        if ([self activeHistoryContentView] != [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]]) {
+            [self updateContentStateMaintainingSearchBarVisibility:NO];
+        }
     }
 }
 
@@ -722,6 +732,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self setDismissingPanel:NO];
     [self setPreparingToShow:YES];
     NSUInteger showRequestIdentifier = [self showRequestIdentifier] + 1;
     [self setShowRequestIdentifier:showRequestIdentifier];
@@ -764,6 +775,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
     [[self searchController] resetBeforeHide];
     [[self panelPresentationController] hidePanelWithCompletion:^{
@@ -771,6 +783,7 @@ NS_ASSUME_NONNULL_END
       [[self previewViewController] resetPreviewState];
       [[self wordSelectionViewController] resetWordSelectionState];
       [self setActiveSourceContentView:nil];
+      [self setDismissingPanel:NO];
       if (wasShowingTransientContent) {
           [self refreshSearchAfterEndingTransientContentIfNeeded];
       }
