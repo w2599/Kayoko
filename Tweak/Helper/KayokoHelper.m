@@ -63,8 +63,8 @@ override_UIKeyboardAutocorrectionController_setAutocorrectionList(UIKeyboardAuto
 }
 
 static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
-    NSArray *labels = @[ @"History", @"Copy", @"Paste" ];
-    NSMutableArray *candidates = [[NSMutableArray alloc] init];
+    NSArray<NSString *> *labels = @[ @"History", @"Copy", @"Paste" ];
+    NSMutableArray<TIZephyrCandidate *> *candidates = [[NSMutableArray alloc] init];
     for (NSString *label in labels) {
         TIZephyrCandidate *candidate = [[objc_getClass("TIZephyrCandidate") alloc] init];
         [candidate setLabel:[[PasteboardManager localizationBundle] localizedStringForKey:label
@@ -206,7 +206,7 @@ override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent(
 static void (*orig__UIEditMenuPresentation_displayMenu_configuration_)(id, SEL, UIMenu *, id);
 static void override__UIEditMenuPresentation_displayMenu_configuration_(id self, SEL _cmd, UIMenu *menu,
                                                                         id configuration) {
-    NSMutableArray *build = [NSMutableArray new];
+    NSMutableArray<UIMenuElement *> *build = [NSMutableArray new];
     for (id item in [menu children]) {
         if (KayokoMenuItemIsWritingTool(item)) {
             continue;
@@ -220,7 +220,7 @@ static void override__UIEditMenuPresentation_displayMenu_configuration_(id self,
             [build addObject:submenu];
             continue;
         }
-        NSMutableArray *rebuildAppleEditMenu = [submenu.children mutableCopy];
+        NSMutableArray<UIMenuElement *> *rebuildAppleEditMenu = [submenu.children mutableCopy];
         [rebuildAppleEditMenu addObject:KayokoMenuItemUICommand()];
         UIMenu *rebuildAppleMenu = [submenu menuByReplacingChildren:rebuildAppleEditMenu];
         [build addObject:rebuildAppleMenu];
@@ -266,7 +266,7 @@ static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL
         return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
     }
 
-    NSMutableArray *buttonDescriptions = object_getIvar(self, msbd);
+    NSMutableArray<_UICalloutBarSystemButtonDescription *> *buttonDescriptions = object_getIvar(self, msbd);
     for (_UICalloutBarSystemButtonDescription *description in buttonDescriptions) {
         if (!description.action) {
             continue;
@@ -376,8 +376,12 @@ static void kayokoPaste() {
     [application sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
 }
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoKeyboardObserver : NSObject
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoKeyboardObserver
 
@@ -387,7 +391,7 @@ static void kayokoPaste() {
 }
 
 - (void)keyboardWillHide:(NSNotification *)notification {
-    NSDictionary *userInfo = [notification userInfo];
+    NSDictionary<NSString *, id> *userInfo = [notification userInfo];
     BOOL isLocalKeyboard = [userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
     if (!isLocalKeyboard) {
         return;
@@ -436,7 +440,7 @@ static BOOL kayokoIsKeyboardExtensionProcess() {
         return NO;
     }
 
-    NSDictionary *extensionInfo = [[mainBundle infoDictionary] objectForKey:@"NSExtension"];
+    NSDictionary<NSString *, id> *extensionInfo = [[mainBundle infoDictionary] objectForKey:@"NSExtension"];
     NSString *extensionPointIdentifier = [extensionInfo objectForKey:@"NSExtensionPointIdentifier"];
     return [extensionPointIdentifier isEqualToString:@"com.apple.keyboard-service"];
 }
@@ -457,7 +461,7 @@ __attribute((constructor)) static void initialize() {
     BOOL isKeyboardExtension = kayokoIsKeyboardExtensionProcess();
 
     BOOL shouldLoad = NO;
-    NSArray *args = [[objc_getClass("NSProcessInfo") processInfo] arguments];
+    NSArray<NSString *> *args = [[objc_getClass("NSProcessInfo") processInfo] arguments];
     NSUInteger count = [args count];
     if (count != 0) {
         NSString *executablePath = args[0];

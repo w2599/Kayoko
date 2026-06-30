@@ -19,11 +19,11 @@
 #import "NotificationKeys.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
-#import "Views/KayokoView.h"
+#import "Controllers/KayokoMainViewController.h"
 
 static NSTimeInterval kKayokoMinimumFeedbackInterval = 0.6;
 
-KayokoView *kayokoView = nil;
+KayokoMainViewController *kayokoMainViewController = nil;
 
 NSUserDefaults *kayokoPreferences = nil;
 BOOL kayokoPrefsEnabled = NO;
@@ -52,61 +52,65 @@ static AVAudioPlayer *pasteSoundPlayer = nil;
 static BOOL didPreparePasteboardQueue = NO;
 static BOOL pendingHeightPreferenceApply = NO;
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
 @end
 
 @interface SBStatusBarManager : NSObject
-+ (instancetype)sharedInstance;
-- (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
++ (nullable instancetype)sharedInstance;
+- (nullable UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
 
 @interface SBWindowSceneStatusBarManager : NSObject
-+ (instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
-- (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
++ (nullable instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
+- (nullable UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
 
+NS_ASSUME_NONNULL_END
+
 static void apply_height_preference_to_view(BOOL applyWhenHidden) {
-    if (!kayokoView) {
+    if (!kayokoMainViewController) {
         return;
     }
 
-    if (!applyWhenHidden && [kayokoView isHidden]) {
+    if (!applyWhenHidden && [kayokoMainViewController isHidden]) {
         return;
     }
 
-    UIView *containerView = [kayokoView superview];
+    UIView *containerView = [kayokoMainViewController superview];
     CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
     CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
     CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
-    if (!CGRectEqualToRect([kayokoView frame], newFrame)) {
-        if (!CGAffineTransformIsIdentity([kayokoView transform])) {
-            [kayokoView setTransform:CGAffineTransformIdentity];
+    if (!CGRectEqualToRect([kayokoMainViewController frame], newFrame)) {
+        if (!CGAffineTransformIsIdentity([kayokoMainViewController transform])) {
+            [kayokoMainViewController setTransform:CGAffineTransformIdentity];
         }
-        [kayokoView setFrame:newFrame];
-        [kayokoView setNeedsLayout];
+        [kayokoMainViewController setFrame:newFrame];
+        [kayokoMainViewController setNeedsLayout];
     }
 }
 
 static void apply_preferences_to_view() {
-    if (!kayokoView) {
+    if (!kayokoMainViewController) {
         return;
     }
 
-    if ([kayokoView automaticallyPaste] != kayokoPrefsAutomaticallyPaste) {
-        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    if ([kayokoMainViewController automaticallyPaste] != kayokoPrefsAutomaticallyPaste) {
+        [kayokoMainViewController setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
     }
-    if ([kayokoView dismissOnOutsideTouch] != kayokoPrefsDismissOnOutsideTouch) {
-        [kayokoView setDismissOnOutsideTouch:kayokoPrefsDismissOnOutsideTouch];
+    if ([kayokoMainViewController dismissOnOutsideTouch] != kayokoPrefsDismissOnOutsideTouch) {
+        [kayokoMainViewController setDismissOnOutsideTouch:kayokoPrefsDismissOnOutsideTouch];
     }
-    if ([kayokoView swipeToSelectWords] != kayokoPrefsSwipeToSelectWords) {
-        [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
+    if ([kayokoMainViewController swipeToSelectWords] != kayokoPrefsSwipeToSelectWords) {
+        [kayokoMainViewController setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
     }
-    if ([kayokoView previewLineCount] != kayokoPrefsPreviewLineCount) {
-        [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
+    if ([kayokoMainViewController previewLineCount] != kayokoPrefsPreviewLineCount) {
+        [kayokoMainViewController setPreviewLineCount:kayokoPrefsPreviewLineCount];
     }
-    if ([kayokoView shouldPlayFeedback] != kayokoPrefsPlayHapticFeedback) {
-        [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
+    if ([kayokoMainViewController shouldPlayFeedback] != kayokoPrefsPlayHapticFeedback) {
+        [kayokoMainViewController setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
     }
 
     apply_height_preference_to_view(YES);
@@ -118,7 +122,7 @@ static void (*orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow *self, SEL
 static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
     orig_UIStatusBarWindow_initWithFrame(self, _cmd, frame);
 
-    if (!kayokoView) {
+    if (!kayokoMainViewController) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
         UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[self bounds]];
         [outsideDismissOverlayView
@@ -129,12 +133,12 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
         [outsideDismissOverlayView setUserInteractionEnabled:NO];
         [self addSubview:outsideDismissOverlayView];
 
-        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
-                                                                  bounds.size.width, kayokoPrefsHeightInPoints)];
-        [kayokoView setHidden:YES];
-        [kayokoView setOutsideDismissOverlayView:outsideDismissOverlayView];
+        kayokoMainViewController =
+            [[KayokoMainViewController alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
+                                                                       bounds.size.width, kayokoPrefsHeightInPoints)];
+        [kayokoMainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
         apply_preferences_to_view();
-        [self addSubview:kayokoView];
+        [self addSubview:[kayokoMainViewController view]];
     }
 }
 
@@ -203,13 +207,13 @@ static void kayokoCopy() {
 }
 
 static void show() {
-    if (!kayokoView || ![kayokoView isHidden]) {
+    if (!kayokoMainViewController || ![kayokoMainViewController isHidden]) {
         return;
     }
 
     apply_height_preference_to_view(YES);
 
-    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
+    [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
 
     /* iOS 15 */
     SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
@@ -219,9 +223,9 @@ static void show() {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
             if (isKindOfDark) {
-                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
             } else {
-                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
+                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
             }
         }
     }
@@ -235,14 +239,14 @@ static void show() {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
             if (isKindOfDark) {
-                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
             } else {
-                [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
+                [kayokoMainViewController setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
             }
         }
     }
 
-    [kayokoView show];
+    [kayokoMainViewController show];
 
     if (kayokoPrefsPlayHapticFeedback && (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey)) {
         AudioServicesPlaySystemSound(1519);
@@ -250,15 +254,15 @@ static void show() {
 }
 
 static void hide() {
-    if (![kayokoView isHidden]) {
-        [kayokoView hide];
+    if (![kayokoMainViewController isHidden]) {
+        [kayokoMainViewController hide];
     }
 }
 
 static void reload() {
-    if (kayokoView) {
+    if (kayokoMainViewController) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [kayokoView handleHistoryChanged];
+          [kayokoMainViewController handleHistoryChanged];
         });
     }
 }
@@ -422,7 +426,7 @@ __attribute((constructor)) static void initialize() {
         return;
     }
 
-    NSArray *args = [[NSProcessInfo processInfo] arguments];
+    NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
     NSString *processName = [[NSProcessInfo processInfo] processName];
     NSString *executablePath = [args firstObject];
     BOOL isDruidOrPasted =

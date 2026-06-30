@@ -8,11 +8,15 @@
 #import "KayokoClearConfirmationView.h"
 #import "PasteboardManager.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoClearConfirmationView ()
 @property(nonatomic, strong) UILabel *confirmationLabel;
 @property(nonatomic, strong, readwrite) UIButton *cancelButton;
 @property(nonatomic, strong, readwrite) UIButton *confirmButton;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoClearConfirmationView
 

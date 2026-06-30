@@ -9,6 +9,8 @@
 
 @class KayokoView;
 
+NS_ASSUME_NONNULL_BEGIN
+
 OBJC_EXTERN KayokoView *kayokoView;
 
 OBJC_EXTERN NSUserDefaults *kayokoPreferences;
@@ -30,3 +32,5 @@ OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
 
 @interface UIStatusBarWindow : UIWindow
 @end
+
+NS_ASSUME_NONNULL_END

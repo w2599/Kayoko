@@ -11,7 +11,7 @@
 #import <Preferences/PSSpecifier.h>
 
 @implementation KayokoListItemsController {
-    NSMutableSet *_selectedIndices;
+    NSMutableSet<NSNumber *> *_selectedIndices;
     ActivationMethod _currentOptions;
 }
 
@@ -31,7 +31,7 @@
 
     // Initialize selected indices
     [_selectedIndices removeAllObjects];
-    NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
+    NSArray<NSNumber *> *validValues = [self.specifier propertyForKey:@"validValues"];
     for (NSUInteger i = 0; i < validValues.count; i++) {
         NSNumber *value = validValues[i];
         if (_currentOptions & [value integerValue]) {
@@ -62,7 +62,7 @@
 
     // Update options
     ActivationMethod newOptions = 0;
-    NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
+    NSArray<NSNumber *> *validValues = [self.specifier propertyForKey:@"validValues"];
     for (NSNumber *index in _selectedIndices) {
         NSNumber *value = validValues[[index integerValue]];
         newOptions |= [value integerValue];

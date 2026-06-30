@@ -1,0 +1,36 @@
+//
+//  KayokoPanelPresentationController.h
+//  Kayoko
+//
+
+#import <UIKit/UIKit.h>
+
+@class KayokoPanelPresentationController;
+@class KayokoView;
+
+NS_ASSUME_NONNULL_BEGIN
+
+@protocol KayokoPanelPresentationControllerDelegate <NSObject>
+
+- (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller;
+
+@end
+
+@interface KayokoPanelPresentationController : NSObject
+
+@property(nonatomic, weak, nullable) id<KayokoPanelPresentationControllerDelegate> delegate;
+@property(nonatomic, assign, getter=isDismissOnOutsideTouch) BOOL dismissOnOutsideTouch;
+@property(nonatomic, assign) BOOL shouldPlayFeedback;
+@property(nonatomic, strong, readonly) UIPanGestureRecognizer *panGestureRecognizer;
+@property(nonatomic, assign, readonly, getter=isAnimating) BOOL animating;
+
+- (instancetype)initWithPanelView:(KayokoView *)panelView;
+- (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
+- (void)showPanelWithCompletion:(nullable void (^)(void))completion;
+- (void)hidePanelWithCompletion:(nullable void (^)(void))completion;
+- (void)finishOutsideDismissOverlayShow;
+- (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
+
+@end
+
+NS_ASSUME_NONNULL_END

@@ -16,6 +16,8 @@
 #import "../PreferenceKeys.h"
 #import "PasteboardManager.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSConcreteNotification : NSNotification
 @end
 
@@ -24,17 +26,19 @@
 @end
 
 @interface NSTask : NSObject
-@property(nonatomic, copy) NSArray *arguments;
+@property(nonatomic, copy) NSArray<NSString *> *arguments;
 @property(nonatomic, copy) NSString *launchPath;
 - (void)launch;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoRootListController {
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
 }
 
-- (NSArray *)specifiers {
+- (NSArray<PSSpecifier *> *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
     }
@@ -238,11 +242,11 @@
             ActivationMethod currentOptions = [self currentActivationMethod];
 
             // Get valid values and titles
-            NSArray *validValues = [specifier propertyForKey:@"validValues"];
-            NSArray *validTitles = [specifier propertyForKey:@"validTitles"];
+            NSArray<NSNumber *> *validValues = [specifier propertyForKey:@"validValues"];
+            NSArray<NSString *> *validTitles = [specifier propertyForKey:@"validTitles"];
 
             // Find selected options
-            NSMutableArray *selectedTitles = [NSMutableArray array];
+            NSMutableArray<NSString *> *selectedTitles = [NSMutableArray array];
             for (NSUInteger i = 0; i < validValues.count; i++) {
                 NSNumber *value = validValues[i];
                 if (currentOptions & [value integerValue]) {

@@ -8,9 +8,13 @@
 #import "KayokoEmptyStateView.h"
 #import "PasteboardManager.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoEmptyStateView ()
 @property(nonatomic, strong) UILabel *messageLabel;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoEmptyStateView
 

@@ -7,7 +7,9 @@
 
 #import <UIKit/UIKit.h>
 
-OBJC_EXTERN NSUserDefaults *kayokoHelperPreferences;
+NS_ASSUME_NONNULL_BEGIN
+
+OBJC_EXTERN NSUserDefaults * _Nullable kayokoHelperPreferences;
 OBJC_EXTERN BOOL kayokoHelperPrefsEnabled;
 OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
 OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;
@@ -25,14 +27,14 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 @end
 
 @interface TIAutocorrectionList : NSObject
-+ (TIAutocorrectionList *)listWithAutocorrection:(TIKeyboardCandidate *)arg1
-                                     predictions:(NSArray *)predictions
-                                       emojiList:(NSArray *)emojiList;
++ (TIAutocorrectionList *)listWithAutocorrection:(nullable TIKeyboardCandidate *)arg1
+                                     predictions:(NSArray<TIKeyboardCandidate *> *)predictions
+                                       emojiList:(nullable NSArray<TIKeyboardCandidate *> *)emojiList;
 @end
 
 @interface UIKeyboardAutocorrectionController : NSObject
-- (void)setTextSuggestionList:(TIAutocorrectionList *)textSuggestionList;
-- (void)setAutocorrectionList:(TIAutocorrectionList *)textSuggestionList;
+- (void)setTextSuggestionList:(nullable TIAutocorrectionList *)textSuggestionList;
+- (void)setAutocorrectionList:(nullable TIAutocorrectionList *)textSuggestionList;
 @end
 
 @interface TUIPredictionView : UIView
@@ -70,8 +72,8 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 @end
 
 @interface UIKBInputDelegateManager : NSObject
-- (UITextRange *)selectedTextRange;
-- (NSString *)textInRange:(UITextRange *)range;
+- (nullable UITextRange *)selectedTextRange;
+- (nullable NSString *)textInRange:(UITextRange *)range;
 - (void)insertText:(NSString *)text;
 @end
 
@@ -79,17 +81,17 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 @property(nonatomic, strong, readonly) UIKeyboardAutocorrectionController *autocorrectionController;
 @property(nonatomic, strong) UIKBInputDelegateManager *inputDelegateManager;
 @property(nonatomic, strong, readonly) UIResponder<UITextInput> *inputDelegate;
-+ (instancetype)activeInstance;
++ (nullable instancetype)activeInstance;
 - (void)insertText:(NSString *)text;
 @end
 
 @interface UIKBTree : NSObject
 @property(nonatomic, copy) NSString *name;
-@property(nonatomic, strong) NSMutableDictionary *properties;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, id> *properties;
 @end
 
 @interface UIMenu (Kayoko)
-- (UIMenu *)menuByReplacingChildren:(NSArray *)children;
+- (UIMenu *)menuByReplacingChildren:(NSArray<UIMenuElement *> *)children;
 @end
 
 @interface _UICalloutBarSystemButtonDescription : NSObject
@@ -99,3 +101,5 @@ OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 
 @interface UICalloutBar : UIView
 @end
+
+NS_ASSUME_NONNULL_END

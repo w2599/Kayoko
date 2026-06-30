@@ -9,6 +9,8 @@
 
 @class PasteboardItem;
 
+NS_ASSUME_NONNULL_BEGIN
+
 static NSString *const kHistoryKeyHistory = @"history";
 static NSString *const kHistoryKeyFavorites = @"favorites";
 static NSString *const kPasteboardManagerHistoryDidChangeNotification = @"com.82flex.kayoko.history.did-change";
@@ -54,22 +56,25 @@ static NSString *const kPasteboardManagerHistoryChangeTypeClear = @"clear";
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
-                  completion:(void (^)(BOOL success))completion;
+                  completion:(nullable void (^)(BOOL success))completion;
 - (void)movePasteboardItem:(PasteboardItem *)item
         fromHistoryWithKey:(NSString *)sourceHistoryKey
           toHistoryWithKey:(NSString *)destinationHistoryKey
-                completion:(void (^)(BOOL success))completion;
+                completion:(nullable void (^)(BOOL success))completion;
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
-                                        completion:(void (^)(BOOL success))completion;
+                                        completion:(nullable void (^)(BOOL success))completion;
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                            postsChangeNotification:(BOOL)postsChangeNotification
-                                        completion:(void (^)(BOOL success))completion;
+                                        completion:(nullable void (^)(BOOL success))completion;
 
-- (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
-- (void)getItemsFromHistoryWithKey:(NSString *)historyKey completion:(void (^)(NSMutableArray *items))completion;
-- (PasteboardItem *)getLatestHistoryItem;
-- (UIImage *)getImageForItem:(PasteboardItem *)item;
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey;
+- (void)getItemsFromHistoryWithKey:(NSString *)historyKey
+                         completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
+- (nullable PasteboardItem *)getLatestHistoryItem;
+- (nullable UIImage *)getImageForItem:(PasteboardItem *)item;
 
 @end
+
+NS_ASSUME_NONNULL_END

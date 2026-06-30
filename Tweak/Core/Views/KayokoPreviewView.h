@@ -9,6 +9,8 @@
 
 @class KayokoWordSelectionView;
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoPreviewView : UIView
 
 @property(nonatomic, strong) UITextView *textView;
@@ -24,3 +26,5 @@
 - (void)reset;
 
 @end
+
+NS_ASSUME_NONNULL_END

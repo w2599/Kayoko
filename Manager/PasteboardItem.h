@@ -7,6 +7,8 @@
 
 #import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 static NSString *const kItemKeyBundleIdentifier = @"bundle_identifier";
 static NSString *const kItemKeyContent = @"content";
 static NSString *const kItemKeyImageName = @"image_name";
@@ -22,8 +24,10 @@ static NSString *const kItemKeyHasLink = @"has_link";
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
-                          withImageNamed:(NSString *)imageName;
+                          withImageNamed:(nullable NSString *)imageName;
 
-+ (PasteboardItem *)itemFromDictionary:(NSDictionary *)dictionary;
++ (nullable PasteboardItem *)itemFromDictionary:(nullable NSDictionary<NSString *, id> *)dictionary;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -7,32 +7,19 @@
 
 #import <UIKit/UIKit.h>
 
-@class KayokoTableView;
-@class KayokoHistoryTableView;
-@class KayokoFavoritesTableView;
 @class KayokoClearConfirmationView;
 @class KayokoEmptyStateView;
+@class KayokoFavoritesTableView;
+@class KayokoHistoryTableView;
 @class KayokoPreviewView;
-@class PasteboardItem;
+@class KayokoTableView;
 
-static NSUInteger const kFavoritesButtonImageSize = 24;
-static NSUInteger const kClearButtonImageSize = 22;
-static NSUInteger const kBackButtonImageSize = 22;
-static CGFloat const kLeadingHeaderButtonCenterXInset = 36;
-static CGFloat const kTrailingHeaderButtonCenterXInset = 34;
-static CGFloat const kTitleLabelLeadingInset = 64;
+NS_ASSUME_NONNULL_BEGIN
 
 @interface _UIGrabber : UIControl
 @end
 
-@interface KayokoView : UIView {
-    KayokoTableView *_previewSourceTableView;
-    PasteboardItem *_previewItem;
-    NSString *_activeHistoryKey;
-    NSString *_clearConfirmationHistoryKey;
-    BOOL _isAnimating;
-    BOOL _panGestureDidReachZeroAlpha;
-}
+@interface KayokoView : UIView
 
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
@@ -42,27 +29,26 @@ static CGFloat const kTitleLabelLeadingInset = 64;
 @property(nonatomic, strong) UIButton *clearButton;
 @property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;
-@property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, strong) KayokoHistoryTableView *historyTableView;
 @property(nonatomic, strong) KayokoFavoritesTableView *favoritesTableView;
 @property(nonatomic, strong) KayokoClearConfirmationView *clearConfirmationView;
 @property(nonatomic, strong) KayokoEmptyStateView *emptyStateView;
 @property(nonatomic, strong) KayokoPreviewView *previewView;
-@property(nonatomic, strong) UIImpactFeedbackGenerator *feedbackGenerator;
-@property(nonatomic, strong) UIControl *outsideDismissOverlayView;
-@property(nonatomic, assign) BOOL automaticallyPaste;
-@property(nonatomic, assign) BOOL dismissOnOutsideTouch;
-@property(nonatomic, assign) BOOL swipeToSelectWords;
-@property(nonatomic, assign) NSUInteger previewLineCount;
-@property(nonatomic, assign) BOOL shouldPlayFeedback;
+@property(nonatomic, assign, getter=isAnimating) BOOL animating;
 
-- (void)showPreviewWithItem:(PasteboardItem *)item;
-- (void)handleHistoryChanged;
-- (void)handlePasteboardItemDictionary:(NSDictionary *)dictionary
-                   movedFromHistoryKey:(NSString *)sourceHistoryKey
-                           toHistoryKey:(NSString *)destinationHistoryKey;
-- (void)show;
-- (void)hide;
-- (void)reload;
+@property(nonatomic, copy, nullable) void (^layoutHandler)(void);
+
+- (void)updateStyleForHeaderButton:(UIButton *)button
+                     withImageName:(NSString *)imageName
+                      andImageSize:(NSUInteger)imageSize
+                      andTintColor:(UIColor *)color;
+- (void)setTitleText:(NSString *)title;
+- (void)setClearButtonEnabledForTableView:(KayokoTableView *)tableView;
+- (void)showContentView:(UIView *)viewToShow
+        hideContentView:(UIView *)viewToHide
+                  title:(NSString *)title
+                reverse:(BOOL)reverse;
 
 @end
+
+NS_ASSUME_NONNULL_END

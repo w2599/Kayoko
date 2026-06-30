@@ -18,13 +18,17 @@
 
 static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface SBApplication : NSObject
 @property(nonatomic, copy, readonly) NSString *bundleIdentifier;
 @end
 
 @interface UIApplication (Private)
-- (SBApplication *)_accessibilityFrontMostApplication;
+- (SBApplication * _Nullable)_accessibilityFrontMostApplication;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation PasteboardManager {
     UIPasteboard *_pasteboard;
@@ -40,11 +44,11 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     KayokoHistoryStore *_historyStore;
 }
 
-- (NSDictionary *)historyChangeUserInfoWithType:(NSString *)changeType
-                                     historyKey:(NSString *)historyKey
-                                 itemDictionary:(NSDictionary *)itemDictionary
-                                          limit:(NSUInteger)limit {
-    NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+- (NSDictionary<NSString *, id> *)historyChangeUserInfoWithType:(NSString *)changeType
+                                                      historyKey:(NSString *)historyKey
+                                                  itemDictionary:(NSDictionary<NSString *, id> *)itemDictionary
+                                                           limit:(NSUInteger)limit {
+    NSMutableDictionary<NSString *, id> *userInfo = [[NSMutableDictionary alloc] init];
     userInfo[kPasteboardManagerHistoryChangeTypeKey] = changeType ?: kPasteboardManagerHistoryChangeTypeReload;
     if ([historyKey length] > 0) {
         userInfo[kPasteboardManagerHistoryChangeHistoryKeyKey] = historyKey;
@@ -219,7 +223,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [self dictionaryForPasteboardItem:item];
     NSUInteger limit = [self limitForHistoryKey:historyKey];
     __block NSError *error = nil;
     __block BOOL success = NO;
@@ -243,7 +247,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [self dictionaryForPasteboardItem:item];
     __block NSError *error = nil;
     __block BOOL success = NO;
     [self performHistorySync:^{
@@ -267,7 +271,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                   completion:(void (^)(BOOL success))completion {
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [self dictionaryForPasteboardItem:item];
     [self performHistoryAsync:^{
       NSError *error = nil;
       BOOL success = [[self historyStoreOnHistoryQueue] removeItemDictionary:dictionary
@@ -290,7 +294,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         fromHistoryWithKey:(NSString *)sourceHistoryKey
           toHistoryWithKey:(NSString *)destinationHistoryKey
                 completion:(void (^)(BOOL success))completion {
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [self dictionaryForPasteboardItem:item];
     NSUInteger destinationLimit = [self limitForHistoryKey:destinationHistoryKey];
     [self performHistoryAsync:^{
       NSError *error = nil;
@@ -440,7 +444,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [self dictionaryForPasteboardItem:item];
     NSUInteger limit = [self limitForHistoryKey:historyKey];
     __block NSError *error = nil;
     __block BOOL success = NO;
@@ -461,9 +465,9 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
                                                 limit:limit];
 }
 
-- (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey {
     __block NSError *error = nil;
-    __block NSMutableArray *history = nil;
+    __block NSMutableArray<NSDictionary<NSString *, id> *> *history = nil;
     [self performHistorySync:^{
       history = [[self historyStoreOnHistoryQueue] itemsForHistoryKey:historyKey error:&error];
     }];
@@ -473,14 +477,16 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return history ?: [[NSMutableArray alloc] init];
 }
 
-- (void)getItemsFromHistoryWithKey:(NSString *)historyKey completion:(void (^)(NSMutableArray *items))completion {
+- (void)getItemsFromHistoryWithKey:(NSString *)historyKey
+                         completion:(void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion {
     [self performHistoryAsync:^{
       NSError *error = nil;
-      NSMutableArray *history = [[self historyStoreOnHistoryQueue] itemsForHistoryKey:historyKey error:&error];
+      NSMutableArray<NSDictionary<NSString *, id> *> *history =
+          [[self historyStoreOnHistoryQueue] itemsForHistoryKey:historyKey error:&error];
       if (error) {
           NSLog(@"Kayoko: Failed to load history items: %@", error);
       }
-      NSMutableArray *items = history ?: [[NSMutableArray alloc] init];
+      NSMutableArray<NSDictionary<NSString *, id> *> *items = history ?: [[NSMutableArray alloc] init];
       if (!completion) {
           return;
       }
@@ -492,7 +498,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
 - (PasteboardItem *)getLatestHistoryItem {
     __block NSError *error = nil;
-    __block NSDictionary *dictionary = nil;
+    __block NSDictionary<NSString *, id> *dictionary = nil;
     [self performHistorySync:^{
       dictionary = [[self historyStoreOnHistoryQueue] latestItemForHistoryKey:kHistoryKeyHistory error:&error];
     }];
@@ -508,7 +514,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return [UIImage imageWithData:imageData];
 }
 
-- (NSDictionary *)dictionaryForPasteboardItem:(PasteboardItem *)item {
+- (NSDictionary<NSString *, id> *)dictionaryForPasteboardItem:(PasteboardItem *)item {
     return @{
         kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
         kItemKeyContent : [item content] ?: @"",
@@ -526,12 +532,12 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
 - (void)postHistoryChangedNotificationForHistoryKey:(NSString *)historyKey
                                          changeType:(NSString *)changeType
-                                     itemDictionary:(NSDictionary *)itemDictionary
+                                     itemDictionary:(NSDictionary<NSString *, id> *)itemDictionary
                                               limit:(NSUInteger)limit {
-    NSDictionary *userInfo = [self historyChangeUserInfoWithType:changeType
-                                                      historyKey:historyKey
-                                                  itemDictionary:itemDictionary
-                                                           limit:limit];
+    NSDictionary<NSString *, id> *userInfo = [self historyChangeUserInfoWithType:changeType
+                                                                       historyKey:historyKey
+                                                                   itemDictionary:itemDictionary
+                                                                            limit:limit];
     dispatch_async(dispatch_get_main_queue(), ^{
       [[NSNotificationCenter defaultCenter] postNotificationName:kPasteboardManagerHistoryDidChangeNotification
                                                           object:self

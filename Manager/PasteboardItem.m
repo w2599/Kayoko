@@ -24,7 +24,11 @@
     return self;
 }
 
-+ (PasteboardItem *)itemFromDictionary:(NSDictionary *)dictionary {
++ (PasteboardItem *)itemFromDictionary:(NSDictionary<NSString *, id> *)dictionary {
+    if (!dictionary) {
+        return nil;
+    }
+
     NSString *bundleIdentifier = dictionary[kItemKeyBundleIdentifier];
     NSString *content = dictionary[kItemKeyContent];
     NSString *imageName = dictionary[kItemKeyImageName];

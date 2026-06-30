@@ -4,12 +4,15 @@ KayokoCore_USE_MODULES := 0
 
 KayokoCore_FILES += KayokoCore.m
 KayokoCore_FILES += KayokoCoreLogos.xm
-KayokoCore_FILES += $(wildcard ../../Manager/*.m Views/*.m ../../Utils/*.m)
+KayokoCore_FILES += $(wildcard ../../Manager/*.m Controllers/*.m Models/*.m Views/*.m ../../Utils/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc
 KayokoCore_CFLAGS += -I../../Manager
 KayokoCore_CFLAGS += -I../../Preferences
 KayokoCore_CFLAGS += -I../../Utils
+KayokoCore_CFLAGS += -IControllers
+KayokoCore_CFLAGS += -IModels
+KayokoCore_CFLAGS += -IViews
 
 KayokoCore_FRAMEWORKS += AudioToolbox
 KayokoCore_FRAMEWORKS += AVFoundation
