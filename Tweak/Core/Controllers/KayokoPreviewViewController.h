@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)prepareToHidePreview;
 - (void)hidePreview;
 - (void)resetPreviewState;
+- (void)scrollToTopAnimated:(BOOL)animated;
 
 @end
 

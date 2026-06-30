@@ -130,6 +130,10 @@ NS_ASSUME_NONNULL_END
     [self setSourceHistoryKey:nil];
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    [[self previewView] scrollToTopAnimated:animated];
+}
+
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
     BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";

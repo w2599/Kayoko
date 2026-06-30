@@ -98,6 +98,12 @@ static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
     [self setContentInset:contentInset];
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    CGPoint contentOffset = [self contentOffset];
+    contentOffset.y = -[self adjustedContentInset].top;
+    [self setContentOffset:contentOffset animated:animated];
+}
+
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
 

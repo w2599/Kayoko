@@ -28,6 +28,7 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
 @property(nonatomic, strong) UIView *headerView;
 @property(nonatomic, strong) _UIGrabber *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
+@property(nonatomic, strong) UIControl *titleTapControl;
 @property(nonatomic, strong) UIButton *clearButton;
 @property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;

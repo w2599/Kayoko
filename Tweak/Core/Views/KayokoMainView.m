@@ -10,6 +10,9 @@
 #import "KayokoHeaderButtonStyle.h"
 #import "PasteboardManager.h"
 
+static CGFloat const kKayokoTitleTapControlHeight = 44;
+static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
+
 @implementation KayokoMainView
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -114,6 +117,21 @@
                                                               constant:-kTrailingHeaderButtonCenterXInset]
         ]];
 
+        [self setTitleTapControl:[[UIControl alloc] init]];
+        [[self titleTapControl] setBackgroundColor:[UIColor clearColor]];
+        [[self titleTapControl] setAccessibilityTraits:[[self titleTapControl] accessibilityTraits] | UIAccessibilityTraitButton];
+        [[self titleTapControl] setAccessibilityLabel:[[self titleLabel] text]];
+        [[self headerView] addSubview:[self titleTapControl]];
+
+        [[self titleTapControl] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self titleTapControl] leadingAnchor] constraintEqualToAnchor:[[self titleLabel] leadingAnchor]],
+            [[[self titleTapControl] trailingAnchor] constraintEqualToAnchor:[[self clearButton] leadingAnchor]
+                                                                    constant:-kKayokoTitleTapControlTrailingSpacing],
+            [[[self titleTapControl] centerYAnchor] constraintEqualToAnchor:[[self titleLabel] centerYAnchor]],
+            [[[self titleTapControl] heightAnchor] constraintEqualToConstant:kKayokoTitleTapControlHeight]
+        ]];
+
     }
 
     return self;
@@ -156,6 +174,7 @@
 - (void)setTitleText:(NSString *)title {
     if ([title length] > 0) {
         [[self titleLabel] setText:title];
+        [[self titleTapControl] setAccessibilityLabel:title];
     }
 }
 

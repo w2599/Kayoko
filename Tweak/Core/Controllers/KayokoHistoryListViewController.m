@@ -101,6 +101,10 @@ NS_ASSUME_NONNULL_END
     [self refreshSearchBackgroundView];
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    [[self tableView] scrollToTopAnimated:animated];
+}
+
 - (NSArray<NSIndexPath *> *)indexPathsFromRow:(NSUInteger)startRow count:(NSUInteger)count {
     NSMutableArray<NSIndexPath *> *indexPaths = [[NSMutableArray alloc] initWithCapacity:count];
     for (NSUInteger row = startRow; row < startRow + count; row++) {

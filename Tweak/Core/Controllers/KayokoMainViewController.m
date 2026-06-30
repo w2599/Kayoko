@@ -57,6 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isPreviewActive;
 - (BOOL)isWordSelectionActive;
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey;
+- (void)handleTitleTapControlPressed;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
               direction:(KayokoContentTransitionDirection)direction
@@ -117,6 +118,9 @@ NS_ASSUME_NONNULL_END
         [[_mainView backButton] addTarget:self
                                     action:@selector(handlePreviewActionButtonPressed)
                           forControlEvents:UIControlEventTouchUpInside];
+        [[_mainView titleTapControl] addTarget:self
+                                         action:@selector(handleTitleTapControlPressed)
+                               forControlEvents:UIControlEventTouchUpInside];
 
         _panelPresentationController = [[KayokoPanelPresentationController alloc] initWithPanelView:_mainView];
         [_panelPresentationController setDelegate:self];
@@ -589,6 +593,24 @@ NS_ASSUME_NONNULL_END
 
     [self showClearConfirmationForHistoryKey:[self effectiveActiveHistoryKey]];
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+}
+
+- (void)handleTitleTapControlPressed {
+    if ([[self panelPresentationController] isAnimating] || [[self mainView] isAnimating]) {
+        return;
+    }
+
+    if (![[[self wordSelectionViewController] view] isHidden]) {
+        [[self wordSelectionViewController] scrollToTopAnimated:YES];
+        return;
+    }
+
+    if (![[[self previewViewController] previewView] isHidden]) {
+        [[self previewViewController] scrollToTopAnimated:YES];
+        return;
+    }
+
+    [[self activeListViewController] scrollToTopAnimated:YES];
 }
 
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary

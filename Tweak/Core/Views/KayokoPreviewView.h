@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithName:(NSString *)name;
 - (void)showText:(NSString *)text;
 - (void)reset;
+- (void)scrollToTopAnimated:(BOOL)animated;
 
 @end
 

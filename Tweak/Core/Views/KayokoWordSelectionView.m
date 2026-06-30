@@ -122,6 +122,12 @@ NS_ASSUME_NONNULL_END
     [[self scrollView] setContentSize:CGSizeZero];
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    CGPoint contentOffset = [[self scrollView] contentOffset];
+    contentOffset.y = -[[self scrollView] adjustedContentInset].top;
+    [[self scrollView] setContentOffset:contentOffset animated:animated];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
 

@@ -81,6 +81,10 @@ NS_ASSUME_NONNULL_END
     return [text length] <= kKayokoWordSelectionMaximumTextLength;
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    [[self wordSelectionView] scrollToTopAnimated:animated];
+}
+
 - (void)updateStyleForHeaderButton:(UIButton *)button
                       withImageName:(NSString *)imageName
                        andImageSize:(NSUInteger)imageSize

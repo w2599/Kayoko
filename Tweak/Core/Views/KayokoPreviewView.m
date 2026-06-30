@@ -64,4 +64,14 @@
     [[self imageView] setImage:nil];
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    if ([[self textView] isHidden]) {
+        return;
+    }
+
+    CGPoint contentOffset = [[self textView] contentOffset];
+    contentOffset.y = -[[self textView] adjustedContentInset].top;
+    [[self textView] setContentOffset:contentOffset animated:animated];
+}
+
 @end

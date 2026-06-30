@@ -49,6 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste;
 - (void)resetWordSelectionState;
 - (void)updateActionButtonState;
+- (void)scrollToTopAnimated:(BOOL)animated;
 
 @end
 
