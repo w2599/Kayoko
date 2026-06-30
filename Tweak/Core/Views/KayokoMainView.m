@@ -13,6 +13,21 @@
 static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
+@interface KayokoMainView ()
+@property(nonatomic, strong) NSLayoutConstraint *headerTopConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaTopConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerLeadingConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaLeadingConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerTrailingConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaTrailingConstraint;
+@property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentLeadingConstraints;
+@property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentSafeAreaLeadingConstraints;
+@property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentTrailingConstraints;
+@property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentSafeAreaTrailingConstraints;
+@property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentBottomConstraints;
+@property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentSafeAreaBottomConstraints;
+@end
+
 @implementation KayokoMainView
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -20,6 +35,12 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
     if (self) {
         [self setHidden:YES];
+        [self setContentLeadingConstraints:[[NSMutableArray alloc] init]];
+        [self setContentSafeAreaLeadingConstraints:[[NSMutableArray alloc] init]];
+        [self setContentTrailingConstraints:[[NSMutableArray alloc] init]];
+        [self setContentSafeAreaTrailingConstraints:[[NSMutableArray alloc] init]];
+        [self setContentBottomConstraints:[[NSMutableArray alloc] init]];
+        [self setContentSafeAreaBottomConstraints:[[NSMutableArray alloc] init]];
 
         [[self layer] setShadowColor:[[UIColor blackColor] CGColor]];
         [[self layer] setShadowOffset:CGSizeMake(0, -4)];
@@ -42,11 +63,20 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [self addSubview:[self headerView]];
 
         [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [self setHeaderTopConstraint:[[[self headerView] topAnchor] constraintEqualToAnchor:[self topAnchor]]];
+        [self setHeaderSafeAreaTopConstraint:[[[self headerView] topAnchor]
+                                                constraintEqualToAnchor:[[self safeAreaLayoutGuide] topAnchor]]];
+        [self setHeaderLeadingConstraint:[[[self headerView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]]];
+        [self setHeaderSafeAreaLeadingConstraint:[[[self headerView] leadingAnchor]
+                                                     constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]]];
+        [self setHeaderTrailingConstraint:[[[self headerView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]]];
+        [self setHeaderSafeAreaTrailingConstraint:[[[self headerView] trailingAnchor]
+                                                      constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
             [[[self headerView] heightAnchor] constraintEqualToConstant:60],
-            [[[self headerView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self headerView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-            [[[self headerView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]]
+            [self headerTopConstraint],
+            [self headerLeadingConstraint],
+            [self headerTrailingConstraint]
         ]];
 
         [self setGrabber:[[_UIGrabber alloc] init]];
@@ -146,11 +176,26 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
 - (void)constrainContentView:(UIView *)contentView {
     [contentView setTranslatesAutoresizingMaskIntoConstraints:NO];
+    NSLayoutConstraint *leadingConstraint = [[contentView leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]];
+    NSLayoutConstraint *safeAreaLeadingConstraint = [[contentView leadingAnchor]
+        constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]];
+    NSLayoutConstraint *trailingConstraint = [[contentView trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]];
+    NSLayoutConstraint *safeAreaTrailingConstraint = [[contentView trailingAnchor]
+        constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]];
+    NSLayoutConstraint *bottomConstraint = [[contentView bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]];
+    NSLayoutConstraint *safeAreaBottomConstraint = [[contentView bottomAnchor]
+        constraintEqualToAnchor:[[self safeAreaLayoutGuide] bottomAnchor]];
+    [[self contentLeadingConstraints] addObject:leadingConstraint];
+    [[self contentSafeAreaLeadingConstraints] addObject:safeAreaLeadingConstraint];
+    [[self contentTrailingConstraints] addObject:trailingConstraint];
+    [[self contentSafeAreaTrailingConstraints] addObject:safeAreaTrailingConstraint];
+    [[self contentBottomConstraints] addObject:bottomConstraint];
+    [[self contentSafeAreaBottomConstraints] addObject:safeAreaBottomConstraint];
     [NSLayoutConstraint activateConstraints:@[
         [[contentView topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor] constant:8],
-        [[contentView leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-        [[contentView trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
-        [[contentView bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
+        [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint,
+        [self contentRespectsSafeArea] ? safeAreaBottomConstraint : bottomConstraint
     ]];
 }
 
@@ -158,6 +203,39 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [contentView setHidden:hidden];
     [self addSubview:contentView];
     [self constrainContentView:contentView];
+}
+
+- (void)setContentRespectsSafeArea:(BOOL)contentRespectsSafeArea {
+    if (_contentRespectsSafeArea == contentRespectsSafeArea) {
+        return;
+    }
+
+    _contentRespectsSafeArea = contentRespectsSafeArea;
+    [[self headerTopConstraint] setActive:!contentRespectsSafeArea];
+    [[self headerSafeAreaTopConstraint] setActive:contentRespectsSafeArea];
+    [[self headerLeadingConstraint] setActive:!contentRespectsSafeArea];
+    [[self headerSafeAreaLeadingConstraint] setActive:contentRespectsSafeArea];
+    [[self headerTrailingConstraint] setActive:!contentRespectsSafeArea];
+    [[self headerSafeAreaTrailingConstraint] setActive:contentRespectsSafeArea];
+    for (NSLayoutConstraint *constraint in [self contentLeadingConstraints]) {
+        [constraint setActive:!contentRespectsSafeArea];
+    }
+    for (NSLayoutConstraint *constraint in [self contentSafeAreaLeadingConstraints]) {
+        [constraint setActive:contentRespectsSafeArea];
+    }
+    for (NSLayoutConstraint *constraint in [self contentTrailingConstraints]) {
+        [constraint setActive:!contentRespectsSafeArea];
+    }
+    for (NSLayoutConstraint *constraint in [self contentSafeAreaTrailingConstraints]) {
+        [constraint setActive:contentRespectsSafeArea];
+    }
+    for (NSLayoutConstraint *constraint in [self contentBottomConstraints]) {
+        [constraint setActive:!contentRespectsSafeArea];
+    }
+    for (NSLayoutConstraint *constraint in [self contentSafeAreaBottomConstraints]) {
+        [constraint setActive:contentRespectsSafeArea];
+    }
+    [self setNeedsLayout];
 }
 
 - (void)updateStyleForHeaderButton:(UIButton *)button

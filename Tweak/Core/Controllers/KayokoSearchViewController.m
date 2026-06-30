@@ -44,8 +44,14 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    UIEdgeInsets safeAreaInsets = [[self containerView] safeAreaInsets];
+    CGFloat horizontalInset = 16;
+    CGFloat x = safeAreaInsets.left + horizontalInset;
+    CGFloat width = MAX(CGRectGetWidth([[self containerView] bounds]) - safeAreaInsets.left - safeAreaInsets.right -
+                            horizontalInset * 2,
+                        0);
     CGFloat y = CGRectGetMaxY([headerView frame]) + 8 + searchHeaderHeight;
-    CGRect frame = CGRectMake(16, y, MAX(CGRectGetWidth([[self containerView] bounds]) - 32, 0), height);
+    CGRect frame = CGRectMake(x, y, width, height);
     [[self searchView] setFrame:frame];
     [[self containerView] bringSubviewToFront:[self searchView]];
 }

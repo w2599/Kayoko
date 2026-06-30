@@ -33,6 +33,7 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
 @property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;
 @property(nonatomic, assign, getter=isAnimating) BOOL animating;
+@property(nonatomic, assign) BOOL contentRespectsSafeArea;
 
 @property(nonatomic, copy, nullable) void (^layoutHandler)(void);
 

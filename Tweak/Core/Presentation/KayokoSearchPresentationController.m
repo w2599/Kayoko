@@ -6,10 +6,13 @@
 #import "KayokoSearchPresentationController.h"
 
 #import "KayokoHistoryListView.h"
+#import "KayokoMainView.h"
 #import "KayokoSearchBar.h"
 
 static CGFloat const kKayokoSearchHeaderHeight = 56;
 static CGFloat const kKayokoSearchBarHorizontalInset = 16;
+static NSTimeInterval const kKayokoSearchFullscreenAnimationDuration = 0.34;
+static CGFloat const kKayokoSearchFullscreenAnimationDamping = 0.86;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -181,15 +184,23 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    CGRect safeBounds = UIEdgeInsetsInsetRect([superview bounds], [superview safeAreaInsets]);
-    [UIView animateWithDuration:0.28
+    UIView *containerView = [self containerView];
+    [containerView layoutIfNeeded];
+    if ([containerView isKindOfClass:[KayokoMainView class]]) {
+        [(KayokoMainView *)containerView setContentRespectsSafeArea:YES];
+    }
+
+    CGRect fullscreenBounds = [superview bounds];
+    [UIView animateWithDuration:kKayokoSearchFullscreenAnimationDuration
         delay:0
-        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+        usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
+        initialSpringVelocity:0
+        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
         animations:^{
-          [[self containerView] setTransform:CGAffineTransformIdentity];
-          [[self containerView] setFrame:safeBounds];
-          [[self containerView] setNeedsLayout];
-          [[self containerView] layoutIfNeeded];
+          [containerView setTransform:CGAffineTransformIdentity];
+          [containerView setFrame:fullscreenBounds];
+          [containerView setNeedsLayout];
+          [containerView layoutIfNeeded];
         }
         completion:^(__unused BOOL finished) {
           if (completion) {
@@ -208,14 +219,22 @@ NS_ASSUME_NONNULL_END
     CGRect targetFrame = [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [[self containerView] frame];
     [self setHasNormalFrameBeforeSearch:NO];
 
+    UIView *containerView = [self containerView];
+    [containerView layoutIfNeeded];
+    if ([containerView isKindOfClass:[KayokoMainView class]]) {
+        [(KayokoMainView *)containerView setContentRespectsSafeArea:NO];
+    }
+
     if (restoresFrame && !CGRectEqualToRect([[self containerView] frame], targetFrame)) {
-        [UIView animateWithDuration:0.28
+        [UIView animateWithDuration:kKayokoSearchFullscreenAnimationDuration
             delay:0
-            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+            usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
+            initialSpringVelocity:0
+            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
             animations:^{
-              [[self containerView] setFrame:targetFrame];
-              [[self containerView] setNeedsLayout];
-              [[self containerView] layoutIfNeeded];
+              [containerView setFrame:targetFrame];
+              [containerView setNeedsLayout];
+              [containerView layoutIfNeeded];
             }
             completion:^(__unused BOOL finished) {
               [self hideSearchBarInTableView:activeTableView animated:YES];
@@ -224,7 +243,9 @@ NS_ASSUME_NONNULL_END
               }
             }];
     } else {
-        [[self containerView] setFrame:targetFrame];
+        [containerView setFrame:targetFrame];
+        [containerView setNeedsLayout];
+        [containerView layoutIfNeeded];
         [self hideSearchBarInTableView:activeTableView animated:NO];
         if (completion) {
             completion();
