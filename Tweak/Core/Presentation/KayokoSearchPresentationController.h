@@ -6,12 +6,22 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoHistoryListView;
+@class KayokoSearchPresentationController;
 
 NS_ASSUME_NONNULL_BEGIN
 
+@protocol KayokoSearchPresentationControllerDelegate <NSObject>
+
+- (void)searchPresentationController:(KayokoSearchPresentationController *)controller
+             didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset;
+
+@end
+
 @interface KayokoSearchPresentationController : NSObject
 
+@property(nonatomic, weak, nullable) id<KayokoSearchPresentationControllerDelegate> delegate;
 @property(nonatomic, assign, readonly, getter=isSearchActive) BOOL searchActive;
+@property(nonatomic, assign, readonly) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView

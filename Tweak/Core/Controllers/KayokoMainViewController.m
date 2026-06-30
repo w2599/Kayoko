@@ -241,6 +241,11 @@ NS_ASSUME_NONNULL_END
     [[self panelPresentationController] finishOutsideDismissOverlayShow];
 }
 
+- (void)searchController:(KayokoSearchController *)searchController
+    didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    [[[self clearConfirmationViewController] confirmationView] setKeyboardBottomInset:keyboardBottomInset];
+}
+
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
     [self hide];
 }
@@ -390,6 +395,7 @@ NS_ASSUME_NONNULL_END
     [[self historyController] setActiveHistoryKey:historyKey];
     [self setClearConfirmationHistoryKey:historyKey];
     [[self clearConfirmationViewController] beginWithHistoryKey:historyKey];
+    [[[self clearConfirmationViewController] confirmationView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
     [[[self mainView] clearButton] setHidden:YES];
 
     [[self mainView] showContentView:[[self clearConfirmationViewController] confirmationView]

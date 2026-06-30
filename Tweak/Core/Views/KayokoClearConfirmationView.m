@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UILabel *confirmationLabel;
 @property(nonatomic, strong, readwrite) UIButton *cancelButton;
 @property(nonatomic, strong, readwrite) UIButton *confirmButton;
+@property(nonatomic, strong) NSLayoutConstraint *stackViewCenterYConstraint;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -31,9 +32,10 @@ NS_ASSUME_NONNULL_END
         [self addSubview:stackView];
 
         [stackView setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [self setStackViewCenterYConstraint:[[stackView centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
             [[stackView centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [[stackView centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
+            [self stackViewCenterYConstraint],
             [[stackView leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
             [[stackView trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24]
         ]];
@@ -89,6 +91,17 @@ NS_ASSUME_NONNULL_END
     }
 
     return self;
+}
+
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [[self stackViewCenterYConstraint] setConstant:-keyboardBottomInset / 2.0];
+    [self setNeedsLayout];
 }
 
 - (void)updateWithHistoryKey:(NSString *)historyKey {

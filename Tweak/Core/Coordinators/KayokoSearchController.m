@@ -16,7 +16,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoSearchController () <UISearchBarDelegate, KayokoSearchSuggestionDataSourceDelegate>
+@interface KayokoSearchController () <UISearchBarDelegate, KayokoSearchPresentationControllerDelegate,
+                                      KayokoSearchSuggestionDataSourceDelegate>
 @property(nonatomic, strong) KayokoSearchViewController *searchViewController;
 @property(nonatomic, strong) KayokoSearchPresentationController *presentationController;
 @property(nonatomic, strong) KayokoSearchTokenProvider *searchTokenProvider;
@@ -61,6 +62,7 @@ NS_ASSUME_NONNULL_END
                                                                                    historyTableView:[historyListViewController tableView]
                                                                                   favoritesTableView:[favoritesListViewController tableView]
                                                                                 panGestureRecognizer:panGestureRecognizer];
+        [_presentationController setDelegate:self];
 
         [self attachToListViewController:historyListViewController hidesSearchBar:YES];
     }
@@ -102,6 +104,10 @@ NS_ASSUME_NONNULL_END
 
 - (CGFloat)searchHeaderHeight {
     return [[self presentationController] searchHeaderHeight];
+}
+
+- (CGFloat)keyboardBottomInset {
+    return [[self presentationController] keyboardBottomInset];
 }
 
 - (UISearchBar *)searchBarForTableView:(KayokoHistoryListView *)tableView {
@@ -264,6 +270,11 @@ NS_ASSUME_NONNULL_END
 
 - (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController {
     [[self presentationController] maintainSearchBarVisibilityForTableView:[listViewController tableView]];
+}
+
+- (void)searchPresentationController:(KayokoSearchPresentationController *)controller
+             didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    [[self delegate] searchController:self didUpdateKeyboardBottomInset:keyboardBottomInset];
 }
 
 - (void)handleSearchTextFieldEditingChanged:(UITextField *)textField {

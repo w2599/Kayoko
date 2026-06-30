@@ -46,7 +46,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) CGRect normalFrameBeforeSearch;
 @property(nonatomic, assign) BOOL hasNormalFrameBeforeSearch;
-@property(nonatomic, assign) CGFloat keyboardBottomInset;
+@property(nonatomic, assign, readwrite) CGFloat keyboardBottomInset;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -325,6 +325,16 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetToTableView:[self favoritesTableView]];
 }
 
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [[self delegate] searchPresentationController:self didUpdateKeyboardBottomInset:keyboardBottomInset];
+}
+
 - (void)resetKeyboardInsets {
     [self setKeyboardBottomInset:0];
     [self applyBottomInsetsToTableViews];
@@ -332,6 +342,11 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
     if (![self isSearchActive]) {
+        return;
+    }
+
+    BOOL isLocal = [notification.userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
+    if (!isLocal) {
         return;
     }
 

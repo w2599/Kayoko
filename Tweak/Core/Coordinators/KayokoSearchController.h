@@ -17,6 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (KayokoHistoryListViewController *)activeListViewControllerForSearchController:(KayokoSearchController *)searchController;
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController;
 - (void)searchControllerDidFinishAnimatingSearchState:(KayokoSearchController *)searchController;
+- (void)searchController:(KayokoSearchController *)searchController
+    didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset;
 
 @end
 
@@ -24,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, weak, nullable) id<KayokoSearchControllerDelegate> delegate;
 @property(nonatomic, assign, readonly, getter=isSearchActive) BOOL searchActive;
+@property(nonatomic, assign, readonly) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                             headerView:(UIView *)headerView
