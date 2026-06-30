@@ -51,6 +51,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)setPendingAutoPasteItem:(PasteboardItem *)item;
 - (void)clearPendingAutoPasteItem;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;
+- (void)getImageForItem:(PasteboardItem *)item completion:(void (^)(UIImage *image))completion;
 
 @end
 

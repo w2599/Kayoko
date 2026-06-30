@@ -185,13 +185,31 @@
     [[self contentTrailingToEdgeConstraint] setActive:!hasRemark];
 
     if (hasImage) {
-        UIImage *image = [[PasteboardManager sharedInstance] getImageForItem:item];
-        [[self contentImageView] setImage:image];
+        [[PasteboardManager sharedInstance] getImageForItem:item completion:^(UIImage *image) {
+            [self setContentImage:image];
+        }];
     } else {
-        [[self contentImageView] setImage:nil];
+        [self setContentImage:nil];
     }
 
     [self updateContentDisplayMode];
+}
+
+- (void)setContentImage:(UIImage *)image {
+    UIImageView *imageView = [self contentImageView];
+
+    if (!image) {
+        imageView.image = nil;
+        return;
+    }
+
+    imageView.alpha = 0.0;
+    imageView.hidden = NO;
+    imageView.image = image;
+
+    [UIView animateWithDuration:0.2 animations:^{
+        imageView.alpha = 1.0;
+    }];
 }
 
 - (UIImage *)cachedIconForBundleIdentifier:(NSString *)bundleIdentifier {
@@ -237,7 +255,7 @@
     [super prepareForReuse];
     [[self headerLabel] setText:@""];
     [[self remarkLabel] setText:@""];
-    [[self contentImageView] setImage:nil];
+    [self setContentImage:nil];
     [[self iconTimeLabel] setText:nil];
 }
 

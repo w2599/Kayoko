@@ -15,10 +15,12 @@
 
 #import <roothide.h>
 
+static int kKayokoImageCacheLimit = 20;
+
 @implementation PasteboardManager {
     dispatch_queue_t _queue;
     BOOL _didEnsureResourcesExist;
-    NSCache *_historyImageCache;
+    NSMutableDictionary *_historyImageCache;
 }
 
 /**
@@ -104,8 +106,7 @@
     if (self) {
         _fileManager = [NSFileManager defaultManager];
         _didEnsureResourcesExist = NO;
-        _historyImageCache = [[NSCache alloc] init];
-        [_historyImageCache setCountLimit:64];
+        _historyImageCache = [[NSMutableDictionary alloc] init];
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
         } else {
@@ -260,8 +261,8 @@
                 [history removeObject:dictionary];
 
                 if (![[item imageName] isEqualToString:@""] && shouldRemoveImage) {
-                    NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+                    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+
                     [_historyImageCache removeObjectForKey:[item imageName]];
                     [_fileManager removeItemAtPath:filePath error:nil];
                 }
@@ -461,21 +462,66 @@
         return nil;
     }
 
-    UIImage *cachedImage = [_historyImageCache objectForKey:imageName];
-    if (cachedImage) {
-        return cachedImage;
-    }
-
-    NSData *imageData = [_fileManager
-        contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName]];
-    UIImage *image = [UIImage imageWithData:imageData];
-    if (image) {
-        [_historyImageCache setObject:image forKey:imageName];
-    }
+    NSData *imageData = [NSData dataWithContentsOfFile:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName]];
+    UIImage *image = [UIImage imageWithData:imageData];    
 
     return image;
 }
 
+- (void)getImageForItem:(PasteboardItem *)item completion:(void (^)(UIImage *image))completion {
+    NSString *imageName = item.imageName ?: @"";
+    if (imageName.length == 0) {
+        if (completion) completion(nil);
+        return;
+    }
+
+    UIImage *cachedImage = [_historyImageCache objectForKey:imageName];
+    if (cachedImage) {
+        if (completion) completion(cachedImage);
+        return;
+    }
+
+    dispatch_async(_queue, ^{
+      UIImage *image = [self getThumbnailForItem:item];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (image && [_historyImageCache count] <= kKayokoImageCacheLimit) {
+            [_historyImageCache setObject:image forKey:imageName];
+        }
+        if (completion) completion(image);
+      });
+    });
+}
+
+- (UIImage *)getThumbnailForItem:(PasteboardItem *)item {
+    NSString *imageName = [item imageName] ?: @"";
+    if (![imageName length]) {
+        return nil;
+    }
+
+    NSString *imagePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+    NSURL *imageURL = [NSURL fileURLWithPath:imagePath];
+    NSDictionary *options = @{
+        (__bridge id)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+        // (__bridge id)kCGImageSourceThumbnailMaxPixelSize: @(1000),
+        (__bridge id)kCGImageSourceShouldCacheImmediately: @YES,
+        (__bridge id)kCGImageSourceCreateThumbnailWithTransform: @YES
+    };
+    CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, nil);
+    if (!source) {
+        return nil;
+    }
+
+    CGImageRef thumbnailRef = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    CFRelease(source);
+    if (!thumbnailRef) {
+        return nil;
+    }
+
+    UIImage *thumbnail = [UIImage imageWithCGImage:thumbnailRef];
+    CGImageRelease(thumbnailRef);
+
+    return thumbnail;
+}
 /**
  * Creates the plists for the histories and path for the images.
  */

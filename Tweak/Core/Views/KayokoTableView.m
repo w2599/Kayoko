@@ -101,7 +101,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 
 - (void)schedulePreparedCellPrewarming {
     NSUInteger generation = [self prewarmGeneration];
-    NSUInteger visibleRows = (NSUInteger)ceil(MAX(0, [self bounds].size.height) / MAX(1.0, [self rowHeight])) + 2;
+    NSUInteger visibleRows = (NSUInteger)ceil(MAX(0, [self bounds].size.height) / MAX(1.0, [self rowHeight])) + 1;
     NSUInteger startRow = MIN([[self items] count], visibleRows);
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -327,15 +327,10 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
  * @param indexPath
  */
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *dictionary = [self items][[indexPath row]];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-
     KayokoTableViewCell *cell = [self preparedCellForRow:[indexPath row]];
     if (!cell) {
         cell = [self buildPreparedCellForRow:[indexPath row]];
     }
-
-    [cell configureWithItem:item showRecordedTime:[self showRecordedTime]];
 
     return cell;
 }
