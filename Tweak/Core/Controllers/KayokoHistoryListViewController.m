@@ -67,16 +67,8 @@ NS_ASSUME_NONNULL_END
     return [[self dataStore] displayedItems];
 }
 
-- (NSArray<NSDictionary<NSString *, id> *> *)availableAppTokenItems {
-    return [[self dataStore] availableAppTokenItems];
-}
-
 - (NSString *)searchText {
     return [[self dataStore] searchText];
-}
-
-- (NSArray<NSString *> *)selectedBundleIdentifiers {
-    return [[self dataStore] selectedBundleIdentifiers];
 }
 
 - (BOOL)hasActiveSearch {
@@ -243,8 +235,8 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
-- (void)applySearchText:(NSString *)searchText selectedBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
-    [[self dataStore] applySearchText:searchText selectedBundleIdentifiers:bundleIdentifiers];
+- (void)applySearchText:(NSString *)searchText {
+    [[self dataStore] applySearchText:searchText];
     [self reloadTableView];
 }
 

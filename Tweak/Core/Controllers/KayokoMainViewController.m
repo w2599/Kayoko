@@ -17,7 +17,6 @@
 #import "KayokoPreviewView.h"
 #import "KayokoPreviewViewController.h"
 #import "KayokoSearchController.h"
-#import "KayokoSearchViewController.h"
 #import "KayokoWordSelectionViewController.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
@@ -42,7 +41,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
 @property(nonatomic, strong) KayokoWordSelectionViewController *wordSelectionViewController;
-@property(nonatomic, strong) KayokoSearchViewController *searchViewController;
 @property(nonatomic, strong) KayokoSearchController *searchController;
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
@@ -151,15 +149,9 @@ NS_ASSUME_NONNULL_END
         [_mainView installContentView:[_wordSelectionViewController view] hidden:YES];
         [_wordSelectionViewController didMoveToParentViewController:self];
 
-        _searchViewController = [[KayokoSearchViewController alloc] initWithContainerView:_mainView];
-        [self addChildViewController:_searchViewController];
-        [_mainView addSubview:[_searchViewController view]];
-        [_searchViewController didMoveToParentViewController:self];
-
         _searchController =
             [[KayokoSearchController alloc] initWithContainerView:_mainView
                                                        headerView:[_mainView headerView]
-                                             searchViewController:_searchViewController
                                         historyListViewController:_historyListViewController
                                       favoritesListViewController:_favoritesListViewController
                                              panGestureRecognizer:[_panelPresentationController panGestureRecognizer]];
@@ -637,7 +629,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)showContentForItem:(PasteboardItem *)item {
-    [[self searchController] suspendSuggestions];
+    [[self searchController] resignSearchFirstResponder];
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];
     [self setActiveSourceContentView:sourceTableView];

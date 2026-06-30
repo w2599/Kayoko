@@ -9,25 +9,16 @@
 #import "KayokoHistoryListViewController.h"
 #import "KayokoSearchBar.h"
 #import "KayokoSearchPresentationController.h"
-#import "KayokoSearchSuggestionDataSource.h"
-#import "KayokoSearchTokenProvider.h"
-#import "KayokoSearchViewController.h"
 #import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoSearchController () <UISearchBarDelegate, KayokoSearchPresentationControllerDelegate,
-                                      KayokoSearchSuggestionDataSourceDelegate>
-@property(nonatomic, strong) KayokoSearchViewController *searchViewController;
+@interface KayokoSearchController () <UISearchBarDelegate, KayokoSearchPresentationControllerDelegate>
 @property(nonatomic, strong) KayokoSearchPresentationController *presentationController;
-@property(nonatomic, strong) KayokoSearchTokenProvider *searchTokenProvider;
-@property(nonatomic, strong) KayokoSearchSuggestionDataSource *suggestionDataSource;
-@property(nonatomic, weak) UIView *headerView;
 @property(nonatomic, weak) KayokoHistoryListViewController *historyListViewController;
 @property(nonatomic, weak) KayokoHistoryListViewController *favoritesListViewController;
 @property(nonatomic, strong) UISearchBar *historySearchBar;
 @property(nonatomic, strong) UISearchBar *favoritesSearchBar;
-@property(nonatomic, strong) UITableView *suggestionTableView;
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) BOOL isResettingSearch;
 @end
@@ -38,24 +29,16 @@ NS_ASSUME_NONNULL_END
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView
-                 searchViewController:(KayokoSearchViewController *)searchViewController
             historyListViewController:(KayokoHistoryListViewController *)historyListViewController
           favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
     self = [super init];
     if (self) {
-        _headerView = headerView;
         _historyListViewController = historyListViewController;
         _favoritesListViewController = favoritesListViewController;
-        _searchViewController = searchViewController;
-        _suggestionTableView = [_searchViewController suggestionTableView];
         _historySearchBar = [self newSearchBar];
         _favoritesSearchBar = [self newSearchBar];
 
-        _searchTokenProvider = [[KayokoSearchTokenProvider alloc] init];
-        _suggestionDataSource =
-            [[KayokoSearchSuggestionDataSource alloc] initWithSuggestionTableView:_suggestionTableView];
-        [_suggestionDataSource setDelegate:self];
         _presentationController =
             [[KayokoSearchPresentationController alloc] initWithContainerView:containerView
                                                                    headerView:headerView
@@ -128,7 +111,6 @@ NS_ASSUME_NONNULL_END
 
 - (void)layout {
     [[self presentationController] layout];
-    [self layoutSuggestionTableView];
 }
 
 - (void)attachToListViewController:(KayokoHistoryListViewController *)listViewController
@@ -136,28 +118,9 @@ NS_ASSUME_NONNULL_END
     [[self presentationController] attachToTableView:[listViewController tableView] hidesSearchBar:hidesSearchBar];
 }
 
-- (void)setSearchTokensWithBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers
-                       forListViewController:(KayokoHistoryListViewController *)listViewController {
-    [[self searchTokenProvider]
-        setSearchTokensWithBundleIdentifiers:bundleIdentifiers
-                                 inSearchBar:[self searchBarForTableView:[listViewController tableView]]
-                              availableItems:[listViewController availableAppTokenItems]];
-}
-
 - (void)applySearchFromSearchBar:(UISearchBar *)searchBar {
     KayokoHistoryListViewController *listViewController = [self listViewControllerForSearchBar:searchBar];
-    NSArray<NSString *> *selectedBundleIdentifiers =
-        [[self searchTokenProvider] selectedBundleIdentifiersInSearchBar:searchBar];
-    [listViewController applySearchText:[searchBar text] selectedBundleIdentifiers:selectedBundleIdentifiers];
-
-    NSArray<NSString *> *validBundleIdentifiers = [listViewController selectedBundleIdentifiers] ?: @[];
-    if (![validBundleIdentifiers isEqualToArray:selectedBundleIdentifiers]) {
-        [self setSearchTokensWithBundleIdentifiers:validBundleIdentifiers forListViewController:listViewController];
-    }
-
-    if (listViewController == [self activeListViewController]) {
-        [self refreshSuggestions];
-    }
+    [listViewController applySearchText:[searchBar text]];
 }
 
 - (void)applySearchToActiveTableView {
@@ -169,8 +132,6 @@ NS_ASSUME_NONNULL_END
     BOOL wasResettingSearch = [self isResettingSearch];
     [self setIsResettingSearch:YES];
     [searchBar setText:[listViewController searchText]];
-    [self setSearchTokensWithBundleIdentifiers:[listViewController selectedBundleIdentifiers] ?: @[]
-                         forListViewController:listViewController];
     [self setIsResettingSearch:wasResettingSearch];
 }
 
@@ -186,28 +147,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (void)refreshSuggestions {
-    KayokoHistoryListViewController *listViewController = [self activeListViewController];
-    NSArray<NSDictionary<NSString *, id> *> *suggestionItems = [[self searchTokenProvider]
-        unselectedAppTokenSuggestionItemsWithAvailableItems:[listViewController availableAppTokenItems]
-                                                  searchBar:[self activeSearchBar]];
-    [[self suggestionDataSource] updateSuggestionItems:suggestionItems];
-    [self layoutSuggestionTableView];
-    [[self suggestionDataSource]
-        setHidden:![self isSearchActive] || [[self suggestionDataSource] numberOfSuggestions] == 0];
-}
-
-- (void)suspendSuggestions {
+- (void)resignSearchFirstResponder {
     [[self activeSearchBar] resignFirstResponder];
-    [[self suggestionDataSource] setHidden:YES];
-}
-
-- (void)layoutSuggestionTableView {
-    [[self searchViewController]
-        layoutSuggestionTableViewWithHeaderView:[self headerView]
-                                      itemCount:[[self suggestionDataSource] numberOfSuggestions]
-                                   searchActive:[self isSearchActive]
-                             searchHeaderHeight:[self searchHeaderHeight]];
 }
 
 - (void)beginSearchIfNeeded {
@@ -219,7 +160,6 @@ NS_ASSUME_NONNULL_END
     [[self historySearchBar] setShowsCancelButton:NO animated:NO];
     [[self favoritesSearchBar] setShowsCancelButton:NO animated:NO];
     [[self activeSearchBar] setShowsCancelButton:YES animated:YES];
-    [self refreshSuggestions];
     [[self delegate] searchControllerWillAnimateSearchState:self];
     [[self presentationController]
         beginSearchWithActiveTableView:[[self activeListViewController] tableView]
@@ -244,7 +184,6 @@ NS_ASSUME_NONNULL_END
     }
     [[self presentationController] resetKeyboardInsets];
     [self applySearchToActiveTableView];
-    [[self suggestionDataSource] setHidden:YES];
     [self setIsResettingSearch:NO];
 
     [[self delegate] searchControllerWillAnimateSearchState:self];
@@ -272,8 +211,7 @@ NS_ASSUME_NONNULL_END
     BOOL wasResettingSearch = [self isResettingSearch];
     [self setIsResettingSearch:YES];
     [searchBar setText:@""];
-    [self setSearchTokensWithBundleIdentifiers:@[] forListViewController:listViewController];
-    [listViewController applySearchText:@"" selectedBundleIdentifiers:@[]];
+    [listViewController applySearchText:@""];
     [self setIsResettingSearch:wasResettingSearch];
 }
 
@@ -337,26 +275,6 @@ NS_ASSUME_NONNULL_END
         return;
     }
     [self endSearchRestoringFrame:YES clearsSearch:YES];
-}
-
-- (void)searchSuggestionDataSource:(KayokoSearchSuggestionDataSource *)controller
-         didSelectBundleIdentifier:(NSString *)bundleIdentifier {
-    if ([bundleIdentifier length] == 0) {
-        return;
-    }
-
-    if (@available(iOS 13.0, *)) {
-        UISearchBar *searchBar = [self activeSearchBar];
-        NSMutableArray<NSString *> *bundleIdentifiers =
-            [[[self searchTokenProvider] selectedBundleIdentifiersInSearchBar:searchBar] mutableCopy];
-        if (![bundleIdentifiers containsObject:bundleIdentifier]) {
-            [bundleIdentifiers addObject:bundleIdentifier];
-        }
-        [self setSearchTokensWithBundleIdentifiers:bundleIdentifiers
-                             forListViewController:[self activeListViewController]];
-        [self applySearchToActiveTableView];
-        [searchBar becomeFirstResponder];
-    }
 }
 
 @end

@@ -7,7 +7,6 @@
 
 @class KayokoSearchController;
 @class KayokoHistoryListViewController;
-@class KayokoSearchViewController;
 @class KayokoHistoryListView;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -31,7 +30,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView
-                 searchViewController:(KayokoSearchViewController *)searchViewController
             historyListViewController:(KayokoHistoryListViewController *)historyListViewController
           favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
@@ -41,7 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
                     hidesSearchBar:(BOOL)hidesSearchBar;
 - (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController;
-- (void)suspendSuggestions;
+- (void)resignSearchFirstResponder;
 - (void)resetBeforeHide;
 
 @end

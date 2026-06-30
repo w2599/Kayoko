@@ -33,9 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readonly) NSString *name;
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *items;
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *displayedItems;
-@property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *availableAppTokenItems;
 @property(nonatomic, copy, readonly) NSString *searchText;
-@property(nonatomic, copy, readonly) NSArray<NSString *> *selectedBundleIdentifiers;
 @property(nonatomic, assign, readonly) BOOL hasActiveSearch;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) NSUInteger previewLineCount;
@@ -50,7 +48,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)reloadDataWithItems:(NSArray<NSDictionary<NSString *, id> *> *)items;
 - (void)updateDataWithItems:(NSArray<NSDictionary<NSString *, id> *> *)items
      animatingTopInsertions:(BOOL)animatingTopInsertions;
-- (void)applySearchText:(NSString *)searchText selectedBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers;
+- (void)applySearchText:(NSString *)searchText;
 - (void)clearItems;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary limit:(NSUInteger)limit;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
