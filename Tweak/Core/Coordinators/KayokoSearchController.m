@@ -10,6 +10,7 @@
 #import "KayokoSearchSuggestionDataSource.h"
 #import "KayokoSearchTokenProvider.h"
 #import "KayokoSearchViewController.h"
+#import "KayokoSearchBar.h"
 #import "KayokoHistoryListView.h"
 #import "PasteboardManager.h"
 
@@ -67,12 +68,13 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UISearchBar *)newSearchBar {
-    UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
+    UISearchBar *searchBar = [[KayokoSearchBar alloc] initWithFrame:CGRectZero];
     [searchBar setPlaceholder:[[PasteboardManager localizationBundle] localizedStringForKey:@"Search"
                                                                                       value:nil
                                                                                       table:@"Tweak"]];
     [searchBar setSearchBarStyle:UISearchBarStyleMinimal];
     [searchBar setBackgroundImage:[[UIImage alloc] init]];
+    [searchBar setTintColor:[UIColor labelColor]];
     [searchBar setDelegate:self];
     if (@available(iOS 13.0, *)) {
         [[searchBar searchTextField] addTarget:self

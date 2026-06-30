@@ -6,8 +6,10 @@
 #import "KayokoSearchPresentationController.h"
 
 #import "KayokoHistoryListView.h"
+#import "KayokoSearchBar.h"
 
 static CGFloat const kKayokoSearchHeaderHeight = 56;
+static CGFloat const kKayokoSearchBarHorizontalInset = 16;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -80,9 +82,10 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    CGRect frame = CGRectMake(0, 0, CGRectGetWidth([tableView bounds]), kKayokoSearchHeaderHeight);
+    CGRect fullWidthFrame = CGRectMake(0, 0, CGRectGetWidth([tableView bounds]), kKayokoSearchHeaderHeight);
+    CGRect frame = CGRectInset(fullWidthFrame, kKayokoSearchBarHorizontalInset, 0);
     if (!CGRectEqualToRect([searchBar frame], frame)) {
-        [searchBar setFrame:frame];
+        [searchBar setFrame:fullWidthFrame];
         [tableView setTableHeaderView:searchBar];
     }
 }
@@ -101,8 +104,12 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    if ([searchBar respondsToSelector:@selector(setKayokoHorizontalFrameInset:)]) {
+        [(KayokoSearchBar *)searchBar setKayokoHorizontalFrameInset:kKayokoSearchBarHorizontalInset];
+    }
     [searchBar setFrame:CGRectMake(0, 0, CGRectGetWidth([tableView bounds]), kKayokoSearchHeaderHeight)];
     [tableView setTableHeaderView:searchBar];
+    [self layoutSearchBarForTableView:tableView];
 }
 
 - (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar {
