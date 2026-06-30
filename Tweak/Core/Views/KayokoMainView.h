@@ -1,5 +1,5 @@
 //
-//  KayokoView.h
+//  KayokoMainView.h
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
@@ -7,14 +7,12 @@
 
 #import <UIKit/UIKit.h>
 
-@class KayokoTableView;
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface _UIGrabber : UIControl
 @end
 
-@interface KayokoView : UIView
+@interface KayokoMainView : UIView
 
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
@@ -39,6 +37,11 @@ NS_ASSUME_NONNULL_BEGIN
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
                 reverse:(BOOL)reverse;
+- (void)showContentView:(UIView *)viewToShow
+        hideContentView:(UIView *)viewToHide
+                  title:(NSString *)title
+                reverse:(BOOL)reverse
+             completion:(nullable void (^)(void))completion;
 
 @end
 

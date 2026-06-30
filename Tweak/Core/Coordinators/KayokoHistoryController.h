@@ -7,7 +7,7 @@
 
 @class KayokoHistoryController;
 @class KayokoHistoryListViewController;
-@class KayokoTableView;
+@class KayokoHistoryListView;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)historyControllerIsPanelVisible:(KayokoHistoryController *)controller;
 - (void)historyControllerNeedsVisibleReload:(KayokoHistoryController *)controller;
-- (void)historyController:(KayokoHistoryController *)controller didUpdateActiveTableView:(KayokoTableView *)tableView;
+- (void)historyController:(KayokoHistoryController *)controller didUpdateActiveTableView:(KayokoHistoryListView *)tableView;
 
 @end
 
@@ -29,17 +29,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSString *)effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:(nullable NSString *)clearConfirmationHistoryKey;
 - (KayokoHistoryListViewController *)listViewControllerForHistoryKey:(NSString *)historyKey;
-- (KayokoTableView *)tableViewForHistoryKey:(NSString *)historyKey;
-- (KayokoTableView *)activeTableViewWithClearConfirmationHistoryKey:(nullable NSString *)clearConfirmationHistoryKey;
+- (KayokoHistoryListView *)tableViewForHistoryKey:(NSString *)historyKey;
+- (KayokoHistoryListView *)activeTableViewWithClearConfirmationHistoryKey:(nullable NSString *)clearConfirmationHistoryKey;
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey;
 - (void)handleHistoryChanged;
 - (void)preloadHistoryWithCompletion:(nullable void (^)(void))completion;
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
               animatingTopInsertions:(BOOL)animatingTopInsertions
-                           completion:(nullable void (^)(KayokoTableView *tableView))completion;
+                           completion:(nullable void (^)(KayokoHistoryListView *tableView))completion;
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
-                          completion:(nullable void (^)(KayokoTableView *tableView))completion;
+                          completion:(nullable void (^)(KayokoHistoryListView *tableView))completion;
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
                            toHistoryKey:(NSString *)destinationHistoryKey;

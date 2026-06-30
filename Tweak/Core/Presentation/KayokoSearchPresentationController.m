@@ -5,7 +5,7 @@
 
 #import "KayokoSearchPresentationController.h"
 
-#import "KayokoTableView.h"
+#import "KayokoHistoryListView.h"
 
 static CGFloat const kKayokoSearchHeaderHeight = 56;
 
@@ -16,8 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) UIView *headerView;
 @property(nonatomic, weak) UISearchBar *historySearchBar;
 @property(nonatomic, weak) UISearchBar *favoritesSearchBar;
-@property(nonatomic, weak) KayokoTableView *historyTableView;
-@property(nonatomic, weak) KayokoTableView *favoritesTableView;
+@property(nonatomic, weak) KayokoHistoryListView *historyTableView;
+@property(nonatomic, weak) KayokoHistoryListView *favoritesTableView;
 @property(nonatomic, weak) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) CGRect normalFrameBeforeSearch;
@@ -33,8 +33,8 @@ NS_ASSUME_NONNULL_END
                            headerView:(UIView *)headerView
                       historySearchBar:(UISearchBar *)historySearchBar
                     favoritesSearchBar:(UISearchBar *)favoritesSearchBar
-                     historyTableView:(KayokoTableView *)historyTableView
-                    favoritesTableView:(KayokoTableView *)favoritesTableView
+                     historyTableView:(KayokoHistoryListView *)historyTableView
+                    favoritesTableView:(KayokoHistoryListView *)favoritesTableView
                   panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
     self = [super init];
     if (self) {
@@ -74,7 +74,7 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetsToTableViews];
 }
 
-- (void)layoutSearchBarForTableView:(KayokoTableView *)tableView {
+- (void)layoutSearchBarForTableView:(KayokoHistoryListView *)tableView {
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
     if ([tableView tableHeaderView] != searchBar) {
         return;
@@ -87,11 +87,11 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (UISearchBar *)searchBarForTableView:(KayokoTableView *)tableView {
+- (UISearchBar *)searchBarForTableView:(KayokoHistoryListView *)tableView {
     return tableView == [self favoritesTableView] ? [self favoritesSearchBar] : [self historySearchBar];
 }
 
-- (void)installSearchBarForTableView:(KayokoTableView *)tableView {
+- (void)installSearchBarForTableView:(KayokoHistoryListView *)tableView {
     if (!tableView) {
         return;
     }
@@ -105,7 +105,7 @@ NS_ASSUME_NONNULL_END
     [tableView setTableHeaderView:searchBar];
 }
 
-- (void)attachToTableView:(KayokoTableView *)tableView hidesSearchBar:(BOOL)hidesSearchBar {
+- (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar {
     [self installSearchBarForTableView:[self historyTableView]];
     [self installSearchBarForTableView:[self favoritesTableView]];
     [self layout];
@@ -121,7 +121,7 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (void)hideSearchBarInTableView:(KayokoTableView *)tableView animated:(BOOL)animated {
+- (void)hideSearchBarInTableView:(KayokoHistoryListView *)tableView animated:(BOOL)animated {
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
     if (!tableView || [tableView tableHeaderView] != searchBar || [self isSearchActive]) {
         return;
@@ -134,7 +134,7 @@ NS_ASSUME_NONNULL_END
     [tableView setContentOffset:contentOffset animated:animated];
 }
 
-- (void)revealSearchBarInTableView:(KayokoTableView *)tableView animated:(BOOL)animated {
+- (void)revealSearchBarInTableView:(KayokoHistoryListView *)tableView animated:(BOOL)animated {
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
     if (!tableView || [tableView tableHeaderView] != searchBar) {
         return;
@@ -147,7 +147,7 @@ NS_ASSUME_NONNULL_END
     [tableView setContentOffset:contentOffset animated:animated];
 }
 
-- (void)maintainSearchBarVisibilityForTableView:(KayokoTableView *)tableView {
+- (void)maintainSearchBarVisibilityForTableView:(KayokoHistoryListView *)tableView {
     if ([self isSearchActive]) {
         [self revealSearchBarInTableView:tableView animated:NO];
     } else {
@@ -155,7 +155,7 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (void)beginSearchWithActiveTableView:(KayokoTableView *)activeTableView completion:(void (^)(void))completion {
+- (void)beginSearchWithActiveTableView:(KayokoHistoryListView *)activeTableView completion:(void (^)(void))completion {
     if ([self isSearchActive]) {
         return;
     }
@@ -192,7 +192,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
-                 activeTableView:(KayokoTableView *)activeTableView
+                 activeTableView:(KayokoHistoryListView *)activeTableView
                       completion:(void (^)(void))completion {
     [self setSearchActive:NO];
     [self resetKeyboardInsets];
@@ -225,7 +225,7 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (CGFloat)hiddenSearchBottomInsetForTableView:(KayokoTableView *)tableView {
+- (CGFloat)hiddenSearchBottomInsetForTableView:(KayokoHistoryListView *)tableView {
     if ([self isSearchActive]) {
         return 0;
     }
@@ -233,7 +233,7 @@ NS_ASSUME_NONNULL_END
     return [tableView minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:0];
 }
 
-- (void)applyBottomInsetToTableView:(KayokoTableView *)tableView {
+- (void)applyBottomInsetToTableView:(KayokoHistoryListView *)tableView {
     UIEdgeInsets contentInset = [tableView contentInset];
     CGFloat bottomInset = [self keyboardBottomInset] + [self hiddenSearchBottomInsetForTableView:tableView];
     contentInset.bottom = bottomInset;

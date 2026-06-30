@@ -5,12 +5,12 @@
 
 #import "KayokoPanelPresentationController.h"
 
-#import "KayokoView.h"
+#import "KayokoMainView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPanelPresentationController ()
-@property(nonatomic, weak) KayokoView *panelView;
+@property(nonatomic, weak) KayokoMainView *panelView;
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
@@ -21,7 +21,7 @@ NS_ASSUME_NONNULL_END
 
 @implementation KayokoPanelPresentationController
 
-- (instancetype)initWithPanelView:(KayokoView *)panelView {
+- (instancetype)initWithPanelView:(KayokoMainView *)panelView {
     self = [super init];
     if (self) {
         _panelView = panelView;

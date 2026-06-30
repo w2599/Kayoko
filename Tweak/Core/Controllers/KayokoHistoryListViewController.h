@@ -6,7 +6,7 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoHistoryListViewController;
-@class KayokoTableView;
+@class KayokoHistoryListView;
 @class PasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -28,7 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoHistoryListViewController : UIViewController
 
 @property(nonatomic, weak, nullable) id<KayokoHistoryListViewControllerDelegate> delegate;
-@property(nonatomic, strong, readonly) KayokoTableView *tableView;
+@property(nonatomic, strong, readonly) KayokoHistoryListView *tableView;
 @property(nonatomic, copy, readonly) NSString *historyKey;
 @property(nonatomic, copy, readonly) NSString *name;
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *items;

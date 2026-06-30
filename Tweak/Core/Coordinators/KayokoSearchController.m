@@ -10,7 +10,7 @@
 #import "KayokoSearchSuggestionDataSource.h"
 #import "KayokoSearchTokenProvider.h"
 #import "KayokoSearchViewController.h"
-#import "KayokoTableView.h"
+#import "KayokoHistoryListView.h"
 #import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -94,7 +94,7 @@ NS_ASSUME_NONNULL_END
     return [[self delegate] activeListViewControllerForSearchController:self];
 }
 
-- (KayokoTableView *)activeTableView {
+- (KayokoHistoryListView *)activeTableView {
     return [[self activeListViewController] tableView];
 }
 
@@ -102,7 +102,7 @@ NS_ASSUME_NONNULL_END
     return [[self presentationController] searchHeaderHeight];
 }
 
-- (UISearchBar *)searchBarForTableView:(KayokoTableView *)tableView {
+- (UISearchBar *)searchBarForTableView:(KayokoHistoryListView *)tableView {
     return tableView == [[self favoritesListViewController] tableView] ? [self favoritesSearchBar] : [self historySearchBar];
 }
 

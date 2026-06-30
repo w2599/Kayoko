@@ -8,7 +8,7 @@
 @class KayokoSearchController;
 @class KayokoHistoryListViewController;
 @class KayokoSearchViewController;
-@class KayokoTableView;
+@class KayokoHistoryListView;
 
 NS_ASSUME_NONNULL_BEGIN
 

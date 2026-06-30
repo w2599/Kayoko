@@ -9,7 +9,7 @@
 #import "KayokoHistoryItemActionHandler.h"
 #import "KayokoHistoryTableView.h"
 #import "KayokoTableDataStore.h"
-#import "KayokoTableView.h"
+#import "KayokoHistoryListView.h"
 #import "KayokoTableViewCell.h"
 #import "KayokoTableViewCellContent.h"
 #import "KayokoTableViewCellContentProvider.h"
@@ -19,7 +19,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryListViewController () <UITableViewDelegate, UITableViewDataSource>
-@property(nonatomic, strong, readwrite) KayokoTableView *tableView;
+@property(nonatomic, strong, readwrite) KayokoHistoryListView *tableView;
 @property(nonatomic, copy, readwrite) NSString *historyKey;
 @property(nonatomic, copy, readwrite) NSString *name;
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;

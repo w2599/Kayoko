@@ -1,17 +1,16 @@
 //
-//  KayokoView.m
+//  KayokoMainView.m
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "KayokoView.h"
+#import "KayokoMainView.h"
 
 #import "KayokoHeaderButtonStyle.h"
-#import "KayokoTableView.h"
 #import "PasteboardManager.h"
 
-@implementation KayokoView
+@implementation KayokoMainView
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -170,6 +169,14 @@
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
                 reverse:(BOOL)reverse {
+    [self showContentView:viewToShow hideContentView:viewToHide title:title reverse:reverse completion:nil];
+}
+
+- (void)showContentView:(UIView *)viewToShow
+        hideContentView:(UIView *)viewToHide
+                  title:(NSString *)title
+                reverse:(BOOL)reverse
+             completion:(void (^)(void))completion {
     [UIView transitionWithView:[self titleLabel]
                       duration:0.1
                        options:UIViewAnimationOptionTransitionCrossDissolve
@@ -200,6 +207,9 @@
         completion:^(__unused BOOL finished) {
           [viewToHide setHidden:YES];
           [self setAnimating:NO];
+          if (completion) {
+              completion();
+          }
         }];
 }
 

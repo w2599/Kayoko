@@ -5,7 +5,7 @@
 
 #import <UIKit/UIKit.h>
 
-@class KayokoTableView;
+@class KayokoHistoryListView;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -17,20 +17,20 @@ NS_ASSUME_NONNULL_BEGIN
                            headerView:(UIView *)headerView
                       historySearchBar:(UISearchBar *)historySearchBar
                     favoritesSearchBar:(UISearchBar *)favoritesSearchBar
-                     historyTableView:(KayokoTableView *)historyTableView
-                    favoritesTableView:(KayokoTableView *)favoritesTableView
+                     historyTableView:(KayokoHistoryListView *)historyTableView
+                    favoritesTableView:(KayokoHistoryListView *)favoritesTableView
                   panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
 
 - (CGFloat)searchHeaderHeight;
 - (void)layout;
-- (void)attachToTableView:(KayokoTableView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
-- (void)maintainSearchBarVisibilityForTableView:(KayokoTableView *)tableView;
-- (void)hideSearchBarInTableView:(nullable KayokoTableView *)tableView animated:(BOOL)animated;
-- (void)revealSearchBarInTableView:(nullable KayokoTableView *)tableView animated:(BOOL)animated;
-- (void)beginSearchWithActiveTableView:(KayokoTableView *)activeTableView
+- (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
+- (void)maintainSearchBarVisibilityForTableView:(KayokoHistoryListView *)tableView;
+- (void)hideSearchBarInTableView:(nullable KayokoHistoryListView *)tableView animated:(BOOL)animated;
+- (void)revealSearchBarInTableView:(nullable KayokoHistoryListView *)tableView animated:(BOOL)animated;
+- (void)beginSearchWithActiveTableView:(KayokoHistoryListView *)activeTableView
                             completion:(nullable void (^)(void))completion;
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
-                 activeTableView:(KayokoTableView *)activeTableView
+                 activeTableView:(KayokoHistoryListView *)activeTableView
                       completion:(nullable void (^)(void))completion;
 - (void)resetKeyboardInsets;
 

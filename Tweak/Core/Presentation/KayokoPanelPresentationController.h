@@ -6,7 +6,7 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoPanelPresentationController;
-@class KayokoView;
+@class KayokoMainView;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, readonly) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, assign, readonly, getter=isAnimating) BOOL animating;
 
-- (instancetype)initWithPanelView:(KayokoView *)panelView;
+- (instancetype)initWithPanelView:(KayokoMainView *)panelView;
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithCompletion:(nullable void (^)(void))completion;

@@ -6,7 +6,7 @@
 #import "KayokoHistoryController.h"
 
 #import "KayokoHistoryListViewController.h"
-#import "KayokoTableView.h"
+#import "KayokoHistoryListView.h"
 #import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)loadTableViewForHistoryKey:(NSString *)historyKey
             animatingTopInsertions:(BOOL)animatingTopInsertions
                    notifiesDelegate:(BOOL)notifiesDelegate
-                         completion:(nullable void (^)(KayokoTableView *tableView))completion;
+                         completion:(nullable void (^)(KayokoHistoryListView *tableView))completion;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -57,11 +57,11 @@ NS_ASSUME_NONNULL_END
     return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesListViewController] : [self historyListViewController];
 }
 
-- (KayokoTableView *)tableViewForHistoryKey:(NSString *)historyKey {
+- (KayokoHistoryListView *)tableViewForHistoryKey:(NSString *)historyKey {
     return [[self listViewControllerForHistoryKey:historyKey] tableView];
 }
 
-- (KayokoTableView *)activeTableViewWithClearConfirmationHistoryKey:(NSString *)clearConfirmationHistoryKey {
+- (KayokoHistoryListView *)activeTableViewWithClearConfirmationHistoryKey:(NSString *)clearConfirmationHistoryKey {
     return [self tableViewForHistoryKey:[self effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:clearConfirmationHistoryKey]];
 }
 
@@ -182,7 +182,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
               animatingTopInsertions:(BOOL)animatingTopInsertions
-                           completion:(void (^)(KayokoTableView *tableView))completion {
+                           completion:(void (^)(KayokoHistoryListView *tableView))completion {
     [self loadTableViewForHistoryKey:historyKey
               animatingTopInsertions:animatingTopInsertions
                      notifiesDelegate:YES
@@ -192,9 +192,9 @@ NS_ASSUME_NONNULL_END
 - (void)loadTableViewForHistoryKey:(NSString *)historyKey
             animatingTopInsertions:(BOOL)animatingTopInsertions
                    notifiesDelegate:(BOOL)notifiesDelegate
-                         completion:(void (^)(KayokoTableView *tableView))completion {
+                         completion:(void (^)(KayokoHistoryListView *tableView))completion {
     KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
-    KayokoTableView *tableView = [listViewController tableView];
+    KayokoHistoryListView *tableView = [listViewController tableView];
     if (![self needsReloadForHistoryKey:historyKey]) {
         if (completion) {
             completion(tableView);
@@ -218,7 +218,7 @@ NS_ASSUME_NONNULL_END
                                                         }];
 }
 
-- (void)reloadTableViewForHistoryKey:(NSString *)historyKey completion:(void (^)(KayokoTableView *tableView))completion {
+- (void)reloadTableViewForHistoryKey:(NSString *)historyKey completion:(void (^)(KayokoHistoryListView *tableView))completion {
     [self reloadTableViewForHistoryKey:historyKey animatingTopInsertions:NO completion:completion];
 }
 
@@ -226,11 +226,11 @@ NS_ASSUME_NONNULL_END
     [self loadTableViewForHistoryKey:kHistoryKeyHistory
               animatingTopInsertions:NO
                      notifiesDelegate:NO
-                           completion:^(__unused KayokoTableView *historyTableView) {
+                           completion:^(__unused KayokoHistoryListView *historyTableView) {
                              [self loadTableViewForHistoryKey:kHistoryKeyFavorites
                                            animatingTopInsertions:NO
                                                   notifiesDelegate:NO
-                                                        completion:^(__unused KayokoTableView *favoritesTableView) {
+                                                        completion:^(__unused KayokoHistoryListView *favoritesTableView) {
                                                           if (completion) {
                                                               completion();
                                                           }

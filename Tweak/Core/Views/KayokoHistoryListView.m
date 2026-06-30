@@ -1,20 +1,20 @@
 //
-//  KayokoTableView.m
+//  KayokoHistoryListView.m
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "KayokoTableView.h"
+#import "KayokoHistoryListView.h"
 
 #import "PasteboardManager.h"
 
-static CGFloat const kKayokoTableViewBaseRowHeight = 65;
-static CGFloat const kKayokoTableViewAdditionalPreviewLineHeight = 18;
-static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
-static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
+static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
+static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
+static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
+static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 
-@implementation KayokoTableView
+@implementation KayokoHistoryListView
 
 - (void)setShowsNoSearchResultsBackground:(BOOL)showsNoSearchResultsBackground {
     if (!showsNoSearchResultsBackground) {
@@ -45,7 +45,7 @@ static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
     }
 
     height = [self rowHeight];
-    return height > 0 ? height : kKayokoTableViewBaseRowHeight;
+    return height > 0 ? height : kKayokoHistoryListViewBaseRowHeight;
 }
 
 - (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction {
@@ -58,7 +58,7 @@ static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
 
     CGFloat projectedContentHeight = MAX([self contentSize].height - heightReduction, 0);
     CGFloat requiredContentHeight =
-        CGRectGetHeight([self bounds]) + hiddenHeaderOffsetY + kKayokoTableViewHiddenHeaderInsetPadding;
+        CGRectGetHeight([self bounds]) + hiddenHeaderOffsetY + kKayokoHistoryListViewHiddenHeaderInsetPadding;
     return ceil(MAX(requiredContentHeight - projectedContentHeight, 0));
 }
 
@@ -93,9 +93,9 @@ static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
 }
 
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
-    NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoTableViewMaximumPreviewLineCount);
+    NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoHistoryListViewMaximumPreviewLineCount);
     _previewLineCount = lineCount;
-    [self setRowHeight:kKayokoTableViewBaseRowHeight + (lineCount - 1) * kKayokoTableViewAdditionalPreviewLineHeight];
+    [self setRowHeight:kKayokoHistoryListViewBaseRowHeight + (lineCount - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight];
     [self reloadData];
 }
 

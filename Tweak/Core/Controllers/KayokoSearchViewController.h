@@ -5,10 +5,13 @@
 
 #import <UIKit/UIKit.h>
 
+@class KayokoSearchView;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchViewController : UIViewController
 
+@property(nonatomic, strong, readonly) KayokoSearchView *searchView;
 @property(nonatomic, strong, readonly) UITableView *suggestionTableView;
 
 - (instancetype)initWithContainerView:(UIView *)containerView;

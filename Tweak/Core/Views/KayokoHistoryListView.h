@@ -1,5 +1,5 @@
 //
-//  KayokoTableView.h
+//  KayokoHistoryListView.h
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
@@ -9,7 +9,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoTableView : UITableView
+@interface KayokoHistoryListView : UITableView
 
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic, assign) NSUInteger previewLineCount;
