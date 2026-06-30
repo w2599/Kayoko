@@ -15,7 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)tableViewControllerDidRequestHide:(KayokoTableViewController *)controller;
 - (void)tableViewController:(KayokoTableViewController *)controller didRequestPreviewForItem:(PasteboardItem *)item;
-- (void)tableViewControllerDidChangeContentState:(KayokoTableViewController *)controller;
+- (void)tableViewController:(KayokoTableViewController *)controller
+    didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
 - (void)tableViewController:(KayokoTableViewController *)controller
       didMoveItemDictionary:(NSDictionary<NSString *, id> *)dictionary
          fromHistoryWithKey:(NSString *)sourceHistoryKey

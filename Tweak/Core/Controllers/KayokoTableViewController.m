@@ -44,6 +44,17 @@ NS_ASSUME_NONNULL_END
     return [tableView isKindOfClass:[KayokoTableView class]] ? (KayokoTableView *)tableView : nil;
 }
 
+- (BOOL)shouldMaintainSearchBarVisibilityAfterSwipeInTableView:(KayokoTableView *)tableView {
+    UIView *headerView = [tableView tableHeaderView];
+    CGFloat headerHeight = headerView ? CGRectGetHeight([headerView frame]) : 0;
+    if (headerHeight <= 0) {
+        return NO;
+    }
+
+    CGFloat offsetY = [tableView contentOffset].y;
+    return fabs(offsetY - headerHeight) <= 1;
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return [[[self kayokoTableViewFromTableView:tableView] displayedItems] count];
 }
@@ -108,6 +119,8 @@ NS_ASSUME_NONNULL_END
                             title:@""
                           handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
                                     void (^completionHandler)(BOOL)) {
+                            BOOL maintainsSearchBarVisibility =
+                                [self shouldMaintainSearchBarVisibilityAfterSwipeInTableView:kayokoTableView];
                             [self deleteItem:item historyKey:[kayokoTableView historyKey] completion:^(BOOL success) {
                               if (!success) {
                                   completionHandler(NO);
@@ -116,7 +129,10 @@ NS_ASSUME_NONNULL_END
                               [kayokoTableView removeItemAtIndexPath:indexPath
                                                           completion:^(BOOL removed) {
                                                             if (removed) {
-                                                                [[self delegate] tableViewControllerDidChangeContentState:self];
+                                                                [[self delegate]
+                                                                        tableViewController:self
+                                                                    didChangeContentStateMaintainingSearchBarVisibility:
+                                                                        maintainsSearchBarVisibility];
                                                             }
                                                             completionHandler(removed);
                                                           }];
@@ -141,6 +157,8 @@ NS_ASSUME_NONNULL_END
                             title:@""
                           handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
                                     void (^completionHandler)(BOOL)) {
+                            BOOL maintainsSearchBarVisibility =
+                                [self shouldMaintainSearchBarVisibilityAfterSwipeInTableView:tableView];
                             [self moveItem:item
                                 dictionary:dictionary
                           sourceHistoryKey:sourceHistoryKey
@@ -153,7 +171,10 @@ NS_ASSUME_NONNULL_END
                                   [tableView removeItemAtIndexPath:indexPath
                                                         completion:^(BOOL removed) {
                                                           if (removed) {
-                                                              [[self delegate] tableViewControllerDidChangeContentState:self];
+                                                              [[self delegate]
+                                                                      tableViewController:self
+                                                                  didChangeContentStateMaintainingSearchBarVisibility:
+                                                                      maintainsSearchBarVisibility];
                                                           }
                                                           completionHandler(removed);
                                                         }];

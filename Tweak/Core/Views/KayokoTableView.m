@@ -14,7 +14,6 @@
 static CGFloat const kKayokoTableViewBaseRowHeight = 65;
 static CGFloat const kKayokoTableViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
-static CGFloat const kKayokoTableViewHiddenHeaderOffsetTolerance = 1;
 static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
 
 @implementation KayokoTableView
@@ -183,8 +182,7 @@ static CGFloat const kKayokoTableViewHiddenHeaderInsetPadding = 1;
 
 - (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
-    if (hiddenHeaderOffsetY <= 0 ||
-        [self contentOffset].y < hiddenHeaderOffsetY - kKayokoTableViewHiddenHeaderOffsetTolerance) {
+    if (hiddenHeaderOffsetY <= 0) {
         return;
     }
 

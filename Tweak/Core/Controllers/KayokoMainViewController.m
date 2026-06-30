@@ -47,6 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
                            toHistoryKey:(NSString *)destinationHistoryKey;
 - (void)updateContentState;
+- (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -216,9 +217,9 @@ NS_ASSUME_NONNULL_END
     [self showPreviewWithItem:item];
 }
 
-- (void)tableViewControllerDidChangeContentState:(KayokoTableViewController *)controller {
-    [[self searchController] maintainSearchBarVisibilityForTableView:[self activeTableView]];
-    [self updateContentState];
+- (void)tableViewController:(KayokoTableViewController *)controller
+    didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
+    [self updateContentStateMaintainingSearchBarVisibility:maintainsSearchBarVisibility];
 }
 
 - (void)tableViewController:(KayokoTableViewController *)controller
@@ -352,6 +353,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateContentState {
+    [self updateContentStateMaintainingSearchBarVisibility:YES];
+}
+
+- (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
     if (![self isShowingClearConfirmation] && [[[self panelView] previewView] isHidden]) {
         UIView *viewToHide = [self activeHistoryContentView];
         UIView *viewToShow = [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]];
@@ -367,7 +372,9 @@ NS_ASSUME_NONNULL_END
     }
 
     [self updateClearButtonState];
-    [[self searchController] maintainSearchBarVisibilityForTableView:[self activeTableView]];
+    if (maintainsSearchBarVisibility) {
+        [[self searchController] maintainSearchBarVisibilityForTableView:[self activeTableView]];
+    }
 }
 
 - (void)handleFavoritesButtonPressed {
