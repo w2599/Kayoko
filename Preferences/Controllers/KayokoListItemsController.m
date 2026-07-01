@@ -6,8 +6,9 @@
 //
 
 #import "KayokoListItemsController.h"
-#import "../NotificationKeys.h"
-#import "../PreferenceKeys.h"
+#import "NotificationKeys.h"
+#import "PreferenceKeys.h"
+
 #import <Preferences/PSSpecifier.h>
 
 @implementation KayokoListItemsController {

@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isFullscreenSearchActive;
 - (void)show;
 - (void)hide;
+- (void)hideWithCompletion:(nullable void (^)(void))completion;
 - (void)hideImmediately;
 - (void)reload;
 

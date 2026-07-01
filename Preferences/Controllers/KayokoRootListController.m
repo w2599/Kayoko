@@ -7,14 +7,13 @@
 
 #import "KayokoRootListController.h"
 
+#import "NotificationKeys.h"
+#import "PasteboardManager.h"
+#import "PreferenceKeys.h"
+
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
-
 #import <roothide.h>
-
-#import "../NotificationKeys.h"
-#import "../PreferenceKeys.h"
-#import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

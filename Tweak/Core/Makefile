@@ -3,7 +3,9 @@ TWEAK_NAME := KayokoCore
 KayokoCore_USE_MODULES := 0
 
 KayokoCore_FILES += KayokoCore.m
-KayokoCore_FILES += KayokoCoreHooks.m
+KayokoCore_FILES += KayokoCoreRuntime.m
+KayokoCore_FILES += KayokoSpringBoardHooks.m
+KayokoCore_FILES += KayokoPasteTipHooks.m
 KayokoCore_FILES += $(wildcard ../../Manager/*.m Actions/*.m Controllers/*.m Coordinators/*.m DataSources/*.m Models/*.m Presentation/*.m Views/*.m ../../Utils/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc

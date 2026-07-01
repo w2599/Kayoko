@@ -3,7 +3,12 @@ TWEAK_NAME := KayokoHelper
 KayokoHelper_USE_MODULES := 0
 
 KayokoHelper_FILES += KayokoHelper.m
-KayokoHelper_FILES += KayokoHelperHooks.m
+KayokoHelper_FILES += KayokoHelperRuntime.m
+KayokoHelper_FILES += KayokoPredictionBarHooks.m
+KayokoHelper_FILES += KayokoCalloutMenuHooks.m
+KayokoHelper_FILES += KayokoInputSwitcherHooks.m
+KayokoHelper_FILES += KayokoDictationHooks.m
+KayokoHelper_FILES += KayokoSwipeUpHooks.m
 KayokoHelper_FILES += KayokoMenu.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 

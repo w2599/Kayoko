@@ -9,15 +9,21 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN NSUserDefaults *_Nullable kayokoHelperPreferences;
-OBJC_EXTERN BOOL kayokoHelperPrefsEnabled;
-OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
-OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;
+OBJC_EXTERN BOOL KayokoHelperEnabled(void);
+OBJC_EXTERN NSUInteger KayokoHelperActivationMethod(void);
+OBJC_EXTERN BOOL KayokoHelperAutomaticallyPasteEnabled(void);
+OBJC_EXTERN BOOL KayokoHelperIsKeyboardExtensionProcess(void);
+OBJC_EXTERN void KayokoHelperLoadPreferences(void);
+OBJC_EXTERN void KayokoHelperInstallRuntimeHooks(void);
+OBJC_EXTERN void KayokoHelperInstallRuntimeObservers(void);
+OBJC_EXTERN void KayokoHelperPostCoreShow(void);
+OBJC_EXTERN void KayokoHelperCaptureCurrentFirstResponder(void);
+OBJC_EXTERN void KayokoHelperRestoreCapturedFirstResponder(void);
+OBJC_EXTERN void KayokoHelperPaste(void);
+OBJC_EXTERN void KayokoHelperOpenKayokoFromResponder(id self, SEL _cmd);
 
-OBJC_EXTERN NSString *const kayokoMenuName;
-OBJC_EXTERN NSString *const kayokoSelectorName;
-OBJC_EXTERN NSString *const kayokoSelectorSignature;
-
+OBJC_EXTERN void EnableKayokoPredictionBar(void);
+OBJC_EXTERN void EnableKayokoCalloutBar(void);
 OBJC_EXTERN void EnableKayokoActivationGlobe(void);
 OBJC_EXTERN void EnableKayokoActivationDictation(void);
 OBJC_EXTERN void EnableKayokoActivationSwipeUp(void);

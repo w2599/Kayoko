@@ -5,12 +5,15 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
+#import <Foundation/Foundation.h>
+
 static NSString *const kNotificationKeyCoreShow = @"com.82flex.kayoko.core.show";
 static NSString *const kLegacyNotificationKeyCoreShow = @"codes.aurora.kayoko.core.show";
 static NSString *const kNotificationKeyCoreHide = @"com.82flex.kayoko.core.hide";
 static NSString *const kLegacyNotificationKeyCoreHide = @"codes.aurora.kayoko.core.hide";
 static NSString *const kNotificationKeyCoreReload = @"com.82flex.kayoko.core.reload";
 static NSString *const kNotificationKeyHelperPaste = @"com.82flex.kayoko.helper.paste";
+static NSString *const kNotificationKeyHelperRestoreFocus = @"com.82flex.kayoko.helper.restore-focus";
 static NSString *const kNotificationKeyPreferencesReload = @"com.82flex.kayoko.preferences.reload";
 static NSString *const kNotificationKeyPreferencesHeightReload = @"com.82flex.kayoko.preferences.height.reload";
 static NSString *const kNotificationKeyPasteWillStart = @"com.82flex.kayoko.paste.willstart";
