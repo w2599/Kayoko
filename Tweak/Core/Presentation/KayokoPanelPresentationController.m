@@ -9,9 +9,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoPanelPresentationController ()
+@interface KayokoPanelPresentationController () <UIGestureRecognizerDelegate>
 @property(nonatomic, weak) KayokoMainView *panelView;
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
+@property(nonatomic, strong) UITapGestureRecognizer *grabberTapGestureRecognizer;
 @property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL panGestureDidReachZeroAlpha;
@@ -30,6 +31,11 @@ NS_ASSUME_NONNULL_END
         _panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self
                                                                         action:@selector(handlePanGestureRecognizer:)];
         [[panelView headerView] addGestureRecognizer:_panGestureRecognizer];
+        _grabberTapGestureRecognizer =
+            [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleGrabberTapGestureRecognizer:)];
+        [_grabberTapGestureRecognizer setCancelsTouchesInView:NO];
+        [_grabberTapGestureRecognizer setDelegate:self];
+        [[panelView headerView] addGestureRecognizer:_grabberTapGestureRecognizer];
     }
     return self;
 }
@@ -123,6 +129,13 @@ NS_ASSUME_NONNULL_END
     [self setPendingPanDismissVelocityY:MAX(velocity.y, 0)];
 }
 
+- (void)prepareNormalPullDownDismissAnimation {
+    CGFloat visibleTranslationY = MAX([[self panelView] transform].ty, 0);
+    CGFloat targetTranslationY = visibleTranslationY + MAX([[self panelView] bounds].size.height / 3, 120);
+    [self setPendingPanDismissTranslationY:targetTranslationY];
+    [self setPendingPanDismissVelocityY:0];
+}
+
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
         [[self delegate] panelPresentationController:self handleFullscreenSearchPanGestureRecognizer:recognizer];
@@ -195,6 +208,29 @@ NS_ASSUME_NONNULL_END
             [[self delegate] panelPresentationControllerDidRequestDismiss:self];
         }
     }
+}
+
+- (CGRect)grabberTapTargetFrame {
+    UIView *grabberView = (UIView *)[[self panelView] grabber];
+    CGRect grabberFrame = [grabberView frame];
+    return CGRectInset(grabberFrame, -44, -16);
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    if (gestureRecognizer != [self grabberTapGestureRecognizer]) {
+        return YES;
+    }
+
+    CGPoint location = [touch locationInView:[[self panelView] headerView]];
+    return CGRectContainsPoint([self grabberTapTargetFrame], location);
+}
+
+- (void)handleGrabberTapGestureRecognizer:(UITapGestureRecognizer *)recognizer {
+    if ([recognizer state] != UIGestureRecognizerStateEnded) {
+        return;
+    }
+
+    [[self delegate] panelPresentationControllerDidTapGrabberArea:self];
 }
 
 - (void)showPanelWithCompletion:(void (^)(void))completion {

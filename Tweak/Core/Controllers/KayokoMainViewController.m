@@ -254,6 +254,15 @@ NS_ASSUME_NONNULL_END
     [self hideRestoringFocus];
 }
 
+- (void)panelPresentationControllerDidTapGrabberArea:(KayokoPanelPresentationController *)controller {
+    if ([[self searchController] isSearchActive]) {
+        [[self searchController] cancelSearchWithCompletion:nil];
+    } else {
+        [[self panelPresentationController] prepareNormalPullDownDismissAnimation];
+        [self hideRestoringFocus];
+    }
+}
+
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
     return [[self searchController] isSearchActive];
 }

@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol KayokoPanelPresentationControllerDelegate <NSObject>
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller;
+- (void)panelPresentationControllerDidTapGrabberArea:(KayokoPanelPresentationController *)controller;
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller;
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
     handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
@@ -32,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelImmediatelyWithCompletion:(nullable void (^)(void))completion;
+- (void)prepareNormalPullDownDismissAnimation;
 - (void)finishOutsideDismissOverlayShow;
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
 
