@@ -258,6 +258,10 @@ NS_ASSUME_NONNULL_END
     return [[self searchController] isSearchActive];
 }
 
+- (BOOL)isFullscreenSearchActive {
+    return [[self searchController] isSearchActive];
+}
+
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
     handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     [[self searchController] handleFullscreenPanGestureRecognizer:recognizer];
@@ -473,10 +477,10 @@ NS_ASSUME_NONNULL_END
             [[[self mainView] clearButton] setHidden:NO];
             [[self mainView] setClearButtonEnabledForItemCount:0];
             if ([self
-                    cancelSearchForEmptyActiveHistoryIfNeededHidingView:
-                        [[self clearConfirmationViewController] confirmationView]
-                                                            direction:KayokoContentTransitionDirectionModalDismissing
-                                                           completion:nil]) {
+                    cancelSearchForEmptyActiveHistoryIfNeededHidingView:[[self clearConfirmationViewController]
+                                                                            confirmationView]
+                                                              direction:KayokoContentTransitionDirectionModalDismissing
+                                                             completion:nil]) {
                 return;
             }
             [[self searchController] refreshForListViewController:[self activeListViewController]];
@@ -919,7 +923,8 @@ NS_ASSUME_NONNULL_END
     [self hideWithCompletion:nil];
 }
 
-- (void)completeHideAfterShowingTransientContent:(BOOL)wasShowingTransientContent completion:(void (^)(void))completion {
+- (void)completeHideAfterShowingTransientContent:(BOOL)wasShowingTransientContent
+                                      completion:(void (^)(void))completion {
     [self restoreActiveSourceContentView];
     [[self previewViewController] resetPreviewState];
     [[self wordSelectionViewController] resetWordSelectionState];

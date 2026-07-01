@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)handleHistoryChanged;
 - (void)preloadHistoryIfNeeded;
+- (BOOL)isFullscreenSearchActive;
 - (void)show;
 - (void)hide;
 - (void)hideImmediately;

@@ -169,21 +169,21 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
-                    clearsSearch:(BOOL)clearsSearch
-                      animations:(void (^)(void))animations
-                      completion:(void (^)(void))completion {
+                   clearsSearch:(BOOL)clearsSearch
+                     animations:(void (^)(void))animations
+                     completion:(void (^)(void))completion {
     [self endSearchRestoringFrame:restoresFrame
-                      clearsSearch:clearsSearch
-                        animations:animations
+                     clearsSearch:clearsSearch
+                       animations:animations
                      panVelocityY:0
-                        completion:completion];
+                       completion:completion];
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
-                    clearsSearch:(BOOL)clearsSearch
-                      animations:(void (^)(void))animations
+                   clearsSearch:(BOOL)clearsSearch
+                     animations:(void (^)(void))animations
                    panVelocityY:(CGFloat)panVelocityY
-                      completion:(void (^)(void))completion {
+                     completion:(void (^)(void))completion {
     if (![self isSearchActive] && !clearsSearch) {
         if (animations) {
             animations();
@@ -211,7 +211,7 @@ NS_ASSUME_NONNULL_END
     [[self presentationController] endSearchRestoringFrame:restoresFrame
                                            activeTableView:[[self activeListViewController] tableView]
                                                 animations:animations
-                                             panVelocityY:panVelocityY
+                                              panVelocityY:panVelocityY
                                                 completion:^{
                                                   [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
                                                   if (completion) {
@@ -221,8 +221,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
-                    clearsSearch:(BOOL)clearsSearch
-                      completion:(void (^)(void))completion {
+                   clearsSearch:(BOOL)clearsSearch
+                     completion:(void (^)(void))completion {
     [self endSearchRestoringFrame:restoresFrame clearsSearch:clearsSearch animations:nil completion:completion];
 }
 
@@ -243,7 +243,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
-    [[self presentationController] handleFullscreenPanGestureRecognizer:recognizer activeTableView:[self activeTableView]];
+    [[self presentationController] handleFullscreenPanGestureRecognizer:recognizer
+                                                        activeTableView:[self activeTableView]];
 }
 
 - (void)resetBeforeHide {

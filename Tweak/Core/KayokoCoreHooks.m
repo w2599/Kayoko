@@ -2,8 +2,8 @@
 
 #import <CaptainHook/CaptainHook.h>
 #import <HBLog.h>
-#import <objc/runtime.h>
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 #import "KayokoCore.h"
 #import "NotificationKeys.h"
@@ -86,14 +86,14 @@ CHOptimizedClassMethod1(self, void, PBCFUserNotificationPasteAnnouncer, announce
     CHSuper1(PBCFUserNotificationPasteAnnouncer, announcePaste, arg1);
 }
 
-CHOptimizedMethod2(self, void, PBCFUserNotificationPasteAnnouncer, requestAuthorizationForPaste, id, arg1,
-                   replyHandler, KayokoPasteAuthorizationReply, reply) {
+CHOptimizedMethod2(self, void, PBCFUserNotificationPasteAnnouncer, requestAuthorizationForPaste, id, arg1, replyHandler,
+                   KayokoPasteAuthorizationReply, reply) {
     reply(YES);
     [self authorizationDidCompleteWithPasteAllowed:YES];
 }
 
-CHOptimizedMethod2(self, void, PBCFUserNotificationPasteAnnouncer, announcePaste, id, arg1,
-                   replyHandler, KayokoPasteAuthorizationReply, reply) {
+CHOptimizedMethod2(self, void, PBCFUserNotificationPasteAnnouncer, announcePaste, id, arg1, replyHandler,
+                   KayokoPasteAuthorizationReply, reply) {
     reply(YES);
     [self authorizationDidCompleteWithPasteAllowed:YES];
 }
@@ -141,10 +141,10 @@ static void KayokoInstallNoPasteAlerts16Hooks(void) {
 void EnableKayokoDisablePasteTips(void) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-        KayokoInstallDruidUIHooks();
-        if (@available(iOS 16, *)) {
-            KayokoInstallPasteboardHooks();
-            KayokoInstallNoPasteAlerts16Hooks();
-        }
+      KayokoInstallDruidUIHooks();
+      if (@available(iOS 16, *)) {
+          KayokoInstallPasteboardHooks();
+          KayokoInstallNoPasteAlerts16Hooks();
+      }
     });
 }

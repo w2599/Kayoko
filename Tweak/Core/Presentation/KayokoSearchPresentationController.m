@@ -227,13 +227,15 @@ NS_ASSUME_NONNULL_END
     return [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [[self containerView] frame];
 }
 
-- (CGRect)frameFromFullscreenFrame:(CGRect)fullscreenFrame collapsedFrame:(CGRect)collapsedFrame progress:(CGFloat)progress {
+- (CGRect)frameFromFullscreenFrame:(CGRect)fullscreenFrame
+                    collapsedFrame:(CGRect)collapsedFrame
+                          progress:(CGFloat)progress {
     progress = MIN(MAX(progress, 0), 1);
     return CGRectMake(fullscreenFrame.origin.x + (collapsedFrame.origin.x - fullscreenFrame.origin.x) * progress,
                       fullscreenFrame.origin.y + (collapsedFrame.origin.y - fullscreenFrame.origin.y) * progress,
                       fullscreenFrame.size.width + (collapsedFrame.size.width - fullscreenFrame.size.width) * progress,
-                      fullscreenFrame.size.height + (collapsedFrame.size.height - fullscreenFrame.size.height) *
-                                                       progress);
+                      fullscreenFrame.size.height +
+                          (collapsedFrame.size.height - fullscreenFrame.size.height) * progress);
 }
 
 - (CGFloat)fullscreenCollapseProgressForTranslation:(CGFloat)translationY {
@@ -312,20 +314,20 @@ NS_ASSUME_NONNULL_END
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                 activeTableView:(KayokoHistoryListView *)activeTableView
-                      animations:(void (^)(void))animations
-                      completion:(void (^)(void))completion {
+                     animations:(void (^)(void))animations
+                     completion:(void (^)(void))completion {
     [self endSearchRestoringFrame:restoresFrame
                   activeTableView:activeTableView
-                        animations:animations
+                       animations:animations
                      panVelocityY:0
-                        completion:completion];
+                       completion:completion];
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                 activeTableView:(KayokoHistoryListView *)activeTableView
-                      animations:(void (^)(void))animations
+                     animations:(void (^)(void))animations
                    panVelocityY:(CGFloat)panVelocityY
-                      completion:(void (^)(void))completion {
+                     completion:(void (^)(void))completion {
     [self setSearchActive:NO];
     [self resetKeyboardInsets];
 
@@ -343,9 +345,9 @@ NS_ASSUME_NONNULL_END
     }
 
     if (restoresFrame && !CGRectEqualToRect([[self containerView] frame], targetFrame)) {
-        NSTimeInterval duration = panVelocityY == 0 ? kKayokoSearchFullscreenAnimationDuration
-                                                    : [self fullscreenPanAnimationDurationToFrame:targetFrame
-                                                                                         velocityY:panVelocityY];
+        NSTimeInterval duration = panVelocityY == 0
+                                      ? kKayokoSearchFullscreenAnimationDuration
+                                      : [self fullscreenPanAnimationDurationToFrame:targetFrame velocityY:panVelocityY];
         CGFloat initialSpringVelocity = 0;
         CGFloat remainingDistance = fabs(CGRectGetMinY(targetFrame) - CGRectGetMinY([containerView frame]));
         if (panVelocityY != 0 && remainingDistance > 1) {
@@ -395,11 +397,9 @@ NS_ASSUME_NONNULL_END
     UIView *trackingView = [[self containerView] superview] ?: [self containerView];
     CGPoint translation = [recognizer translationInView:trackingView];
     CGFloat progress = [self fullscreenCollapseProgressForTranslation:translation.y];
-    CGFloat grabberFoldProgress =
-        1 - MIN(MAX(translation.y / kKayokoSearchFullscreenGrabberFoldDistance, 0), 1);
+    CGFloat grabberFoldProgress = 1 - MIN(MAX(translation.y / kKayokoSearchFullscreenGrabberFoldDistance, 0), 1);
 
-    if ([recognizer state] == UIGestureRecognizerStateBegan ||
-        [recognizer state] == UIGestureRecognizerStateChanged) {
+    if ([recognizer state] == UIGestureRecognizerStateBegan || [recognizer state] == UIGestureRecognizerStateChanged) {
         CGRect fullscreenFrame = [self fullscreenFrame];
         CGRect collapsedFrame = [self collapsedFrame];
         CGRect frame = [self frameFromFullscreenFrame:fullscreenFrame collapsedFrame:collapsedFrame progress:progress];
@@ -416,17 +416,18 @@ NS_ASSUME_NONNULL_END
         UIView *containerView = [self containerView];
         CGRect fullscreenFrame = [self fullscreenFrame];
         [UIView animateWithDuration:kKayokoSearchFullscreenAnimationDuration
-            delay:0
-            usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
-            initialSpringVelocity:0
-            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-            animations:^{
-              [containerView setFrame:fullscreenFrame];
-              [containerView setNeedsLayout];
-              [containerView layoutIfNeeded];
-              [self setGrabberFoldProgress:1];
-            }
-            completion:nil];
+                              delay:0
+             usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
+              initialSpringVelocity:0
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+                           [containerView setFrame:fullscreenFrame];
+                           [containerView setNeedsLayout];
+                           [containerView layoutIfNeeded];
+                           [self setGrabberFoldProgress:1];
+                         }
+                         completion:nil];
         return;
     }
 
@@ -439,8 +440,7 @@ NS_ASSUME_NONNULL_END
     }
 
     if (shouldCollapse) {
-        [[self delegate] searchPresentationController:self
-            didRequestCollapseFromFullscreenPanWithVelocity:velocity.y];
+        [[self delegate] searchPresentationController:self didRequestCollapseFromFullscreenPanWithVelocity:velocity.y];
         return;
     }
 
@@ -448,17 +448,17 @@ NS_ASSUME_NONNULL_END
     CGRect fullscreenFrame = [self fullscreenFrame];
     NSTimeInterval duration = [self fullscreenPanAnimationDurationToFrame:fullscreenFrame velocityY:velocity.y];
     [UIView animateWithDuration:duration
-        delay:0
-        usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
-        initialSpringVelocity:0
-        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-        animations:^{
-          [containerView setFrame:fullscreenFrame];
-          [containerView setNeedsLayout];
-          [containerView layoutIfNeeded];
-          [self setGrabberFoldProgress:1];
-        }
-        completion:nil];
+                          delay:0
+         usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
+          initialSpringVelocity:0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+                       [containerView setFrame:fullscreenFrame];
+                       [containerView setNeedsLayout];
+                       [containerView layoutIfNeeded];
+                       [self setGrabberFoldProgress:1];
+                     }
+                     completion:nil];
 }
 
 - (CGFloat)hiddenSearchBottomInsetForTableView:(KayokoHistoryListView *)tableView {

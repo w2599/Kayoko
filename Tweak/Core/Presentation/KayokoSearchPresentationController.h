@@ -46,13 +46,13 @@ NS_ASSUME_NONNULL_BEGIN
                      completion:(nullable void (^)(void))completion;
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                 activeTableView:(KayokoHistoryListView *)activeTableView
-                      animations:(nullable void (^)(void))animations
-                      completion:(nullable void (^)(void))completion;
+                     animations:(nullable void (^)(void))animations
+                     completion:(nullable void (^)(void))completion;
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
                 activeTableView:(KayokoHistoryListView *)activeTableView
-                      animations:(nullable void (^)(void))animations
+                     animations:(nullable void (^)(void))animations
                    panVelocityY:(CGFloat)panVelocityY
-                      completion:(nullable void (^)(void))completion;
+                     completion:(nullable void (^)(void))completion;
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
                              activeTableView:(KayokoHistoryListView *)activeTableView;
 - (void)resetKeyboardInsets;

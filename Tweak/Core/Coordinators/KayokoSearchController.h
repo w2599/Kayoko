@@ -40,8 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)cancelSearchWithCompletion:(nullable void (^)(void))completion;
-- (void)cancelSearchWithAnimations:(nullable void (^)(void))animations
-                         completion:(nullable void (^)(void))completion;
+- (void)cancelSearchWithAnimations:(nullable void (^)(void))animations completion:(nullable void (^)(void))completion;
 - (void)resignSearchFirstResponder;
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
 - (void)resetBeforeHide;

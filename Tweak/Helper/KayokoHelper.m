@@ -267,8 +267,7 @@ CHOptimizedMethod2(self, void, UISystemKeyboardDockController, dictationItemButt
 
 #pragma mark - _UIEditMenuPresentation class hooks (iOS 16+)
 
-CHOptimizedMethod2(self, void, _UIEditMenuPresentation, displayMenu, UIMenu *, menu, configuration, id,
-                   configuration) {
+CHOptimizedMethod2(self, void, _UIEditMenuPresentation, displayMenu, UIMenu *, menu, configuration, id, configuration) {
     NSMutableArray<UIMenuElement *> *build = [NSMutableArray new];
     for (id item in [menu children]) {
         if (KayokoMenuItemIsWritingTool(item)) {

@@ -2,8 +2,8 @@
 
 #import <CaptainHook/CaptainHook.h>
 #import <HBLog.h>
-#import <objc/runtime.h>
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 #import "KayokoHelper.h"
 #import "NotificationKeys.h"
@@ -263,7 +263,8 @@ static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window
     NSSet<UITouch *> *windowTouches = kayokoTouchesForWindow(window, event);
     if (windowTouches.count > 1) {
         if (kayokoManualSwipeUpIsActive(window)) {
-            UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kKayokoSwipeUpGestureRecognizerKey);
+            UISwipeGestureRecognizer *recognizer =
+                objc_getAssociatedObject(window, &kKayokoSwipeUpGestureRecognizerKey);
             [recognizer touchesCancelled:windowTouches withEvent:event];
             kayokoSetManualSwipeUpActive(window, NO);
             kayokoDiscardSwipeUpGestureRecognizer(window);
@@ -274,7 +275,8 @@ static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window
     NSSet<UITouch *> *beganTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseBegan);
     if (beganTouches.count > 0) {
         UITouch *touch = [beganTouches anyObject];
-        BOOL active = beganTouches.count == 1 && kayokoPointIsInsideAllowedSwipeRegion(window, [touch locationInView:window]);
+        BOOL active =
+            beganTouches.count == 1 && kayokoPointIsInsideAllowedSwipeRegion(window, [touch locationInView:window]);
         kayokoSetManualSwipeUpActive(window, active);
         HBLogDebug(@"Kayoko: manual swipe recognizer began active=%@", active ? @"YES" : @"NO");
         if (active) {
@@ -337,8 +339,8 @@ CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
     }
     NSArray *items = kayokoObjectIvar(self, "m_inputSwitcherItems");
     NSMutableArray *newItems = [NSMutableArray arrayWithArray:items];
-    UIInputSwitcherItem *item = [[NSClassFromString(@"UIInputSwitcherItem") alloc]
-        initWithIdentifier:kKayokoInputSwitcherItemIdentifier];
+    UIInputSwitcherItem *item =
+        [[NSClassFromString(@"UIInputSwitcherItem") alloc] initWithIdentifier:kKayokoInputSwitcherItemIdentifier];
     [item setLocalizedTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
                                                                                     value:nil
                                                                                     table:@"Tweak"]];
@@ -385,21 +387,23 @@ CHOptimizedMethod1(self, CGRect, UIKeyboardDockItemButton, imageRectForContentRe
     if (@available(iOS 16, *)) {
         if (ABS(origRect.size.width - origRect.size.height) > 1.0) {
             CGSize newSize = CGSizeMake(origRect.size.width * 0.92, origRect.size.height * 0.92);
-            CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2, origRect.origin.y + (origRect.size.height - newSize.height) / 2);
+            CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2,
+                                            origRect.origin.y + (origRect.size.height - newSize.height) / 2);
             return CGRectMake(newOrigin.x, newOrigin.y, newSize.width, newSize.height);
         }
     } else {
         if (ABS(origRect.size.width - origRect.size.height) > 1.0) {
             CGSize newSize = CGSizeMake(origRect.size.width * 0.86, origRect.size.height * 0.86);
-            CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2, origRect.origin.y + (origRect.size.height - newSize.height) / 2);
+            CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2,
+                                            origRect.origin.y + (origRect.size.height - newSize.height) / 2);
             return CGRectMake(newOrigin.x, newOrigin.y, newSize.width, newSize.height);
         }
     }
     return origRect;
 }
 
-CHOptimizedMethod3(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1,
-                   withEvent, id, arg2, isRunningButton, BOOL, arg3) {
+CHOptimizedMethod3(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1, withEvent, id,
+                   arg2, isRunningButton, BOOL, arg3) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
 }
@@ -422,41 +426,41 @@ CHOptimizedMethod1(self, void, _UIHostedWindow, sendEvent, UIEvent *, event) {
 void EnableKayokoActivationGlobe(void) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-        CHLoadClass_(&UIInputSwitcherView$, NSClassFromString(@"UIInputSwitcherView"));
+      CHLoadClass_(&UIInputSwitcherView$, NSClassFromString(@"UIInputSwitcherView"));
 
-        CHHook0(UIInputSwitcherView, _reloadInputSwitcherItems);
-        CHHook1(UIInputSwitcherView, didSelectItemAtIndex);
+      CHHook0(UIInputSwitcherView, _reloadInputSwitcherItems);
+      CHHook1(UIInputSwitcherView, didSelectItemAtIndex);
     });
 }
 
 void EnableKayokoActivationDictation(void) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-        CHLoadClass_(&UIKeyboardDockItem$, NSClassFromString(@"UIKeyboardDockItem"));
-        CHLoadClass_(&UIKeyboardDockItemButton$, NSClassFromString(@"UIKeyboardDockItemButton"));
-        CHLoadClass_(&UISystemKeyboardDockController$, NSClassFromString(@"UISystemKeyboardDockController"));
+      CHLoadClass_(&UIKeyboardDockItem$, NSClassFromString(@"UIKeyboardDockItem"));
+      CHLoadClass_(&UIKeyboardDockItemButton$, NSClassFromString(@"UIKeyboardDockItemButton"));
+      CHLoadClass_(&UISystemKeyboardDockController$, NSClassFromString(@"UISystemKeyboardDockController"));
 
-        CHHook2(UIKeyboardDockItem, initWithImageName, identifier);
-        CHHook1(UIKeyboardDockItem, setImageName);
-        CHHook1(UIKeyboardDockItemButton, imageRectForContentRect);
-        CHHook3(UISystemKeyboardDockController, dictationItemButtonWasPressed, withEvent, isRunningButton);
+      CHHook2(UIKeyboardDockItem, initWithImageName, identifier);
+      CHHook1(UIKeyboardDockItem, setImageName);
+      CHHook1(UIKeyboardDockItemButton, imageRectForContentRect);
+      CHHook3(UISystemKeyboardDockController, dictationItemButtonWasPressed, withEvent, isRunningButton);
     });
 }
 
 void EnableKayokoActivationSwipeUp(void) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-        CHLoadClass_(&UIInputSetHostView$, NSClassFromString(@"UIInputSetHostView"));
+      CHLoadClass_(&UIInputSetHostView$, NSClassFromString(@"UIInputSetHostView"));
 
-        CHHook0(UIInputSetHostView, didMoveToWindow);
+      CHHook0(UIInputSetHostView, didMoveToWindow);
     });
 }
 
 void EnableKayokoActivationSwipeUpForKeyboardExtension(void) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-        CHLoadClass_(&_UIHostedWindow$, NSClassFromString(@"_UIHostedWindow"));
+      CHLoadClass_(&_UIHostedWindow$, NSClassFromString(@"_UIHostedWindow"));
 
-        CHHook1(_UIHostedWindow, sendEvent);
+      CHHook1(_UIHostedWindow, sendEvent);
     });
 }

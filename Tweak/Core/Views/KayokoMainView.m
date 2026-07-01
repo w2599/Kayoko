@@ -429,8 +429,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 }
 
 - (void)preparedTransformsForDirection:(KayokoContentTransitionDirection)direction
-                       viewToShowTransform:(CGAffineTransform *)viewToShowTransform
-                       viewToHideTransform:(CGAffineTransform *)viewToHideTransform {
+                   viewToShowTransform:(CGAffineTransform *)viewToShowTransform
+                   viewToHideTransform:(CGAffineTransform *)viewToHideTransform {
     *viewToShowTransform = CGAffineTransformIdentity;
     *viewToHideTransform = CGAffineTransformIdentity;
     switch (direction) {
@@ -496,8 +496,7 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [viewToHide setAlpha:0];
 }
 
-- (void)completePreparedContentTransitionHidingView:(UIView *)viewToHide
-                                         completion:(void (^)(void))completion {
+- (void)completePreparedContentTransitionHidingView:(UIView *)viewToHide completion:(void (^)(void))completion {
     [viewToHide setHidden:YES];
     [self setAnimating:NO];
     if (completion) {

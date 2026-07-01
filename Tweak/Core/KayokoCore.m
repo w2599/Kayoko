@@ -63,7 +63,10 @@ static void kayokoHideImmediately(void);
 CHDeclareClass(UIStatusBarWindow);
 CHDeclareClass(SpringBoard);
 CHDeclareClass(UIViewController);
+CHDeclareClass(SBCoverSheetPrimarySlidingViewController);
 CHDeclareClass(SBHIconManager);
+CHDeclareClass(SBSpotlightMultiplexingViewController);
+CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
 
@@ -99,6 +102,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isUILocked;
 @end
 
+@interface SBCoverSheetPrimarySlidingViewController : UIViewController
+@end
+
 @interface SBMainSwitcherViewController : UIViewController
 - (BOOL)isMainSwitcherVisible;
 @end
@@ -109,6 +115,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SBHIconManager : NSObject
 - (void)rootFolderControllerViewWillAppear:(id)controller;
+@end
+
+@interface SBSpotlightMultiplexingViewController : UIViewController
+@end
+
+@interface SBMainDisplaySystemGestureManager : NSObject
+- (BOOL)_isGestureWithTypeAllowed:(NSInteger)type;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -232,6 +245,31 @@ CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated)
 CHOptimizedMethod1(self, void, SBHIconManager, rootFolderControllerViewWillAppear, id, controller) {
     CHSuper1(SBHIconManager, rootFolderControllerViewWillAppear, controller);
     hide();
+}
+
+CHOptimizedMethod1(self, void, SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared, BOOL, appeared) {
+    CHSuper1(SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared, appeared);
+    if (appeared) {
+        kayokoHideImmediately();
+    }
+}
+
+CHOptimizedMethod1(self, void, SBSpotlightMultiplexingViewController, viewWillDisappear, BOOL, animated) {
+    CHSuper1(SBSpotlightMultiplexingViewController, viewWillDisappear, animated);
+    if (animated) {
+        hide();
+    } else {
+        kayokoHideImmediately();
+    }
+}
+
+CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
+    if (type == 1 && kayokoMainViewController && ![kayokoMainViewController isHidden] &&
+        [kayokoMainViewController isFullscreenSearchActive]) {
+        return NO;
+    }
+
+    return CHSuper1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, type);
 }
 
 static void kayokoHideForLayoutStateTransition(void) {
@@ -359,9 +397,35 @@ static void kayokoInstallHomeScreenHooks() {
     }
 }
 
+static void kayokoInstallLockScreenTransitionHooks() {
+    Class coverSheetClass = NSClassFromString(@"SBCoverSheetPrimarySlidingViewController");
+    CHLoadClass_(&SBCoverSheetPrimarySlidingViewController$, coverSheetClass);
+    SEL transitionEndSelector = @selector(_endTransitionToAppeared:);
+    if ([coverSheetClass instancesRespondToSelector:transitionEndSelector]) {
+        CHHook1(SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared);
+    }
+}
+
+static void kayokoInstallSpotlightHooks() {
+    Class spotlightClass = NSClassFromString(@"SBSpotlightMultiplexingViewController");
+    CHLoadClass_(&SBSpotlightMultiplexingViewController$, spotlightClass);
+    SEL viewWillDisappearSelector = @selector(viewWillDisappear:);
+    if ([spotlightClass instancesRespondToSelector:viewWillDisappearSelector]) {
+        CHHook1(SBSpotlightMultiplexingViewController, viewWillDisappear);
+    }
+}
+
+static void kayokoInstallSystemGestureHooks() {
+    Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
+    CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
+    SEL gestureAllowedSelector = @selector(_isGestureWithTypeAllowed:);
+    if ([gestureManagerClass instancesRespondToSelector:gestureAllowedSelector]) {
+        CHHook1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed);
+    }
+}
+
 static void kayokoInstallAppSwitcherHooks() {
-    SEL transitionBeginSelector =
-        @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
+    SEL transitionBeginSelector = @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
     SEL transitionEndSelector = @selector(layoutStateTransitionCoordinator:transitionDidEndWithTransitionContext:);
 
     Class switcherViewControllerClass = NSClassFromString(@"SBMainSwitcherViewController");
@@ -651,8 +715,12 @@ __attribute((constructor)) static void initialize() {
         CHHook1(UIStatusBarWindow, initWithFrame);
         CHLoadClass_(&SpringBoard$, NSClassFromString(@"SpringBoard"));
         CHHook1(SpringBoard, applicationDidFinishLaunching);
+
         kayokoInstallHomeScreenHooks();
         kayokoInstallAppSwitcherHooks();
+        kayokoInstallLockScreenTransitionHooks();
+        kayokoInstallSpotlightHooks();
+        kayokoInstallSystemGestureHooks();
         kayokoStartLockStateObserver();
 
         CFNotificationCenterAddObserver(
