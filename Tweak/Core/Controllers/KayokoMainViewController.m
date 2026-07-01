@@ -919,6 +919,20 @@ NS_ASSUME_NONNULL_END
     [self hideWithCompletion:nil];
 }
 
+- (void)completeHideAfterShowingTransientContent:(BOOL)wasShowingTransientContent completion:(void (^)(void))completion {
+    [self restoreActiveSourceContentView];
+    [[self previewViewController] resetPreviewState];
+    [[self wordSelectionViewController] resetWordSelectionState];
+    [self setActiveSourceContentView:nil];
+    [self setDismissingPanel:NO];
+    if (wasShowingTransientContent) {
+        [self refreshSearchAfterEndingTransientContentIfNeeded];
+    }
+    if (completion) {
+        completion();
+    }
+}
+
 - (void)hideWithCompletion:(void (^)(void))completion {
     [self setShowRequestIdentifier:[self showRequestIdentifier] + 1];
     [self setPreparingToShow:NO];
@@ -931,17 +945,23 @@ NS_ASSUME_NONNULL_END
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
     [[self searchController] resetBeforeHide];
     [[self panelPresentationController] hidePanelWithCompletion:^{
-      [self restoreActiveSourceContentView];
-      [[self previewViewController] resetPreviewState];
-      [[self wordSelectionViewController] resetWordSelectionState];
-      [self setActiveSourceContentView:nil];
-      [self setDismissingPanel:NO];
-      if (wasShowingTransientContent) {
-          [self refreshSearchAfterEndingTransientContentIfNeeded];
-      }
-      if (completion) {
-          completion();
-      }
+      [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:completion];
+    }];
+}
+
+- (void)hideImmediately {
+    [self setShowRequestIdentifier:[self showRequestIdentifier] + 1];
+    [self setPreparingToShow:NO];
+
+    if ([self isHidden]) {
+        return;
+    }
+
+    [self setDismissingPanel:YES];
+    BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
+    [[self searchController] resetBeforeHide];
+    [[self panelPresentationController] hidePanelImmediatelyWithCompletion:^{
+      [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:nil];
     }];
 }
 

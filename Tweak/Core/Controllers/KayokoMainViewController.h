@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)preloadHistoryIfNeeded;
 - (void)show;
 - (void)hide;
+- (void)hideImmediately;
 - (void)reload;
 
 @end

@@ -271,6 +271,24 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+- (void)hidePanelImmediatelyWithCompletion:(void (^)(void))completion {
+    [[[self panelView] layer] removeAllAnimations];
+    [[[self outsideDismissOverlayView] layer] removeAllAnimations];
+    [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
+    [self setPendingPanDismissTranslationY:0];
+    [self setPendingPanDismissVelocityY:0];
+    [self setAnimating:NO];
+
+    [[self panelView] setTransform:CGAffineTransformIdentity];
+    [[self panelView] setAlpha:0];
+    [[self panelView] setHidden:YES];
+    [self hideOutsideDismissOverlay];
+
+    if (completion) {
+        completion();
+    }
+}
+
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style {
     if (![self shouldPlayFeedback]) {
         return;

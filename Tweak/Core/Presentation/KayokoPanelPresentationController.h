@@ -31,6 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithCompletion:(nullable void (^)(void))completion;
+- (void)hidePanelImmediatelyWithCompletion:(nullable void (^)(void))completion;
 - (void)finishOutsideDismissOverlayShow;
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
 

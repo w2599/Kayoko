@@ -13,6 +13,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 #import <HBLog.h>
+#import <notify.h>
 #import <roothide.h>
 #import <substrate.h>
 
@@ -52,6 +53,10 @@ static AVAudioPlayer *pasteSoundPlayer = nil;
 static BOOL didPreparePasteboardQueue = NO;
 static BOOL pendingHeightPreferenceApply = NO;
 static BOOL didRequestInitialHistoryPreload = NO;
+static int kayokoLockStateToken = 0;
+
+static void hide(void);
+static void hide_immediately(void);
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -74,6 +79,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SpringBoard : UIApplication
 - (void)applicationDidFinishLaunching:(id)application;
+@end
+
+@interface SBLockScreenManager : NSObject
++ (instancetype)sharedInstance;
+- (BOOL)isUILocked;
+@end
+
+@interface SBMainSwitcherViewController : UIViewController
+- (BOOL)isMainSwitcherVisible;
+@end
+
+@interface SBMainSwitcherControllerCoordinator : NSObject
+- (BOOL)isAnySwitcherVisible;
+@end
+
+@interface SBHIconManager : NSObject
+- (void)rootFolderControllerViewWillAppear:(id)controller;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -172,9 +194,191 @@ static void override_SpringBoard_applicationDidFinishLaunching(SpringBoard *self
     preload_initial_history();
 }
 
+static BOOL is_home_screen_controller(id controller) {
+    static Class iconControllerClass = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      iconControllerClass = NSClassFromString(@"SBIconController");
+    });
+    return iconControllerClass && [controller isKindOfClass:iconControllerClass];
+}
+
+static void hide_for_home_screen_if_visible(id controller) {
+    if (!is_home_screen_controller(controller)) {
+        return;
+    }
+
+    hide();
+}
+
+static void (*orig_UIViewController_viewWillAppear)(UIViewController *self, SEL _cmd, BOOL animated);
+static void override_UIViewController_viewWillAppear(UIViewController *self, SEL _cmd, BOOL animated) {
+    orig_UIViewController_viewWillAppear(self, _cmd, animated);
+    hide_for_home_screen_if_visible(self);
+}
+
+static void (*orig_SBHIconManager_rootFolderControllerViewWillAppear)(SBHIconManager *self, SEL _cmd, id controller);
+static void override_SBHIconManager_rootFolderControllerViewWillAppear(SBHIconManager *self, SEL _cmd, id controller) {
+    orig_SBHIconManager_rootFolderControllerViewWillAppear(self, _cmd, controller);
+    hide();
+}
+
+static void hide_for_layout_state_transition(void) {
+    if (!kayokoMainViewController || [kayokoMainViewController isHidden]) {
+        return;
+    }
+
+    hide();
+}
+
+static void hide_for_app_switcher_if_visible(id switcher) {
+    if (!kayokoMainViewController || [kayokoMainViewController isHidden]) {
+        return;
+    }
+
+    BOOL switcherVisible = NO;
+    if ([switcher respondsToSelector:@selector(isMainSwitcherVisible)]) {
+        switcherVisible = [(SBMainSwitcherViewController *)switcher isMainSwitcherVisible];
+    } else if ([switcher respondsToSelector:@selector(isAnySwitcherVisible)]) {
+        switcherVisible = [(SBMainSwitcherControllerCoordinator *)switcher isAnySwitcherVisible];
+    }
+
+    if (switcherVisible) {
+        hide();
+    }
+}
+
+static void (*orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext)(
+    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context);
+static void override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
+    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context) {
+    orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
+        self, _cmd, coordinator, context);
+    hide_for_layout_state_transition();
+}
+
+static void (*orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext)(
+    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context);
+static void override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
+    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context) {
+    orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
+        self, _cmd, coordinator, context);
+    hide_for_app_switcher_if_visible(self);
+}
+
+static void (*orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext)(
+    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context);
+static void override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
+    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context) {
+    orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
+        self, _cmd, coordinator, context);
+    hide_for_layout_state_transition();
+}
+
+static void (*orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext)(
+    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context);
+static void override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
+    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context) {
+    orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
+        self, _cmd, coordinator, context);
+    hide_for_app_switcher_if_visible(self);
+}
+
 #pragma mark - Notification callbacks
 
 static void kayokoPasteWillStart() { isInPasteProgress = YES; }
+
+static BOOL read_ui_locked(BOOL *locked) {
+    Class managerClass = NSClassFromString(@"SBLockScreenManager");
+    if (![managerClass respondsToSelector:@selector(sharedInstance)]) {
+        return NO;
+    }
+
+    SBLockScreenManager *manager = [(id)managerClass sharedInstance];
+    if (![manager respondsToSelector:@selector(isUILocked)]) {
+        return NO;
+    }
+
+    if (locked) {
+        *locked = [manager isUILocked];
+    }
+    return YES;
+}
+
+static void handle_lock_state_notification() {
+    BOOL locked = NO;
+    if (!read_ui_locked(&locked) || !locked) {
+        return;
+    }
+
+    hide_immediately();
+}
+
+static void start_lock_state_observer() {
+    if (kayokoLockStateToken != 0) {
+        return;
+    }
+
+    int status = notify_register_dispatch("com.apple.springboard.lockstate", &kayokoLockStateToken,
+                                          dispatch_get_main_queue(), ^(int token) {
+                                            (void)token;
+                                            handle_lock_state_notification();
+                                          });
+    if (status != NOTIFY_STATUS_OK) {
+        HBLogDebug(@"Kayoko: Unable to observe SpringBoard lock state: %d", status);
+        kayokoLockStateToken = 0;
+    }
+}
+
+static void install_home_screen_hooks() {
+    Class iconControllerClass = NSClassFromString(@"SBIconController");
+    Class viewControllerClass = objc_getClass("UIViewController");
+    SEL viewWillAppearSelector = @selector(viewWillAppear:);
+    if (iconControllerClass && [viewControllerClass instancesRespondToSelector:viewWillAppearSelector]) {
+        MSHookMessageEx(viewControllerClass, viewWillAppearSelector, (IMP)&override_UIViewController_viewWillAppear,
+                        (IMP *)&orig_UIViewController_viewWillAppear);
+    }
+
+    Class iconManagerClass = objc_getClass("SBHIconManager");
+    SEL rootFolderWillAppearSelector = @selector(rootFolderControllerViewWillAppear:);
+    if ([iconManagerClass instancesRespondToSelector:rootFolderWillAppearSelector]) {
+        MSHookMessageEx(iconManagerClass, rootFolderWillAppearSelector,
+                        (IMP)&override_SBHIconManager_rootFolderControllerViewWillAppear,
+                        (IMP *)&orig_SBHIconManager_rootFolderControllerViewWillAppear);
+    }
+}
+
+static void install_app_switcher_hooks() {
+    SEL transitionBeginSelector =
+        @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
+    SEL transitionEndSelector = @selector(layoutStateTransitionCoordinator:transitionDidEndWithTransitionContext:);
+
+    Class switcherViewControllerClass = objc_getClass("SBMainSwitcherViewController");
+    if ([switcherViewControllerClass instancesRespondToSelector:transitionBeginSelector]) {
+        MSHookMessageEx(switcherViewControllerClass, transitionBeginSelector,
+                        (IMP)&override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext,
+                        (IMP *)&orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext);
+    }
+    if ([switcherViewControllerClass instancesRespondToSelector:transitionEndSelector]) {
+        MSHookMessageEx(switcherViewControllerClass, transitionEndSelector,
+                        (IMP)&override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext,
+                        (IMP *)&orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext);
+    }
+
+    Class switcherCoordinatorClass = objc_getClass("SBMainSwitcherControllerCoordinator");
+    if ([switcherCoordinatorClass instancesRespondToSelector:transitionBeginSelector]) {
+        MSHookMessageEx(
+            switcherCoordinatorClass, transitionBeginSelector,
+            (IMP)&override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext,
+            (IMP *)&orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext);
+    }
+    if ([switcherCoordinatorClass instancesRespondToSelector:transitionEndSelector]) {
+        MSHookMessageEx(
+            switcherCoordinatorClass, transitionEndSelector,
+            (IMP)&override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext,
+            (IMP *)&orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext);
+    }
+}
 
 static AVAudioPlayer *kayokoAudioPlayerForSound(NSString *soundName) {
     NSError *error = nil;
@@ -245,6 +449,11 @@ static void show() {
         return;
     }
 
+    BOOL locked = NO;
+    if (read_ui_locked(&locked) && locked) {
+        return;
+    }
+
     apply_height_preference_to_view(YES);
     apply_user_interface_style_to_view(UIUserInterfaceStyleUnspecified);
 
@@ -289,6 +498,12 @@ static void show() {
 static void hide() {
     if (![kayokoMainViewController isHidden]) {
         [kayokoMainViewController hide];
+    }
+}
+
+static void hide_immediately() {
+    if (![kayokoMainViewController isHidden]) {
+        [kayokoMainViewController hideImmediately];
     }
 }
 
@@ -417,6 +632,9 @@ __attribute((constructor)) static void initialize() {
         MSHookMessageEx(objc_getClass("SpringBoard"), @selector(applicationDidFinishLaunching:),
                         (IMP)&override_SpringBoard_applicationDidFinishLaunching,
                         (IMP *)&orig_SpringBoard_applicationDidFinishLaunching);
+        install_home_screen_hooks();
+        install_app_switcher_hooks();
+        start_lock_state_observer();
 
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
