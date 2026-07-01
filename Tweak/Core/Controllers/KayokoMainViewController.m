@@ -258,7 +258,6 @@ NS_ASSUME_NONNULL_END
     if ([[self searchController] isSearchActive]) {
         [[self searchController] cancelSearchWithCompletion:nil];
     } else {
-        [[self panelPresentationController] prepareNormalPullDownDismissAnimation];
         [self hideRestoringFocus];
     }
 }

@@ -33,7 +33,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelImmediatelyWithCompletion:(nullable void (^)(void))completion;
-- (void)prepareNormalPullDownDismissAnimation;
 - (void)finishOutsideDismissOverlayShow;
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
 

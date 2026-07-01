@@ -129,13 +129,6 @@ NS_ASSUME_NONNULL_END
     [self setPendingPanDismissVelocityY:MAX(velocity.y, 0)];
 }
 
-- (void)prepareNormalPullDownDismissAnimation {
-    CGFloat visibleTranslationY = MAX([[self panelView] transform].ty, 0);
-    CGFloat targetTranslationY = visibleTranslationY + MAX([[self panelView] bounds].size.height / 3, 120);
-    [self setPendingPanDismissTranslationY:targetTranslationY];
-    [self setPendingPanDismissVelocityY:0];
-}
-
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
         [[self delegate] panelPresentationController:self handleFullscreenSearchPanGestureRecognizer:recognizer];
