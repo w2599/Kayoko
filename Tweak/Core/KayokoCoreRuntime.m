@@ -113,6 +113,9 @@ void KayokoCoreInstallPanelInStatusBarWindow(UIWindow *window) {
     kayokoMainViewController =
         [[KayokoMainViewController alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
                                                                    bounds.size.width, kayokoPrefsHeightInPoints)];
+    [kayokoMainViewController setFocusRestoreRequestHandler:^{
+      KayokoCoreRequestHelperFocusRestore();
+    }];
     [kayokoMainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
     KayokoCoreApplyPreferencesToView();
     [window addSubview:[kayokoMainViewController view]];
@@ -403,16 +406,13 @@ void KayokoCoreShow(void) {
 
 void KayokoCoreHide(void) {
     if (kayokoMainViewController && ![kayokoMainViewController isHidden]) {
-        [kayokoMainViewController hideWithCompletion:^{
-          KayokoCoreRequestHelperFocusRestore();
-        }];
+        [kayokoMainViewController hide];
     }
 }
 
 void KayokoCoreHideImmediately(void) {
     if (kayokoMainViewController && ![kayokoMainViewController isHidden]) {
         [kayokoMainViewController hideImmediately];
-        KayokoCoreRequestHelperFocusRestore();
     }
 }
 

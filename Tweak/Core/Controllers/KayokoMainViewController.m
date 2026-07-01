@@ -251,7 +251,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
-    [self hide];
+    [self hideRestoringFocus];
 }
 
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
@@ -285,7 +285,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
-    [self hide];
+    [self hideRestoringFocus];
 }
 
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
@@ -851,7 +851,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)wordSelectionViewControllerDidRequestHideContainer:(KayokoWordSelectionViewController *)controller {
-    [self hideWithCompletion:nil];
+    [self hideRestoringFocus];
 }
 
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
@@ -921,6 +921,14 @@ NS_ASSUME_NONNULL_END
 
 - (void)hide {
     [self hideWithCompletion:nil];
+}
+
+- (void)hideRestoringFocus {
+    [self hideWithCompletion:^{
+      if ([self focusRestoreRequestHandler]) {
+          [self focusRestoreRequestHandler]();
+      }
+    }];
 }
 
 - (void)completeHideAfterShowingTransientContent:(BOOL)wasShowingTransientContent

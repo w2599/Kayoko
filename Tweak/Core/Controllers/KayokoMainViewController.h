@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
+@property(nonatomic, copy, nullable) void (^focusRestoreRequestHandler)(void);
 
 - (instancetype)initWithFrame:(CGRect)frame;
 
@@ -26,6 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isFullscreenSearchActive;
 - (void)show;
 - (void)hide;
+- (void)hideRestoringFocus;
 - (void)hideWithCompletion:(nullable void (^)(void))completion;
 - (void)hideImmediately;
 - (void)reload;
