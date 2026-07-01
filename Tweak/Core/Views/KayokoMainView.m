@@ -160,7 +160,7 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [self setFavoritesButton:[[UIButton alloc] init]];
         [self updateStyleForHeaderButton:[self favoritesButton]
                            withImageName:@"heart"
-                            andImageSize:kFavoritesButtonImageSize
+                            andImageSize:kKayokoFavoritesButtonImageSize
                             andTintColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self favoritesButton]];
 
@@ -169,7 +169,7 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
             [[[self favoritesButton] bottomAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
                                                                   constant:-2],
             [[[self favoritesButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                                   constant:kLeadingHeaderButtonCenterXInset]
+                                                                   constant:kKayokoLeadingHeaderButtonCenterXInset]
         ]];
 
         [self setTitleLabel:[[UILabel alloc] init]];
@@ -184,13 +184,13 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [NSLayoutConstraint activateConstraints:@[
             [[[self titleLabel] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
             [[[self titleLabel] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                              constant:kTitleLabelLeadingInset]
+                                                              constant:kKayokoTitleLabelLeadingInset]
         ]];
 
         [self setClearButton:[[UIButton alloc] init]];
         [self updateStyleForHeaderButton:[self clearButton]
                            withImageName:@"trash"
-                            andImageSize:kClearButtonImageSize
+                            andImageSize:kKayokoClearButtonImageSize
                             andTintColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self clearButton]];
 
@@ -198,13 +198,13 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [NSLayoutConstraint activateConstraints:@[
             [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
             [[[self clearButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                               constant:-kTrailingHeaderButtonCenterXInset]
+                                                               constant:-kKayokoTrailingHeaderButtonCenterXInset]
         ]];
 
         [self setBackButton:[[UIButton alloc] init]];
         [self updateStyleForHeaderButton:[self backButton]
                            withImageName:@"arrowshape.turn.up.backward"
-                            andImageSize:kBackButtonImageSize
+                            andImageSize:kKayokoBackButtonImageSize
                             andTintColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self backButton]];
         [[self backButton] setHidden:YES];
@@ -213,7 +213,7 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [NSLayoutConstraint activateConstraints:@[
             [[[self backButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
             [[[self backButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                              constant:-kTrailingHeaderButtonCenterXInset]
+                                                              constant:-kKayokoTrailingHeaderButtonCenterXInset]
         ]];
 
         [self setTitleTapControl:[[UIControl alloc] init]];

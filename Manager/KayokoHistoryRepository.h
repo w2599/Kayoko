@@ -43,7 +43,7 @@ typedef NSUInteger (^KayokoHistoryLimitProvider)(NSString *historyKey);
                 completion:(nullable void (^)(BOOL success))completion;
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
-                        completion:(nullable void (^)(BOOL success))completion;
+                       completion:(nullable void (^)(BOOL success))completion;
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey
                                                                  error:(NSError *_Nullable *_Nullable)error;

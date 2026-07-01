@@ -62,19 +62,19 @@ NS_ASSUME_NONNULL_END
 }
 
 - (ActivationMethod)currentActivationMethod {
-    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
-    ActivationMethod activationMethod = [userDefaults integerForKey:kPreferenceKeyActivationMethod];
-    return activationMethod == 0 ? kPreferenceKeyActivationMethodDefaultValue : activationMethod;
+    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
+    ActivationMethod activationMethod = [userDefaults integerForKey:kKayokoPreferenceKeyActivationMethod];
+    return activationMethod == 0 ? kKayokoPreferenceKeyActivationMethodDefaultValue : activationMethod;
 }
 
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     [super setPreferenceValue:value specifier:specifier];
 
     // Prompt to respring for options that require one to apply changes.
-    if ([[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyEnabled] ||
-        [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod] ||
-        [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyAutomaticallyPaste]) {
-        if ([[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod]) {
+    if ([[specifier propertyForKey:@"key"] isEqualToString:kKayokoPreferenceKeyEnabled] ||
+        [[specifier propertyForKey:@"key"] isEqualToString:kKayokoPreferenceKeyActivationMethod] ||
+        [[specifier propertyForKey:@"key"] isEqualToString:kKayokoPreferenceKeyAutomaticallyPaste]) {
+        if ([[specifier propertyForKey:@"key"] isEqualToString:kKayokoPreferenceKeyActivationMethod]) {
             _lastActivationMethod = [self currentActivationMethod];
             _hasActivationMethodSnapshot = YES;
         }
@@ -187,14 +187,14 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)resetPreferences {
-    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
     for (NSString *key in [userDefaults dictionaryRepresentation]) {
         [userDefaults removeObjectForKey:key];
     }
 
     [self reloadSpecifiers];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
+                                         (CFStringRef)kKayokoNotificationKeyPreferencesReload, nil, nil, YES);
 }
 
 - (UISlider *_Nullable)findSliderInView:(UIView *)view {

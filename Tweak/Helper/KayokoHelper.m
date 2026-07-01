@@ -9,7 +9,7 @@
 
 #import "PreferenceKeys.h"
 
-static BOOL KayokoHelperIsApplicationProcess(void) {
+static BOOL kayokoHelperIsApplicationProcess(void) {
     NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
     NSUInteger count = [args count];
     if (count == 0) {
@@ -45,7 +45,7 @@ static BOOL KayokoHelperIsApplicationProcess(void) {
     return !isApplicationExtension;
 }
 
-static void KayokoHelperInstallApplicationHooks(void) {
+static void kayokoHelperInstallApplicationHooks(void) {
     NSUInteger activationMethod = KayokoHelperActivationMethod();
     if (activationMethod & kActivationMethodPredictionBar) {
         EnableKayokoPredictionBar();
@@ -81,9 +81,9 @@ __attribute((constructor)) static void initialize() {
         return;
     }
 
-    if (!KayokoHelperIsApplicationProcess()) {
+    if (!kayokoHelperIsApplicationProcess()) {
         return;
     }
 
-    KayokoHelperInstallApplicationHooks();
+    kayokoHelperInstallApplicationHooks();
 }

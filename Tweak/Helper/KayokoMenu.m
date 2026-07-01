@@ -2,8 +2,6 @@
 //  KayokoMenu.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoMenu.h"
 

@@ -13,18 +13,19 @@
 #import "KayokoSpringBoardHooks.h"
 #import "NotificationKeys.h"
 
-static void KayokoCoreAddDarwinObserver(CFStringRef name, CFNotificationCallback callback) {
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, callback, name, NULL,
-                                    (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+static void kayokoCoreAddDarwinObserver(CFStringRef name, CFNotificationCallback callback) {
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL, callback, name, NULL,
+        (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
-static CFStringRef KayokoCoreNotificationName(NSString *name) { return (__bridge CFStringRef)name; }
+static CFStringRef kayokoCoreNotificationName(NSString *name) { return (__bridge CFStringRef)name; }
 
-static BOOL KayokoCoreIsSpringBoardProcess(void) {
+static BOOL kayokoCoreIsSpringBoardProcess(void) {
     return [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"];
 }
 
-static BOOL KayokoCoreIsDruidOrPastedProcess(void) {
+static BOOL kayokoCoreIsDruidOrPastedProcess(void) {
     NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
     NSString *processName = [[NSProcessInfo processInfo] processName];
     NSString *executablePath = [args firstObject];
@@ -32,7 +33,7 @@ static BOOL KayokoCoreIsDruidOrPastedProcess(void) {
            ([processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"]);
 }
 
-static void KayokoCoreInstallSpringBoardRuntime(void) {
+static void kayokoCoreInstallSpringBoardRuntime(void) {
     KayokoCoreLoadPreferences();
     if (!KayokoCoreEnabled()) {
         return;
@@ -42,46 +43,46 @@ static void KayokoCoreInstallSpringBoardRuntime(void) {
     KayokoInstallSpringBoardHooks();
     KayokoCoreStartLockStateObserver();
 
-    KayokoCoreAddDarwinObserver(CFSTR("com.apple.pasteboard.notify.changed"), (CFNotificationCallback)KayokoCoreCopy);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyCoreShow),
+    kayokoCoreAddDarwinObserver(CFSTR("com.apple.pasteboard.notify.changed"), (CFNotificationCallback)KayokoCoreCopy);
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyCoreShow),
                                 (CFNotificationCallback)KayokoCoreShow);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kLegacyNotificationKeyCoreShow),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoLegacyNotificationKeyCoreShow),
                                 (CFNotificationCallback)KayokoCoreShow);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyCoreHide),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyCoreHide),
                                 (CFNotificationCallback)KayokoCoreHide);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kLegacyNotificationKeyCoreHide),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoLegacyNotificationKeyCoreHide),
                                 (CFNotificationCallback)KayokoCoreHide);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyCoreReload),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyCoreReload),
                                 (CFNotificationCallback)KayokoCoreReload);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyPreferencesReload),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesReload),
                                 (CFNotificationCallback)KayokoCoreLoadPreferences);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyPreferencesHeightReload),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesHeightReload),
                                 (CFNotificationCallback)KayokoCoreLoadHeightPreference);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyHelperPaste),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyHelperPaste),
                                 (CFNotificationCallback)KayokoCorePaste);
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyPasteWillStart),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPasteWillStart),
                                 (CFNotificationCallback)KayokoCorePasteWillStart);
 }
 
-static void KayokoCoreInstallDruidOrPastedRuntime(void) {
+static void kayokoCoreInstallDruidOrPastedRuntime(void) {
     KayokoCoreLoadPreferences();
     if (!KayokoCoreEnabled()) {
         return;
     }
 
     EnableKayokoDisablePasteTips();
-    KayokoCoreAddDarwinObserver(KayokoCoreNotificationName(kNotificationKeyPreferencesReload),
+    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesReload),
                                 (CFNotificationCallback)KayokoCoreLoadPreferences);
 }
 
 __attribute((constructor)) static void initialize() {
-    if (KayokoCoreIsSpringBoardProcess()) {
-        KayokoCoreInstallSpringBoardRuntime();
+    if (kayokoCoreIsSpringBoardProcess()) {
+        kayokoCoreInstallSpringBoardRuntime();
         return;
     }
 
-    if (KayokoCoreIsDruidOrPastedProcess()) {
-        KayokoCoreInstallDruidOrPastedRuntime();
+    if (kayokoCoreIsDruidOrPastedProcess()) {
+        kayokoCoreInstallDruidOrPastedRuntime();
         return;
     }
 }

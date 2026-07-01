@@ -39,8 +39,8 @@ NS_ASSUME_NONNULL_END
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _name = [name copy] ?: @"";
-        _historyKey = [historyKey copy] ?: kHistoryKeyHistory;
-        if ([_historyKey isEqualToString:kHistoryKeyFavorites]) {
+        _historyKey = [historyKey copy] ?: kKayokoHistoryKeyHistory;
+        if ([_historyKey isEqualToString:kKayokoHistoryKeyFavorites]) {
             _tableView = [[KayokoFavoritesTableView alloc] initWithName:_name];
         } else {
             _tableView = [[KayokoHistoryTableView alloc] initWithName:_name];
@@ -257,7 +257,7 @@ NS_ASSUME_NONNULL_END
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary
                             limit:(NSUInteger)limit
                         animating:(BOOL)animating {
-    if (!dictionary || [dictionary[kItemKeyContent] length] == 0) {
+    if (!dictionary || [dictionary[kKayokoItemKeyContent] length] == 0) {
         return;
     }
 
@@ -486,8 +486,8 @@ NS_ASSUME_NONNULL_END
                                dictionary:(NSDictionary<NSString *, id> *)dictionary
                                 indexPath:(NSIndexPath *)indexPath {
     NSString *sourceHistoryKey = [self historyKey];
-    BOOL sourceIsFavorites = [sourceHistoryKey isEqualToString:kHistoryKeyFavorites];
-    NSString *destinationHistoryKey = sourceIsFavorites ? kHistoryKeyHistory : kHistoryKeyFavorites;
+    BOOL sourceIsFavorites = [sourceHistoryKey isEqualToString:kKayokoHistoryKeyFavorites];
+    NSString *destinationHistoryKey = sourceIsFavorites ? kKayokoHistoryKeyHistory : kKayokoHistoryKeyFavorites;
     NSString *imageName = sourceIsFavorites ? @"heart.slash.fill" : @"heart.fill";
 
     UIContextualAction *moveAction = [UIContextualAction

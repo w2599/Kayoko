@@ -55,30 +55,31 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Paths and Resources
 
 + (NSString *)historyPath {
-    static NSString *kHistoryPath = nil;
+    static NSString *kayokoHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/history.json");
+      kayokoHistoryPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/history.json");
     });
-    return kHistoryPath;
+    return kayokoHistoryPath;
 }
 
 + (NSString *)historyImagesPath {
-    static NSString *kHistoryImagesPath = nil;
+    static NSString *kayokoHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryImagesPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/");
+      kayokoHistoryImagesPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/");
     });
-    return kHistoryImagesPath;
+    return kayokoHistoryImagesPath;
 }
 
 + (NSBundle *)localizationBundle {
-    static NSBundle *kLocalizationBundle = nil;
+    static NSBundle *kayokoLocalizationBundle = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kLocalizationBundle = [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+      kayokoLocalizationBundle =
+          [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
     });
-    return kLocalizationBundle;
+    return kayokoLocalizationBundle;
 }
 
 + (NSString *)historyDatabasePath {
@@ -87,7 +88,7 @@ NS_ASSUME_NONNULL_END
 
 + (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value {
     if (value == 0) {
-        return kPreferenceKeyMaximumHistoryAmountDefaultValue;
+        return kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue;
     }
 
     NSArray<NSNumber *> *stepValues = @[ @50, @100, @200, @300, @500, @1000, @2000, @3000, @4000, @5000 ];
@@ -108,12 +109,12 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _fileManager = [NSFileManager defaultManager];
         __weak typeof(self) weakSelf = self;
-        _historyRepository = [[KayokoHistoryRepository alloc]
-            initWithDatabasePath:[PasteboardManager historyDatabasePath]
-                      imagesPath:[PasteboardManager historyImagesPath]
-                   limitProvider:^NSUInteger(NSString *historyKey) {
-                     return [weakSelf limitForHistoryKey:historyKey];
-                   }];
+        _historyRepository =
+            [[KayokoHistoryRepository alloc] initWithDatabasePath:[PasteboardManager historyDatabasePath]
+                                                       imagesPath:[PasteboardManager historyImagesPath]
+                                                    limitProvider:^NSUInteger(NSString *historyKey) {
+                                                      return [weakSelf limitForHistoryKey:historyKey];
+                                                    }];
         _historyChangeNotifier = [[KayokoHistoryChangeNotifier alloc] init];
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
@@ -176,7 +177,7 @@ NS_ASSUME_NONNULL_END
                         [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                               andContent:string
                                                           withImageNamed:nil];
-                    [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
+                    [self addPasteboardItem:item toHistoryWithKey:kKayokoHistoryKeyHistory];
                 }
             }
         }
@@ -208,7 +209,7 @@ NS_ASSUME_NONNULL_END
                     [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                           andContent:imageName
                                                       withImageNamed:imageName];
-                [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
+                [self addPasteboardItem:item toHistoryWithKey:kKayokoHistoryKeyHistory];
             }
         }
     }
@@ -233,7 +234,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                           changeType:kPasteboardManagerHistoryChangeTypeUpsertTop
+                                           changeType:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
                                        itemDictionary:dictionary
                                                 limit:limit];
 }
@@ -253,7 +254,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                           changeType:kPasteboardManagerHistoryChangeTypeRemove
+                                           changeType:kKayokoPasteboardManagerHistoryChangeTypeRemove
                                        itemDictionary:dictionary
                                                 limit:[self limitForHistoryKey:historyKey]];
 }
@@ -284,19 +285,21 @@ NS_ASSUME_NONNULL_END
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                            postsChangeNotification:(BOOL)postsChangeNotification
                                         completion:(void (^)(BOOL success))completion {
-    [_historyRepository removeItemsFromHistoryKey:historyKey
-                               shouldRemoveImages:shouldRemoveImages
-                                      completion:^(BOOL success) {
-                                        if (success && postsChangeNotification) {
-                                            [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                                                                   changeType:kPasteboardManagerHistoryChangeTypeClear
-                                                                               itemDictionary:nil
-                                                                                        limit:[self limitForHistoryKey:historyKey]];
-                                        }
-                                        if (completion) {
-                                            completion(success);
-                                        }
-                                      }];
+    [_historyRepository
+        removeItemsFromHistoryKey:historyKey
+               shouldRemoveImages:shouldRemoveImages
+                       completion:^(BOOL success) {
+                         if (success && postsChangeNotification) {
+                             [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                                                    changeType:
+                                                                        kKayokoPasteboardManagerHistoryChangeTypeClear
+                                                                itemDictionary:nil
+                                                                         limit:[self limitForHistoryKey:historyKey]];
+                         }
+                         if (completion) {
+                             completion(success);
+                         }
+                       }];
 }
 
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
@@ -367,7 +370,7 @@ NS_ASSUME_NONNULL_END
 
     if (didUpdatePasteboard && [self automaticallyPaste] && shouldAutoPaste) {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                             (__bridge CFStringRef)kNotificationKeyHelperPaste, nil, nil, NO);
+                                             (__bridge CFStringRef)kKayokoNotificationKeyHelperPaste, nil, nil, NO);
     }
 
     _isPerformingDirectPaste = NO;
@@ -413,7 +416,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                           changeType:kPasteboardManagerHistoryChangeTypeUpsertTop
+                                           changeType:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
                                        itemDictionary:dictionary
                                                 limit:limit];
 }
@@ -422,8 +425,8 @@ NS_ASSUME_NONNULL_END
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey {
     NSError *error = nil;
-    NSMutableArray<NSDictionary<NSString *, id> *> *history =
-        [_historyRepository itemsForHistoryKey:historyKey error:&error];
+    NSMutableArray<NSDictionary<NSString *, id> *> *history = [_historyRepository itemsForHistoryKey:historyKey
+                                                                                               error:&error];
     if (error) {
         NSLog(@"Kayoko: Failed to load history items: %@", error);
     }
@@ -437,8 +440,8 @@ NS_ASSUME_NONNULL_END
 
 - (PasteboardItem *)getLatestHistoryItem {
     NSError *error = nil;
-    NSDictionary<NSString *, id> *dictionary =
-        [_historyRepository latestItemForHistoryKey:kHistoryKeyHistory error:&error];
+    NSDictionary<NSString *, id> *dictionary = [_historyRepository latestItemForHistoryKey:kKayokoHistoryKeyHistory
+                                                                                     error:&error];
     if (error) {
         NSLog(@"Kayoko: Failed to load latest history item: %@", error);
     }
@@ -471,7 +474,7 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Limits
 
 - (NSUInteger)limitForHistoryKey:(NSString *)historyKey {
-    if ([historyKey isEqualToString:kHistoryKeyFavorites]) {
+    if ([historyKey isEqualToString:kKayokoHistoryKeyFavorites]) {
         return NSUIntegerMax;
     }
 

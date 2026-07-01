@@ -18,7 +18,7 @@ static CGFloat const kKayokoSearchFullscreenCollapseVelocity = 900;
 static CGFloat const kKayokoSearchFullscreenReboundVelocity = -450;
 static CGFloat const kKayokoSearchFullscreenCollapseProgress = 0.32;
 
-static CGRect KayokoStatusBarFrameForWindow(UIWindow *window) {
+static CGRect kayokoStatusBarFrameForWindow(UIWindow *window) {
     CGRect statusBarFrame = CGRectZero;
     if (@available(iOS 13.0, *)) {
         UIWindowScene *windowScene = [window windowScene];
@@ -198,7 +198,7 @@ NS_ASSUME_NONNULL_END
         return additionalInsets;
     }
 
-    CGRect statusBarFrame = KayokoStatusBarFrameForWindow([containerView window]);
+    CGRect statusBarFrame = kayokoStatusBarFrameForWindow([containerView window]);
     if (CGRectIsEmpty(statusBarFrame)) {
         return additionalInsets;
     }

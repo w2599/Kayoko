@@ -15,9 +15,9 @@
 CHDeclareClass(UIInputSetHostView);
 CHDeclareClass(_UIHostedWindow);
 
-static char kKayokoSwipeUpGestureRecognizerKey;
-static char kKayokoSwipeUpGestureHandlerKey;
-static char kKayokoManualSwipeUpActiveKey;
+static char kayokoSwipeUpGestureRecognizerKey;
+static char kayokoSwipeUpGestureHandlerKey;
+static char kayokoManualSwipeUpActiveKey;
 
 static CGFloat const kKayokoSwipeUpAdditionalBottomSafetyInset = 0.0;
 
@@ -34,7 +34,7 @@ static CGFloat const kKayokoSwipeUpAdditionalBottomSafetyInset = 0.0;
 @interface _UIHostedWindow : UIWindow
 @end
 
-static CGRect KayokoSwipeAllowedBoundsForView(UIView *view) {
+static CGRect kayokoSwipeAllowedBoundsForView(UIView *view) {
     UIEdgeInsets safeAreaInsets = view.safeAreaInsets;
     safeAreaInsets.bottom += kKayokoSwipeUpAdditionalBottomSafetyInset;
     CGRect allowedBounds = UIEdgeInsetsInsetRect(view.bounds, safeAreaInsets);
@@ -45,8 +45,8 @@ static CGRect KayokoSwipeAllowedBoundsForView(UIView *view) {
     return allowedBounds;
 }
 
-static BOOL KayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
-    CGRect allowedBounds = KayokoSwipeAllowedBoundsForView(view);
+static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
+    CGRect allowedBounds = kayokoSwipeAllowedBoundsForView(view);
     if (CGRectIsNull(allowedBounds)) {
         return NO;
     }
@@ -54,7 +54,7 @@ static BOOL KayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
     return CGRectContainsPoint(allowedBounds, point);
 }
 
-static id KayokoSharedApplication(void) {
+static id kayokoSharedApplication(void) {
     Class applicationClass = NSClassFromString(@"UIApplication");
     SEL sharedApplicationSelector = NSSelectorFromString(@"sharedApplication");
     if (![applicationClass respondsToSelector:sharedApplicationSelector]) {
@@ -67,8 +67,8 @@ static id KayokoSharedApplication(void) {
 #pragma clang diagnostic pop
 }
 
-static void KayokoCancelAllTouches(void) {
-    id application = KayokoSharedApplication();
+static void kayokoCancelAllTouches(void) {
+    id application = kayokoSharedApplication();
     SEL cancelAllTouchesSelector = NSSelectorFromString(@"_cancelAllTouches");
     if (![application respondsToSelector:cancelAllTouchesSelector]) {
         return;
@@ -80,14 +80,14 @@ static void KayokoCancelAllTouches(void) {
 #pragma clang diagnostic pop
 }
 
-static void KayokoShowKayokoAndCancelTouches(void) {
+static void kayokoShowKayokoAndCancelTouches(void) {
     KayokoHelperCaptureCurrentFirstResponder();
     KayokoHelperPostCoreShow();
-    KayokoCancelAllTouches();
+    kayokoCancelAllTouches();
 }
 
-static void KayokoDiscardSwipeUpGestureRecognizer(UIView *view);
-static void KayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
+static void kayokoDiscardSwipeUpGestureRecognizer(UIView *view);
+static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
 
 @interface KayokoSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
 - (instancetype)initWithView:(UIView *)view keyboardExtension:(BOOL)keyboardExtension;
@@ -112,11 +112,11 @@ static void KayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     UIView *view = self.view;
-    if (!view || gestureRecognizer != objc_getAssociatedObject(view, &kKayokoSwipeUpGestureRecognizerKey)) {
+    if (!view || gestureRecognizer != objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey)) {
         return YES;
     }
 
-    return KayokoPointIsInsideAllowedSwipeRegion(view, [touch locationInView:view]);
+    return kayokoPointIsInsideAllowedSwipeRegion(view, [touch locationInView:view]);
 }
 
 - (void)handleSwipeUpGesture:(UISwipeGestureRecognizer *)recognizer {
@@ -128,66 +128,66 @@ static void KayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
         HBLogDebug(@"Kayoko: manual-feed swipe recognizer action state=%ld", (long)recognizer.state);
         UIWindow *window = (UIWindow *)recognizer.view;
         if ([window isKindOfClass:[UIWindow class]]) {
-            KayokoSetManualSwipeUpActive(window, NO);
-            KayokoDiscardSwipeUpGestureRecognizer(window);
+            kayokoSetManualSwipeUpActive(window, NO);
+            kayokoDiscardSwipeUpGestureRecognizer(window);
             HBLogDebug(@"Kayoko: discarded manual-feed swipe recognizer after recognition");
         }
     }
 
-    KayokoShowKayokoAndCancelTouches();
+    kayokoShowKayokoAndCancelTouches();
 }
 
 @end
 
-static KayokoSwipeUpGestureHandler *KayokoSwipeUpGestureHandlerForView(UIView *view, BOOL keyboardExtension) {
-    KayokoSwipeUpGestureHandler *handler = objc_getAssociatedObject(view, &kKayokoSwipeUpGestureHandlerKey);
+static KayokoSwipeUpGestureHandler *kayokoSwipeUpGestureHandlerForView(UIView *view, BOOL keyboardExtension) {
+    KayokoSwipeUpGestureHandler *handler = objc_getAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey);
     if (handler) {
         return handler;
     }
 
     handler = [[KayokoSwipeUpGestureHandler alloc] initWithView:view keyboardExtension:keyboardExtension];
-    objc_setAssociatedObject(view, &kKayokoSwipeUpGestureHandlerKey, handler, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey, handler, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return handler;
 }
 
-static UISwipeGestureRecognizer *KayokoEnsureSwipeUpGestureRecognizer(UIView *view, BOOL keyboardExtension) {
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kKayokoSwipeUpGestureRecognizerKey);
+static UISwipeGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIView *view, BOOL keyboardExtension) {
+    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
     if (recognizer) {
         return recognizer;
     }
 
-    KayokoSwipeUpGestureHandler *handler = KayokoSwipeUpGestureHandlerForView(view, keyboardExtension);
+    KayokoSwipeUpGestureHandler *handler = kayokoSwipeUpGestureHandlerForView(view, keyboardExtension);
     recognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:handler action:@selector(handleSwipeUpGesture:)];
     recognizer.direction = UISwipeGestureRecognizerDirectionUp;
     recognizer.numberOfTouchesRequired = 1;
     recognizer.cancelsTouchesInView = NO;
     recognizer.delegate = handler;
     [view addGestureRecognizer:recognizer];
-    objc_setAssociatedObject(view, &kKayokoSwipeUpGestureRecognizerKey, recognizer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey, recognizer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return recognizer;
 }
 
-static void KayokoDiscardSwipeUpGestureRecognizer(UIView *view) {
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kKayokoSwipeUpGestureRecognizerKey);
+static void kayokoDiscardSwipeUpGestureRecognizer(UIView *view) {
+    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
     if (!recognizer) {
         return;
     }
 
     [view removeGestureRecognizer:recognizer];
-    objc_setAssociatedObject(view, &kKayokoSwipeUpGestureRecognizerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(view, &kKayokoSwipeUpGestureHandlerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static BOOL KayokoManualSwipeUpIsActive(UIWindow *window) {
-    NSNumber *active = objc_getAssociatedObject(window, &kKayokoManualSwipeUpActiveKey);
+static BOOL kayokoManualSwipeUpIsActive(UIWindow *window) {
+    NSNumber *active = objc_getAssociatedObject(window, &kayokoManualSwipeUpActiveKey);
     return [active boolValue];
 }
 
-static void KayokoSetManualSwipeUpActive(UIWindow *window, BOOL active) {
-    objc_setAssociatedObject(window, &kKayokoManualSwipeUpActiveKey, @(active), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active) {
+    objc_setAssociatedObject(window, &kayokoManualSwipeUpActiveKey, @(active), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static NSSet<UITouch *> *KayokoTouchesForWindow(UIWindow *window, UIEvent *event) {
+static NSSet<UITouch *> *kayokoTouchesForWindow(UIWindow *window, UIEvent *event) {
     NSMutableSet<UITouch *> *touches = [NSMutableSet set];
     for (UITouch *touch in [event allTouches]) {
         if (touch.window == window) {
@@ -197,7 +197,7 @@ static NSSet<UITouch *> *KayokoTouchesForWindow(UIWindow *window, UIEvent *event
     return touches;
 }
 
-static NSSet<UITouch *> *KayokoTouchesForWindowWithPhase(UIWindow *window, UIEvent *event, UITouchPhase phase) {
+static NSSet<UITouch *> *kayokoTouchesForWindowWithPhase(UIWindow *window, UIEvent *event, UITouchPhase phase) {
     NSMutableSet<UITouch *> *touches = [NSMutableSet set];
     for (UITouch *touch in [event allTouches]) {
         if (touch.window == window && touch.phase == phase) {
@@ -207,66 +207,65 @@ static NSSet<UITouch *> *KayokoTouchesForWindowWithPhase(UIWindow *window, UIEve
     return touches;
 }
 
-static void KayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window, UIEvent *event) {
+static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window, UIEvent *event) {
     if (event.type != UIEventTypeTouches) {
         return;
     }
 
-    NSSet<UITouch *> *windowTouches = KayokoTouchesForWindow(window, event);
+    NSSet<UITouch *> *windowTouches = kayokoTouchesForWindow(window, event);
     if (windowTouches.count > 1) {
-        if (KayokoManualSwipeUpIsActive(window)) {
-            UISwipeGestureRecognizer *recognizer =
-                objc_getAssociatedObject(window, &kKayokoSwipeUpGestureRecognizerKey);
+        if (kayokoManualSwipeUpIsActive(window)) {
+            UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
             [recognizer touchesCancelled:windowTouches withEvent:event];
-            KayokoSetManualSwipeUpActive(window, NO);
-            KayokoDiscardSwipeUpGestureRecognizer(window);
+            kayokoSetManualSwipeUpActive(window, NO);
+            kayokoDiscardSwipeUpGestureRecognizer(window);
         }
         return;
     }
 
-    NSSet<UITouch *> *beganTouches = KayokoTouchesForWindowWithPhase(window, event, UITouchPhaseBegan);
+    NSSet<UITouch *> *beganTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseBegan);
     if (beganTouches.count > 0) {
         UITouch *touch = [beganTouches anyObject];
         BOOL active =
-            beganTouches.count == 1 && KayokoPointIsInsideAllowedSwipeRegion(window, [touch locationInView:window]);
-        KayokoSetManualSwipeUpActive(window, active);
+            beganTouches.count == 1 && kayokoPointIsInsideAllowedSwipeRegion(window, [touch locationInView:window]);
+        kayokoSetManualSwipeUpActive(window, active);
         HBLogDebug(@"Kayoko: manual swipe recognizer began active=%@", active ? @"YES" : @"NO");
         if (active) {
-            KayokoDiscardSwipeUpGestureRecognizer(window);
-            UISwipeGestureRecognizer *recognizer = KayokoEnsureSwipeUpGestureRecognizer(window, YES);
+            kayokoDiscardSwipeUpGestureRecognizer(window);
+            UISwipeGestureRecognizer *recognizer = kayokoEnsureSwipeUpGestureRecognizer(window, YES);
             HBLogDebug(@"Kayoko: installed manual-feed swipe recognizer on _UIHostedWindow from began");
             [recognizer touchesBegan:beganTouches withEvent:event];
         }
         return;
     }
 
-    if (!KayokoManualSwipeUpIsActive(window)) {
+    if (!kayokoManualSwipeUpIsActive(window)) {
         return;
     }
 
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kKayokoSwipeUpGestureRecognizerKey);
+    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
     if (!recognizer) {
-        KayokoSetManualSwipeUpActive(window, NO);
+        kayokoSetManualSwipeUpActive(window, NO);
         return;
     }
 
-    NSSet<UITouch *> *movedTouches = KayokoTouchesForWindowWithPhase(window, event, UITouchPhaseMoved);
+    NSSet<UITouch *> *movedTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseMoved);
     if (movedTouches.count > 0) {
         [recognizer touchesMoved:movedTouches withEvent:event];
     }
 
-    NSSet<UITouch *> *endedTouches = KayokoTouchesForWindowWithPhase(window, event, UITouchPhaseEnded);
+    NSSet<UITouch *> *endedTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseEnded);
     if (endedTouches.count > 0) {
         [recognizer touchesEnded:endedTouches withEvent:event];
-        KayokoSetManualSwipeUpActive(window, NO);
-        KayokoDiscardSwipeUpGestureRecognizer(window);
+        kayokoSetManualSwipeUpActive(window, NO);
+        kayokoDiscardSwipeUpGestureRecognizer(window);
     }
 
-    NSSet<UITouch *> *cancelledTouches = KayokoTouchesForWindowWithPhase(window, event, UITouchPhaseCancelled);
+    NSSet<UITouch *> *cancelledTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseCancelled);
     if (cancelledTouches.count > 0) {
         [recognizer touchesCancelled:cancelledTouches withEvent:event];
-        KayokoSetManualSwipeUpActive(window, NO);
-        KayokoDiscardSwipeUpGestureRecognizer(window);
+        kayokoSetManualSwipeUpActive(window, NO);
+        kayokoDiscardSwipeUpGestureRecognizer(window);
     }
 }
 
@@ -277,11 +276,11 @@ CHOptimizedMethod0(self, void, UIInputSetHostView, didMoveToWindow) {
         return;
     }
 
-    KayokoEnsureSwipeUpGestureRecognizer(self, NO);
+    kayokoEnsureSwipeUpGestureRecognizer(self, NO);
 }
 
 CHOptimizedMethod1(self, void, _UIHostedWindow, sendEvent, UIEvent *, event) {
-    KayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(self, event);
+    kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(self, event);
     CHSuper1(_UIHostedWindow, sendEvent, event);
 }
 

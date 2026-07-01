@@ -10,7 +10,7 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
-static NSString *KayokoPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
+static NSString *kayokoPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
     return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
 }
 
@@ -71,17 +71,17 @@ NS_ASSUME_NONNULL_END
         [[[self previewView] imageView] setImage:[UIImage imageWithData:imageData]];
         [[[self previewView] imageView] setHidden:NO];
     } else {
-        NSString *previewText = KayokoPreviewTextByTrimmingBoundaryNewlines([item content]);
+        NSString *previewText = kayokoPreviewTextByTrimmingBoundaryNewlines([item content]);
         [[self previewView] showText:previewText];
     }
 
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:@"arrowshape.turn.up.backward"
-                        andImageSize:kFavoritesButtonImageSize
+                        andImageSize:kKayokoFavoritesButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [self updateStyleForHeaderButton:[self backButton]
                        withImageName:@"doc.on.doc.fill"
-                        andImageSize:kBackButtonImageSize
+                        andImageSize:kKayokoBackButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [[self favoritesButton]
         setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
@@ -135,12 +135,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
-    BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
+    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
     UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:imageName
-                        andImageSize:kFavoritesButtonImageSize
+                        andImageSize:kKayokoFavoritesButtonImageSize
                         andTintColor:tintColor];
 }
 

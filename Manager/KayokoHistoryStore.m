@@ -130,7 +130,7 @@ NS_ASSUME_NONNULL_END
               toHistoryKey:(NSString *)destinationHistoryKey
           destinationLimit:(NSUInteger)destinationLimit
                      error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [sourceHistoryKey length] == 0 || [destinationHistoryKey length] == 0) {
         return YES;
     }
@@ -176,12 +176,12 @@ NS_ASSUME_NONNULL_END
               fromHistoryKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                        error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [historyKey length] == 0) {
         return YES;
     }
 
-    NSString *imageName = [self stringValueFromDictionary:dictionary key:kItemKeyImageName fallback:@""];
+    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
     if (![self beginTransactionWithError:error]) {
         return NO;
     }
@@ -351,16 +351,16 @@ NS_ASSUME_NONNULL_END
 - (BOOL)upsertItemDictionaryWithoutTransaction:(NSDictionary<NSString *, id> *)dictionary
                                   inHistoryKey:(NSString *)historyKey
                                          error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [historyKey length] == 0) {
         return YES;
     }
 
     NSString *bundleIdentifier = [self stringValueFromDictionary:dictionary
-                                                             key:kItemKeyBundleIdentifier
+                                                             key:kKayokoItemKeyBundleIdentifier
                                                         fallback:@"com.apple.springboard"];
-    NSString *imageName = [self stringValueFromDictionary:dictionary key:kItemKeyImageName fallback:@""];
-    NSNumber *hasLink = @([[dictionary objectForKey:kItemKeyHasLink] boolValue]);
+    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
+    NSNumber *hasLink = @([[dictionary objectForKey:kKayokoItemKeyHasLink] boolValue]);
     NSNumber *sequence = @([self nextSequence]);
     NSNumber *now = @([[NSDate date] timeIntervalSince1970]);
 
@@ -513,10 +513,10 @@ NS_ASSUME_NONNULL_END
     BOOL hasLink = sqlite3_column_int(statement, 3) != 0;
 
     return @{
-        kItemKeyBundleIdentifier : bundleIdentifier,
-        kItemKeyContent : content,
-        kItemKeyImageName : imageName,
-        kItemKeyHasLink : @(hasLink)
+        kKayokoItemKeyBundleIdentifier : bundleIdentifier,
+        kKayokoItemKeyContent : content,
+        kKayokoItemKeyImageName : imageName,
+        kKayokoItemKeyHasLink : @(hasLink)
     };
 }
 

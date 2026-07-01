@@ -7,7 +7,7 @@
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
 
-static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
+static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 
 @implementation KayokoHistoryRepository {
     NSString *_databasePath;
@@ -32,8 +32,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         _imagesPath = [imagesPath copy];
         _limitProvider = [limitProvider copy];
         _historyQueue = dispatch_queue_create("com.82flex.kayoko.queue.history", DISPATCH_QUEUE_SERIAL);
-        dispatch_queue_set_specific(_historyQueue, kKayokoHistoryQueueSpecificKey, kKayokoHistoryQueueSpecificKey,
-                                    NULL);
+        dispatch_queue_set_specific(_historyQueue, kayokoHistoryQueueSpecificKey, kayokoHistoryQueueSpecificKey, NULL);
     }
     return self;
 }
@@ -109,9 +108,9 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     [self performAsync:^{
       NSError *error = nil;
       BOOL success = [[self historyStoreOnQueue] removeItemDictionary:dictionary
-                                                        fromHistoryKey:historyKey
-                                                     shouldRemoveImage:shouldRemoveImage
-                                                                 error:&error];
+                                                       fromHistoryKey:historyKey
+                                                    shouldRemoveImage:shouldRemoveImage
+                                                                error:&error];
       if (!success) {
           NSLog(@"Kayoko: Failed to remove history item: %@", error);
       }
@@ -139,7 +138,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
-                        completion:(void (^)(BOOL success))completion {
+                       completion:(void (^)(BOOL success))completion {
     [self performAsync:^{
       NSError *error = nil;
       BOOL success = [[self historyStoreOnQueue] removeItemsFromHistoryKey:historyKey
@@ -198,7 +197,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 #pragma mark - Queue
 
 - (BOOL)isOnHistoryQueue {
-    return dispatch_get_specific(kKayokoHistoryQueueSpecificKey) == kKayokoHistoryQueueSpecificKey;
+    return dispatch_get_specific(kayokoHistoryQueueSpecificKey) == kayokoHistoryQueueSpecificKey;
 }
 
 - (void)performAsync:(dispatch_block_t)block {

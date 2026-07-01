@@ -11,17 +11,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-static NSString *const kHistoryKeyHistory = @"history";
-static NSString *const kHistoryKeyFavorites = @"favorites";
-static NSString *const kPasteboardManagerHistoryDidChangeNotification = @"com.82flex.kayoko.history.did-change";
-static NSString *const kPasteboardManagerHistoryChangeTypeKey = @"change_type";
-static NSString *const kPasteboardManagerHistoryChangeHistoryKeyKey = @"history_key";
-static NSString *const kPasteboardManagerHistoryChangeItemKey = @"item";
-static NSString *const kPasteboardManagerHistoryChangeLimitKey = @"limit";
-static NSString *const kPasteboardManagerHistoryChangeTypeReload = @"reload";
-static NSString *const kPasteboardManagerHistoryChangeTypeUpsertTop = @"upsert_top";
-static NSString *const kPasteboardManagerHistoryChangeTypeRemove = @"remove";
-static NSString *const kPasteboardManagerHistoryChangeTypeClear = @"clear";
+static NSString *const kKayokoHistoryKeyHistory = @"history";
+static NSString *const kKayokoHistoryKeyFavorites = @"favorites";
+static NSString *const kKayokoPasteboardManagerHistoryDidChangeNotification = @"com.82flex.kayoko.history.did-change";
+static NSString *const kKayokoPasteboardManagerHistoryChangeTypeKey = @"change_type";
+static NSString *const kKayokoPasteboardManagerHistoryChangeHistoryKeyKey = @"history_key";
+static NSString *const kKayokoPasteboardManagerHistoryChangeItemKey = @"item";
+static NSString *const kKayokoPasteboardManagerHistoryChangeLimitKey = @"limit";
+static NSString *const kKayokoPasteboardManagerHistoryChangeTypeReload = @"reload";
+static NSString *const kKayokoPasteboardManagerHistoryChangeTypeUpsertTop = @"upsert_top";
+static NSString *const kKayokoPasteboardManagerHistoryChangeTypeRemove = @"remove";
+static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear";
 
 @interface PasteboardManager : NSObject
 

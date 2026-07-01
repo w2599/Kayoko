@@ -64,7 +64,7 @@ CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, a
     KayokoCorePreloadInitialHistory();
 }
 
-static BOOL KayokoIsHomeScreenController(id controller) {
+static BOOL kayokoIsHomeScreenController(id controller) {
     static Class iconControllerClass = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -73,8 +73,8 @@ static BOOL KayokoIsHomeScreenController(id controller) {
     return iconControllerClass && [controller isKindOfClass:iconControllerClass];
 }
 
-static void KayokoHideForHomeScreenIfVisible(id controller) {
-    if (!KayokoIsHomeScreenController(controller)) {
+static void kayokoHideForHomeScreenIfVisible(id controller) {
+    if (!kayokoIsHomeScreenController(controller)) {
         return;
     }
 
@@ -83,7 +83,7 @@ static void KayokoHideForHomeScreenIfVisible(id controller) {
 
 CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
     CHSuper1(UIViewController, viewWillAppear, animated);
-    KayokoHideForHomeScreenIfVisible(self);
+    kayokoHideForHomeScreenIfVisible(self);
 }
 
 CHOptimizedMethod1(self, void, SBHIconManager, rootFolderControllerViewWillAppear, id, controller) {
@@ -115,7 +115,7 @@ CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWith
     return CHSuper1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, type);
 }
 
-static void KayokoHideForLayoutStateTransition(void) {
+static void kayokoHideForLayoutStateTransition(void) {
     if (!KayokoCorePanelVisible()) {
         return;
     }
@@ -123,7 +123,7 @@ static void KayokoHideForLayoutStateTransition(void) {
     KayokoCoreHide();
 }
 
-static void KayokoHideForAppSwitcherIfVisible(id switcher) {
+static void kayokoHideForAppSwitcherIfVisible(id switcher) {
     if (!KayokoCorePanelVisible()) {
         return;
     }
@@ -144,31 +144,31 @@ CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransiti
                    transitionDidBeginWithTransitionContext, id, context) {
     CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
              transitionDidBeginWithTransitionContext, context);
-    KayokoHideForLayoutStateTransition();
+    kayokoHideForLayoutStateTransition();
 }
 
 CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
                    transitionDidEndWithTransitionContext, id, context) {
     CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
              transitionDidEndWithTransitionContext, context);
-    KayokoHideForAppSwitcherIfVisible(self);
+    kayokoHideForAppSwitcherIfVisible(self);
 }
 
 CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
                    transitionDidBeginWithTransitionContext, id, context) {
     CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
              transitionDidBeginWithTransitionContext, context);
-    KayokoHideForLayoutStateTransition();
+    kayokoHideForLayoutStateTransition();
 }
 
 CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
                    transitionDidEndWithTransitionContext, id, context) {
     CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
              transitionDidEndWithTransitionContext, context);
-    KayokoHideForAppSwitcherIfVisible(self);
+    kayokoHideForAppSwitcherIfVisible(self);
 }
 
-static void KayokoInstallStatusBarHooks(void) {
+static void kayokoInstallStatusBarHooks(void) {
     Class statusBarWindowCls = objc_getClass("UIStatusBarWindow");
     if (@available(iOS 17, *)) {
         statusBarWindowCls = objc_getClass("SBStatusBarWindow");
@@ -178,7 +178,7 @@ static void KayokoInstallStatusBarHooks(void) {
     CHHook1(UIStatusBarWindow, initWithFrame);
 }
 
-static void KayokoInstallHomeScreenHooks(void) {
+static void kayokoInstallHomeScreenHooks(void) {
     Class iconControllerClass = NSClassFromString(@"SBIconController");
     CHLoadClass(UIViewController);
     SEL viewWillAppearSelector = @selector(viewWillAppear:);
@@ -194,7 +194,7 @@ static void KayokoInstallHomeScreenHooks(void) {
     }
 }
 
-static void KayokoInstallLockScreenTransitionHooks(void) {
+static void kayokoInstallLockScreenTransitionHooks(void) {
     Class coverSheetClass = NSClassFromString(@"SBCoverSheetPrimarySlidingViewController");
     CHLoadClass_(&SBCoverSheetPrimarySlidingViewController$, coverSheetClass);
     SEL transitionEndSelector = @selector(_endTransitionToAppeared:);
@@ -203,7 +203,7 @@ static void KayokoInstallLockScreenTransitionHooks(void) {
     }
 }
 
-static void KayokoInstallSpotlightHooks(void) {
+static void kayokoInstallSpotlightHooks(void) {
     Class spotlightClass = NSClassFromString(@"SBSpotlightMultiplexingViewController");
     CHLoadClass_(&SBSpotlightMultiplexingViewController$, spotlightClass);
     SEL viewWillDisappearSelector = @selector(viewWillDisappear:);
@@ -212,7 +212,7 @@ static void KayokoInstallSpotlightHooks(void) {
     }
 }
 
-static void KayokoInstallSystemGestureHooks(void) {
+static void kayokoInstallSystemGestureHooks(void) {
     Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
     CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
     SEL gestureAllowedSelector = @selector(_isGestureWithTypeAllowed:);
@@ -221,7 +221,7 @@ static void KayokoInstallSystemGestureHooks(void) {
     }
 }
 
-static void KayokoInstallAppSwitcherHooks(void) {
+static void kayokoInstallAppSwitcherHooks(void) {
     SEL transitionBeginSelector = @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
     SEL transitionEndSelector = @selector(layoutStateTransitionCoordinator:transitionDidEndWithTransitionContext:);
 
@@ -248,12 +248,12 @@ static void KayokoInstallAppSwitcherHooks(void) {
 }
 
 void KayokoInstallSpringBoardHooks(void) {
-    KayokoInstallStatusBarHooks();
+    kayokoInstallStatusBarHooks();
     CHLoadClass_(&SpringBoard$, NSClassFromString(@"SpringBoard"));
     CHHook1(SpringBoard, applicationDidFinishLaunching);
-    KayokoInstallHomeScreenHooks();
-    KayokoInstallAppSwitcherHooks();
-    KayokoInstallLockScreenTransitionHooks();
-    KayokoInstallSpotlightHooks();
-    KayokoInstallSystemGestureHooks();
+    kayokoInstallHomeScreenHooks();
+    kayokoInstallAppSwitcherHooks();
+    kayokoInstallLockScreenTransitionHooks();
+    kayokoInstallSpotlightHooks();
+    kayokoInstallSystemGestureHooks();
 }

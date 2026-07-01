@@ -29,9 +29,9 @@
         return nil;
     }
 
-    NSString *bundleIdentifier = dictionary[kItemKeyBundleIdentifier];
-    NSString *content = dictionary[kItemKeyContent];
-    NSString *imageName = dictionary[kItemKeyImageName];
+    NSString *bundleIdentifier = dictionary[kKayokoItemKeyBundleIdentifier];
+    NSString *content = dictionary[kKayokoItemKeyContent];
+    NSString *imageName = dictionary[kKayokoItemKeyImageName];
     return [[PasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
                                                  andContent:content
                                              withImageNamed:imageName];
@@ -39,10 +39,10 @@
 
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation {
     return @{
-        kItemKeyBundleIdentifier : [self bundleIdentifier] ?: @"com.apple.springboard",
-        kItemKeyContent : [self content] ?: @"",
-        kItemKeyImageName : [self imageName] ?: @"",
-        kItemKeyHasLink : @([self hasLink])
+        kKayokoItemKeyBundleIdentifier : [self bundleIdentifier] ?: @"com.apple.springboard",
+        kKayokoItemKeyContent : [self content] ?: @"",
+        kKayokoItemKeyImageName : [self imageName] ?: @"",
+        kKayokoItemKeyHasLink : @([self hasLink])
     };
 }
 

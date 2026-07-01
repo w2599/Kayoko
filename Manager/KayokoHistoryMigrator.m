@@ -247,7 +247,7 @@ NS_ASSUME_NONNULL_END
 - (NSDictionary<NSString *, id> *)preparedItemDictionary:(NSDictionary<NSString *, id> *)item
                                                   source:(KayokoHistoryMigrationSource *)source
                                                    error:(NSError **)error {
-    NSString *imageName = [self stringValueFromDictionary:item key:kItemKeyImageName];
+    NSString *imageName = [self stringValueFromDictionary:item key:kKayokoItemKeyImageName];
     if ([imageName length] == 0) {
         return item;
     }
@@ -262,11 +262,11 @@ NS_ASSUME_NONNULL_END
     }
 
     NSMutableDictionary<NSString *, id> *preparedItem = [item mutableCopy];
-    preparedItem[kItemKeyImageName] = migratedImageName;
+    preparedItem[kKayokoItemKeyImageName] = migratedImageName;
 
-    NSString *content = [self stringValueFromDictionary:item key:kItemKeyContent];
+    NSString *content = [self stringValueFromDictionary:item key:kKayokoItemKeyContent];
     if ([content isEqualToString:imageName]) {
-        preparedItem[kItemKeyContent] = migratedImageName;
+        preparedItem[kKayokoItemKeyContent] = migratedImageName;
     }
 
     return preparedItem;

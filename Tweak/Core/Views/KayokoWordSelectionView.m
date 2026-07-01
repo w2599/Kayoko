@@ -2,8 +2,6 @@
 //  KayokoWordSelectionView.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoWordSelectionView.h"
 #import "KayokoWordSelectionTokenizer.h"

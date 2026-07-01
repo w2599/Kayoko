@@ -2,8 +2,6 @@
 //  KayokoWordSelectionView.h
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import <UIKit/UIKit.h>
 

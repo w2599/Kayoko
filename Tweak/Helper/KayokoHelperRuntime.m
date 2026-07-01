@@ -26,7 +26,7 @@ static BOOL kayokoHelperPrefsEnabled = NO;
 static NSUInteger kayokoHelperPrefsActivationMethod = 0;
 static BOOL kayokoHelperPrefsAutomaticallyPaste = NO;
 
-static BOOL applicationIsInForeground = YES;
+static BOOL kayokoApplicationIsInForeground = YES;
 static BOOL kayokoHasCapturedFocusSession = NO;
 static __weak UIResponder *kayokoFirstResponderBeforeShowingKayoko = nil;
 static __weak UIResponder *kayokoKeyboardInputDelegateBeforeShowingKayoko = nil;
@@ -53,18 +53,18 @@ static CFStringRef kayokoHelperNotificationName(NSString *name) { return (__brid
 
 void KayokoHelperPostCoreShow(void) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         kayokoHelperNotificationName(kNotificationKeyCoreShow), nil, nil, YES);
+                                         kayokoHelperNotificationName(kKayokoNotificationKeyCoreShow), nil, nil, YES);
 }
 
 static void kayokoHelperPostCoreHide(void) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         kayokoHelperNotificationName(kNotificationKeyCoreHide), nil, nil, YES);
+                                         kayokoHelperNotificationName(kKayokoNotificationKeyCoreHide), nil, nil, YES);
 }
 
 void KayokoHelperLoadPreferences(void) {
     kayokoHelperPreferences = [[NSUserDefaults alloc]
-        initWithSuiteName:[NSString
-                              stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]];
+        initWithSuiteName:[NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist",
+                                                     kKayokoPreferencesIdentifier]];
 
 #if THEOS_PACKAGE_SCHEME_ROOTHIDE
     libSandy_applyProfile("Kayoko_RootHide");
@@ -73,16 +73,16 @@ void KayokoHelperLoadPreferences(void) {
 #endif
 
     [kayokoHelperPreferences registerDefaults:@{
-        kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
-        kPreferenceKeyActivationMethod : @(kPreferenceKeyActivationMethodDefaultValue),
-        kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue)
+        kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
+        kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
+        kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue)
     }];
 
-    kayokoHelperPrefsEnabled = [[kayokoHelperPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    kayokoHelperPrefsEnabled = [[kayokoHelperPreferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
     kayokoHelperPrefsActivationMethod =
-        [[kayokoHelperPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
+        [[kayokoHelperPreferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
     kayokoHelperPrefsAutomaticallyPaste =
-        [[kayokoHelperPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
+        [[kayokoHelperPreferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
 }
 
 BOOL KayokoHelperIsKeyboardExtensionProcess(void) {
@@ -205,8 +205,7 @@ static BOOL kayokoHelperCapturedFocusSessionMatchesKeyWindow(UIWindow *keyWindow
 }
 
 static BOOL kayokoHelperRestoreCapturedFocusSessionInKeyWindow(UIWindow *keyWindow) {
-    if (!keyWindow || !kayokoHasCapturedFocusSession ||
-        !kayokoHelperCapturedFocusSessionMatchesKeyWindow(keyWindow)) {
+    if (!keyWindow || !kayokoHasCapturedFocusSession || !kayokoHelperCapturedFocusSessionMatchesKeyWindow(keyWindow)) {
         return NO;
     }
 
@@ -246,7 +245,7 @@ void KayokoHelperRestoreCapturedFirstResponder(void) {
 void KayokoHelperOpenKayokoFromResponder(id self, SEL _cmd) {
     if ([self isKindOfClass:[UIResponder class]]) {
         kayokoHelperCaptureFocusSessionFromResponder(self,
-                                                    kayokoHelperActiveKeyWindow([UIApplication sharedApplication]));
+                                                     kayokoHelperActiveKeyWindow([UIApplication sharedApplication]));
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -255,7 +254,7 @@ void KayokoHelperOpenKayokoFromResponder(id self, SEL _cmd) {
 }
 
 void KayokoHelperPaste(void) {
-    if (!applicationIsInForeground) {
+    if (!kayokoApplicationIsInForeground) {
         return;
     }
 
@@ -268,12 +267,13 @@ void KayokoHelperPaste(void) {
 
     dispatch_async(dispatch_get_main_queue(), ^{
       UIApplication *activeApplication = [UIApplication sharedApplication];
-      if (!applicationIsInForeground || !kayokoHelperApplicationHasActiveKeyWindow(activeApplication)) {
+      if (!kayokoApplicationIsInForeground || !kayokoHelperApplicationHasActiveKeyWindow(activeApplication)) {
           return;
       }
 
       CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                           kayokoHelperNotificationName(kNotificationKeyPasteWillStart), nil, nil, YES);
+                                           kayokoHelperNotificationName(kKayokoNotificationKeyPasteWillStart), nil, nil,
+                                           YES);
       UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
       if (![pasteboard string] && ![pasteboard image]) {
           PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
@@ -304,17 +304,17 @@ CHOptimizedMethod0(self, void, UIKBInputBackdropView, didMoveToWindow) {
 
 CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationDidBecomeActive, BOOL, didBecomeActive) {
     CHSuper1(UIKeyboardImpl, applicationDidBecomeActive, didBecomeActive);
-    applicationIsInForeground = YES;
+    kayokoApplicationIsInForeground = YES;
 }
 
 CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillResignActive, BOOL, willResignActive) {
     CHSuper1(UIKeyboardImpl, applicationWillResignActive, willResignActive);
-    applicationIsInForeground = NO;
+    kayokoApplicationIsInForeground = NO;
 }
 
 CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillSuspend, BOOL, willSuspend) {
     CHSuper1(UIKeyboardImpl, applicationWillSuspend, willSuspend);
-    applicationIsInForeground = NO;
+    kayokoApplicationIsInForeground = NO;
 }
 
 void KayokoHelperInstallRuntimeHooks(void) {
@@ -357,22 +357,25 @@ void KayokoHelperInstallRuntimeObservers(void) {
     if (KayokoHelperAutomaticallyPasteEnabled()) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
                                         (CFNotificationCallback)KayokoHelperPaste,
-                                        kayokoHelperNotificationName(kNotificationKeyHelperPaste), NULL,
+                                        kayokoHelperNotificationName(kKayokoNotificationKeyHelperPaste), NULL,
                                         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDrop);
     }
 
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                    (CFNotificationCallback)KayokoHelperCaptureCurrentFirstResponder,
-                                    kayokoHelperNotificationName(kNotificationKeyCoreShow), NULL,
-                                    (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                    (CFNotificationCallback)KayokoHelperCaptureCurrentFirstResponder,
-                                    kayokoHelperNotificationName(kLegacyNotificationKeyCoreShow), NULL,
-                                    (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                    (CFNotificationCallback)KayokoHelperRestoreCapturedFirstResponder,
-                                    kayokoHelperNotificationName(kNotificationKeyHelperRestoreFocus), NULL,
-                                    (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+        (CFNotificationCallback)KayokoHelperCaptureCurrentFirstResponder,
+        kayokoHelperNotificationName(kKayokoNotificationKeyCoreShow), NULL,
+        (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+        (CFNotificationCallback)KayokoHelperCaptureCurrentFirstResponder,
+        kayokoHelperNotificationName(kKayokoLegacyNotificationKeyCoreShow), NULL,
+        (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+        (CFNotificationCallback)KayokoHelperRestoreCapturedFirstResponder,
+        kayokoHelperNotificationName(kKayokoNotificationKeyHelperRestoreFocus), NULL,
+        (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 
     static KayokoKeyboardObserver *observer;
     observer = [[KayokoKeyboardObserver alloc] init];

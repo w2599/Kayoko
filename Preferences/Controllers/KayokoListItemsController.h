@@ -2,8 +2,6 @@
 //  KayokoListItemsController.h
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import <Preferences/PSListItemsController.h>
 

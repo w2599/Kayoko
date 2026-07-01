@@ -44,8 +44,8 @@ NS_ASSUME_NONNULL_END
 
     NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[NSMutableArray alloc] init];
     for (NSDictionary<NSString *, id> *item in items) {
-        NSString *imageName = item[kItemKeyImageName];
-        NSString *content = item[kItemKeyContent];
+        NSString *imageName = item[kKayokoItemKeyImageName];
+        NSString *content = item[kKayokoItemKeyContent];
         if ([imageName length] > 0 || [content rangeOfString:searchText
                                                      options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
                                               .location == NSNotFound) {
@@ -69,14 +69,14 @@ NS_ASSUME_NONNULL_END
 
 - (NSUInteger)indexOfItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
                                     inItems:(NSArray<NSDictionary<NSString *, id> *> *)items {
-    NSString *content = dictionary[kItemKeyContent];
+    NSString *content = dictionary[kKayokoItemKeyContent];
     if ([content length] == 0) {
         return NSNotFound;
     }
 
     for (NSUInteger index = 0; index < [items count]; index++) {
         NSDictionary<NSString *, id> *item = items[index];
-        if ([item[kItemKeyContent] isEqualToString:content]) {
+        if ([item[kKayokoItemKeyContent] isEqualToString:content]) {
             return index;
         }
     }

@@ -64,9 +64,9 @@ CHDeclareClass(UIKeyboardAutocorrectionController);
 CHDeclareClass(UIPredictionViewController);
 CHDeclareClass(UIKeyboardLayoutStar);
 
-static BOOL shouldShowCustomSuggestions = NO;
+static BOOL kayokoShouldShowCustomSuggestions = NO;
 
-static TIAutocorrectionList *KayokoCreateAutocorrectionList(void) {
+static TIAutocorrectionList *kayokoCreateAutocorrectionList(void) {
     NSArray<NSString *> *labels = @[ @"History", @"Copy", @"Paste" ];
     NSMutableArray<TIZephyrCandidate *> *candidates = [[NSMutableArray alloc] init];
     for (NSString *label in labels) {
@@ -84,8 +84,8 @@ static TIAutocorrectionList *KayokoCreateAutocorrectionList(void) {
 
 CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setTextSuggestionList, TIAutocorrectionList *,
                    textSuggestionList) {
-    if (shouldShowCustomSuggestions) {
-        CHSuper1(UIKeyboardAutocorrectionController, setTextSuggestionList, KayokoCreateAutocorrectionList());
+    if (kayokoShouldShowCustomSuggestions) {
+        CHSuper1(UIKeyboardAutocorrectionController, setTextSuggestionList, kayokoCreateAutocorrectionList());
     } else {
         CHSuper1(UIKeyboardAutocorrectionController, setTextSuggestionList, textSuggestionList);
     }
@@ -93,8 +93,8 @@ CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setTextSugges
 
 CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setAutocorrectionList, TIAutocorrectionList *,
                    autoCorrectionList) {
-    if (shouldShowCustomSuggestions) {
-        CHSuper1(UIKeyboardAutocorrectionController, setAutocorrectionList, KayokoCreateAutocorrectionList());
+    if (kayokoShouldShowCustomSuggestions) {
+        CHSuper1(UIKeyboardAutocorrectionController, setAutocorrectionList, kayokoCreateAutocorrectionList());
     } else {
         CHSuper1(UIKeyboardAutocorrectionController, setAutocorrectionList, autoCorrectionList);
     }
@@ -141,8 +141,8 @@ CHOptimizedMethod2(self, BOOL, UIPredictionViewController, isVisibleForInputDele
 CHOptimizedMethod1(self, void, UIKeyboardLayoutStar, setKeyplaneName, NSString *, name) {
     CHSuper1(UIKeyboardLayoutStar, setKeyplaneName, name);
 
-    shouldShowCustomSuggestions = [name isEqualToString:@"numbers-and-punctuation"] ||
-                                  [name isEqualToString:@"numbers-and-punctuation-alternate"];
+    kayokoShouldShowCustomSuggestions = [name isEqualToString:@"numbers-and-punctuation"] ||
+                                        [name isEqualToString:@"numbers-and-punctuation-alternate"];
 
     if (@available(iOS 15.0, *)) {
         [[[objc_getClass("UIKeyboardImpl") activeInstance] autocorrectionController] setAutocorrectionList:nil];

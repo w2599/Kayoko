@@ -13,7 +13,7 @@
 // Word selection creates one button per token; CJK text can approach one token per character.
 static NSUInteger const kKayokoWordSelectionMaximumTextLength = 5000;
 
-static NSString *KayokoWordSelectionTextByTrimmingBoundaryNewlines(NSString *text) {
+static NSString *kayokoWordSelectionTextByTrimmingBoundaryNewlines(NSString *text) {
     return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
 }
 
@@ -102,17 +102,17 @@ NS_ASSUME_NONNULL_END
     [self setSourceItem:item];
     [self setSourceHistoryKey:sourceHistoryKey];
 
-    NSString *text = KayokoWordSelectionTextByTrimmingBoundaryNewlines([item content]);
+    NSString *text = kayokoWordSelectionTextByTrimmingBoundaryNewlines([item content]);
     [[self wordSelectionView] setText:text];
     [[self wordSelectionView] setHidden:NO];
 
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:@"arrowshape.turn.up.backward"
-                        andImageSize:kFavoritesButtonImageSize
+                        andImageSize:kKayokoFavoritesButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [self updateStyleForHeaderButton:[self backButton]
                        withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")andImageSize
-                                    :kBackButtonImageSize
+                                    :kKayokoBackButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [[self favoritesButton]
         setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
@@ -145,7 +145,7 @@ NS_ASSUME_NONNULL_END
     PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[sourceItem bundleIdentifier]
                                                                          andContent:text
                                                                      withImageNamed:@""];
-    NSString *historyKey = [self sourceHistoryKey] ?: kHistoryKeyHistory;
+    NSString *historyKey = [self sourceHistoryKey] ?: kKayokoHistoryKeyHistory;
     if (automaticallyPaste) {
         [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
                                                                      historyItem:sourceItem
@@ -154,7 +154,7 @@ NS_ASSUME_NONNULL_END
     } else {
         PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
         if ([pasteboardManager copyPasteboardItemToPasteboard:selectedItem]) {
-            [pasteboardManager addPasteboardItem:selectedItem toHistoryWithKey:kHistoryKeyHistory];
+            [pasteboardManager addPasteboardItem:selectedItem toHistoryWithKey:kKayokoHistoryKeyHistory];
         }
     }
 
@@ -183,12 +183,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
-    BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
+    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
     UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:imageName
-                        andImageSize:kFavoritesButtonImageSize
+                        andImageSize:kKayokoFavoritesButtonImageSize
                         andTintColor:tintColor];
 }
 

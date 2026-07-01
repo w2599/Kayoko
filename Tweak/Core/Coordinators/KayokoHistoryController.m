@@ -31,15 +31,15 @@ NS_ASSUME_NONNULL_END
                       favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController {
     self = [super init];
     if (self) {
-        _activeHistoryKey = kHistoryKeyHistory;
+        _activeHistoryKey = kKayokoHistoryKeyHistory;
         _loadedHistoryKeys = [[NSMutableSet alloc] init];
-        _dirtyHistoryKeys = [NSMutableSet setWithObjects:kHistoryKeyHistory, kHistoryKeyFavorites, nil];
+        _dirtyHistoryKeys = [NSMutableSet setWithObjects:kKayokoHistoryKeyHistory, kKayokoHistoryKeyFavorites, nil];
         _historyListViewController = historyListViewController;
         _favoritesListViewController = favoritesListViewController;
 
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(handleLocalHistoryChangeNotification:)
-                                                     name:kPasteboardManagerHistoryDidChangeNotification
+                                                     name:kKayokoPasteboardManagerHistoryDidChangeNotification
                                                    object:nil];
     }
     return self;
@@ -50,12 +50,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSString *)effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:(NSString *)clearConfirmationHistoryKey {
-    return clearConfirmationHistoryKey ?: [self activeHistoryKey] ?: kHistoryKeyHistory;
+    return clearConfirmationHistoryKey ?: [self activeHistoryKey] ?: kKayokoHistoryKeyHistory;
 }
 
 - (KayokoHistoryListViewController *)listViewControllerForHistoryKey:(NSString *)historyKey {
-    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesListViewController]
-                                                             : [self historyListViewController];
+    return [historyKey isEqualToString:kKayokoHistoryKeyFavorites] ? [self favoritesListViewController]
+                                                                   : [self historyListViewController];
 }
 
 - (KayokoHistoryListView *)tableViewForHistoryKey:(NSString *)historyKey {
@@ -91,12 +91,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)markAllHistoryKeysDirty {
-    [self markHistoryKeyDirty:kHistoryKeyHistory];
-    [self markHistoryKeyDirty:kHistoryKeyFavorites];
+    [self markHistoryKeyDirty:kKayokoHistoryKeyHistory];
+    [self markHistoryKeyDirty:kKayokoHistoryKeyFavorites];
 }
 
 - (NSUInteger)limitForHistoryKey:(NSString *)historyKey {
-    if ([historyKey isEqualToString:kHistoryKeyFavorites]) {
+    if ([historyKey isEqualToString:kKayokoHistoryKeyFavorites]) {
         return NSUIntegerMax;
     }
     return [[PasteboardManager sharedInstance] maximumHistoryAmount];
@@ -131,9 +131,9 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeClear]) {
+    if ([changeType isEqualToString:kKayokoPasteboardManagerHistoryChangeTypeClear]) {
         [listViewController clearItems];
-    } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeUpsertTop]) {
+    } else if ([changeType isEqualToString:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop]) {
         if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:historyKey listViewController:listViewController]) {
             [self markHistoryKeyDirty:historyKey];
             return;
@@ -141,7 +141,7 @@ NS_ASSUME_NONNULL_END
         [listViewController upsertItemDictionaryAtTop:dictionary
                                                 limit:(limit ?: [self limitForHistoryKey:historyKey])animating
                                                      :[self shouldAnimateUpdatesForHistoryKey:historyKey]];
-    } else if ([changeType isEqualToString:kPasteboardManagerHistoryChangeTypeRemove]) {
+    } else if ([changeType isEqualToString:kKayokoPasteboardManagerHistoryChangeTypeRemove]) {
         [listViewController removeItemDictionary:dictionary];
     } else {
         [self markHistoryKeyDirty:historyKey];
@@ -157,13 +157,13 @@ NS_ASSUME_NONNULL_END
 - (void)handleLocalHistoryChangeNotification:(NSNotification *)notification {
     [self setPendingLocalHistoryChangeNotificationCount:[self pendingLocalHistoryChangeNotificationCount] + 1];
     NSDictionary<NSString *, id> *userInfo = [notification userInfo];
-    NSString *historyKey = userInfo[kPasteboardManagerHistoryChangeHistoryKeyKey];
+    NSString *historyKey = userInfo[kKayokoPasteboardManagerHistoryChangeHistoryKeyKey];
     NSString *changeType =
-        userInfo[kPasteboardManagerHistoryChangeTypeKey] ?: kPasteboardManagerHistoryChangeTypeReload;
-    NSDictionary<NSString *, id> *dictionary = userInfo[kPasteboardManagerHistoryChangeItemKey];
-    NSUInteger limit = [userInfo[kPasteboardManagerHistoryChangeLimitKey] unsignedIntegerValue];
+        userInfo[kKayokoPasteboardManagerHistoryChangeTypeKey] ?: kKayokoPasteboardManagerHistoryChangeTypeReload;
+    NSDictionary<NSString *, id> *dictionary = userInfo[kKayokoPasteboardManagerHistoryChangeItemKey];
+    NSUInteger limit = [userInfo[kKayokoPasteboardManagerHistoryChangeLimitKey] unsignedIntegerValue];
 
-    if ([historyKey length] == 0 || [changeType isEqualToString:kPasteboardManagerHistoryChangeTypeReload]) {
+    if ([historyKey length] == 0 || [changeType isEqualToString:kKayokoPasteboardManagerHistoryChangeTypeReload]) {
         [self markAllHistoryKeysDirty];
         if ([[self delegate] historyControllerIsPanelVisible:self]) {
             [[self delegate] historyControllerNeedsVisibleReload:self];
@@ -228,11 +228,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)preloadHistoryWithCompletion:(void (^)(void))completion {
-    [self loadTableViewForHistoryKey:kHistoryKeyHistory
+    [self loadTableViewForHistoryKey:kKayokoHistoryKeyHistory
               animatingTopInsertions:NO
                     notifiesDelegate:NO
                           completion:^(__unused KayokoHistoryListView *historyTableView) {
-                            [self loadTableViewForHistoryKey:kHistoryKeyFavorites
+                            [self loadTableViewForHistoryKey:kKayokoHistoryKeyFavorites
                                       animatingTopInsertions:NO
                                             notifiesDelegate:NO
                                                   completion:^(__unused KayokoHistoryListView *favoritesTableView) {

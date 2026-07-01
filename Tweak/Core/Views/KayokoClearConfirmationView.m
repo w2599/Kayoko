@@ -2,8 +2,6 @@
 //  KayokoClearConfirmationView.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoClearConfirmationView.h"
 #import "PasteboardManager.h"
@@ -104,8 +102,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateWithHistoryKey:(NSString *)historyKey {
-    NSString *localizationKey = [historyKey isEqualToString:kHistoryKeyFavorites] ? @"Clear Favorites Confirmation"
-                                                                                  : @"Clear History Confirmation";
+    NSString *localizationKey = [historyKey isEqualToString:kKayokoHistoryKeyFavorites]
+                                    ? @"Clear Favorites Confirmation"
+                                    : @"Clear History Confirmation";
     [[self confirmationLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:localizationKey
                                                                                               value:nil
                                                                                               table:@"Tweak"]];

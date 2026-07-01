@@ -21,7 +21,7 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
-static NSString *KayokoMainPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
+static NSString *kayokoMainPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
     return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
 }
 
@@ -84,7 +84,7 @@ NS_ASSUME_NONNULL_END
             initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"History"
                                                                                  value:nil
                                                                                  table:@"Tweak"]
-              historyKey:kHistoryKeyHistory];
+              historyKey:kKayokoHistoryKeyHistory];
         [_historyListViewController setDelegate:self];
         [self addChildViewController:_historyListViewController];
         [_mainView installContentView:[_historyListViewController tableView] hidden:NO];
@@ -94,7 +94,7 @@ NS_ASSUME_NONNULL_END
             initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
                                                                                  value:nil
                                                                                  table:@"Tweak"]
-              historyKey:kHistoryKeyFavorites];
+              historyKey:kKayokoHistoryKeyFavorites];
         [_favoritesListViewController setDelegate:self];
         [self addChildViewController:_favoritesListViewController];
         [_mainView installContentView:[_favoritesListViewController tableView] hidden:YES];
@@ -132,11 +132,11 @@ NS_ASSUME_NONNULL_END
         [_clearConfirmationViewController didMoveToParentViewController:self];
 
         _historyEmptyStateView = [[KayokoEmptyStateView alloc] init];
-        [_historyEmptyStateView updateWithHistoryKey:kHistoryKeyHistory];
+        [_historyEmptyStateView updateWithHistoryKey:kKayokoHistoryKeyHistory];
         [_mainView installContentView:_historyEmptyStateView hidden:YES];
 
         _favoritesEmptyStateView = [[KayokoEmptyStateView alloc] init];
-        [_favoritesEmptyStateView updateWithHistoryKey:kHistoryKeyFavorites];
+        [_favoritesEmptyStateView updateWithHistoryKey:kKayokoHistoryKeyFavorites];
         [_mainView installContentView:_favoritesEmptyStateView hidden:YES];
 
         _previewViewController =
@@ -312,8 +312,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (KayokoEmptyStateView *)emptyStateViewForHistoryKey:(NSString *)historyKey {
-    return [historyKey isEqualToString:kHistoryKeyFavorites] ? [self favoritesEmptyStateView]
-                                                             : [self historyEmptyStateView];
+    return [historyKey isEqualToString:kKayokoHistoryKeyFavorites] ? [self favoritesEmptyStateView]
+                                                                   : [self historyEmptyStateView];
 }
 
 - (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
@@ -542,12 +542,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
-    BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
+    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
     UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     [[self mainView] updateStyleForHeaderButton:[[self mainView] favoritesButton]
                                   withImageName:imageName
-                                   andImageSize:kFavoritesButtonImageSize
+                                   andImageSize:kKayokoFavoritesButtonImageSize
                                    andTintColor:tintColor];
 }
 
@@ -644,8 +644,8 @@ NS_ASSUME_NONNULL_END
     }
 
     NSString *historyKey = [self effectiveActiveHistoryKey];
-    BOOL showingFavorites = [historyKey isEqualToString:kHistoryKeyFavorites];
-    NSString *targetKey = showingFavorites ? kHistoryKeyHistory : kHistoryKeyFavorites;
+    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
+    NSString *targetKey = showingFavorites ? kKayokoHistoryKeyHistory : kKayokoHistoryKeyFavorites;
     UIView *viewToHide = [self activeHistoryContentView];
     KayokoContentTransitionDirection direction = showingFavorites ? KayokoContentTransitionDirectionSiblingBackward
                                                                   : KayokoContentTransitionDirectionSiblingForward;
@@ -759,7 +759,7 @@ NS_ASSUME_NONNULL_END
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];
     [self setActiveSourceContentView:sourceTableView];
-    NSString *previewText = KayokoMainPreviewTextByTrimmingBoundaryNewlines([item content]);
+    NSString *previewText = kayokoMainPreviewTextByTrimmingBoundaryNewlines([item content]);
     BOOL canUseWordSelection = [self swipeToSelectWords] && [[item imageName] isEqualToString:@""] &&
                                [[self wordSelectionViewController] canShowText:previewText];
     if (canUseWordSelection) {
@@ -862,7 +862,7 @@ NS_ASSUME_NONNULL_END
 - (void)reload {
     NSString *historyKey = [self effectiveActiveHistoryKey];
     [self reloadTableViewForHistoryKey:historyKey
-                animatingTopInsertions:![self isHidden] && [historyKey isEqualToString:kHistoryKeyHistory]
+                animatingTopInsertions:![self isHidden] && [historyKey isEqualToString:kKayokoHistoryKeyHistory]
                             completion:^(KayokoHistoryListView *tableView) {
                               if (![[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
                                   return;

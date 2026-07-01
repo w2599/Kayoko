@@ -40,17 +40,17 @@ static BOOL kayokoPrefsPlayHapticFeedback = NO;
 static NSUInteger kayokoPrefsPreviewLineCount = 1;
 static CGFloat kayokoPrefsHeightInPoints = 420;
 
-static BOOL isInPasteProgress = NO;
-static NSTimeInterval lastPasteFeedbackOccurred = 0;
-static NSTimeInterval lastCopyFeedbackOccurred = 0;
+static BOOL kayokoIsInPasteProgress = NO;
+static NSTimeInterval kayokoLastPasteFeedbackOccurred = 0;
+static NSTimeInterval kayokoLastCopyFeedbackOccurred = 0;
 static AVAudioPlayer *copySoundPlayer = nil;
 static AVAudioPlayer *pasteSoundPlayer = nil;
-static BOOL didPreparePasteboardQueue = NO;
-static BOOL pendingHeightPreferenceApply = NO;
-static BOOL didRequestInitialHistoryPreload = NO;
+static BOOL kayokoDidPreparePasteboardQueue = NO;
+static BOOL kayokoPendingHeightPreferenceApply = NO;
+static BOOL kayokoDidRequestInitialHistoryPreload = NO;
 static int kayokoLockStateToken = 0;
 
-static void KayokoCoreApplyPreferencesToView(void);
+static void kayokoCoreApplyPreferencesToView(void);
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -91,9 +91,9 @@ BOOL KayokoCoreFullscreenSearchActive(void) {
     return KayokoCorePanelVisible() && [kayokoMainViewController isFullscreenSearchActive];
 }
 
-static void KayokoCoreRequestHelperFocusRestore(void) {
+static void kayokoCoreRequestHelperFocusRestore(void) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyHelperRestoreFocus, nil, nil, YES);
+                                         (CFStringRef)kKayokoNotificationKeyHelperRestoreFocus, nil, nil, YES);
 }
 
 void KayokoCoreInstallPanelInStatusBarWindow(UIWindow *window) {
@@ -114,18 +114,18 @@ void KayokoCoreInstallPanelInStatusBarWindow(UIWindow *window) {
         [[KayokoMainViewController alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
                                                                    bounds.size.width, kayokoPrefsHeightInPoints)];
     [kayokoMainViewController setFocusRestoreRequestHandler:^{
-      KayokoCoreRequestHelperFocusRestore();
+      kayokoCoreRequestHelperFocusRestore();
     }];
     [kayokoMainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
-    KayokoCoreApplyPreferencesToView();
+    kayokoCoreApplyPreferencesToView();
     [window addSubview:[kayokoMainViewController view]];
-    if (didRequestInitialHistoryPreload) {
+    if (kayokoDidRequestInitialHistoryPreload) {
         [kayokoMainViewController preloadHistoryIfNeeded];
     }
 }
 
 void KayokoCorePreloadInitialHistory(void) {
-    didRequestInitialHistoryPreload = YES;
+    kayokoDidRequestInitialHistoryPreload = YES;
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
     [pasteboardManager prepareHistoryStore];
@@ -134,7 +134,7 @@ void KayokoCorePreloadInitialHistory(void) {
     }
 }
 
-static void KayokoCoreApplyHeightPreferenceToView(BOOL applyWhenHidden) {
+static void kayokoCoreApplyHeightPreferenceToView(BOOL applyWhenHidden) {
     if (!kayokoMainViewController) {
         return;
     }
@@ -157,7 +157,7 @@ static void KayokoCoreApplyHeightPreferenceToView(BOOL applyWhenHidden) {
     }
 }
 
-static void KayokoCoreApplyPreferencesToView(void) {
+static void kayokoCoreApplyPreferencesToView(void) {
     if (!kayokoMainViewController) {
         return;
     }
@@ -178,50 +178,52 @@ static void KayokoCoreApplyPreferencesToView(void) {
         [kayokoMainViewController setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
     }
 
-    KayokoCoreApplyHeightPreferenceToView(YES);
+    kayokoCoreApplyHeightPreferenceToView(YES);
 }
 
 void KayokoCoreLoadPreferences(void) {
-    kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
 
     [kayokoPreferences registerDefaults:@{
-        kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
-        kPreferenceKeyActivationMethod : @(kPreferenceKeyActivationMethodDefaultValue),
-        kPreferenceKeyMaximumHistoryAmount : @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
-        kPreferenceKeySaveText : @(kPreferenceKeySaveTextDefaultValue),
-        kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
-        kPreferenceKeySwipeToSelectWords : @(kPreferenceKeySwipeToSelectWordsDefaultValue),
-        kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
-        kPreferenceKeyDismissOnOutsideTouch : @(kPreferenceKeyDismissOnOutsideTouchDefaultValue),
-        kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
-        kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
-        kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
-        kPreferenceKeyPreviewLineCount : @(kPreferenceKeyPreviewLineCountDefaultValue),
-        kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
+        kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
+        kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
+        kKayokoPreferenceKeyMaximumHistoryAmount : @(kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue),
+        kKayokoPreferenceKeySaveText : @(kKayokoPreferenceKeySaveTextDefaultValue),
+        kKayokoPreferenceKeySaveImages : @(kKayokoPreferenceKeySaveImagesDefaultValue),
+        kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
+        kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
+        kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
+        kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
+        kKayokoPreferenceKeyPlaySoundEffects : @(kKayokoPreferenceKeyPlaySoundEffectsDefaultValue),
+        kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue),
+        kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
+        kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
     }];
 
-    kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
     kayokoHelperPrefsActivationMethod =
-        [[kayokoPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
+        [[kayokoPreferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
     kayokoPrefsMaximumHistoryAmount = [PasteboardManager
-        normalizedMaximumHistoryAmountForValue:[[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount]
+        normalizedMaximumHistoryAmountForValue:[[kayokoPreferences
+                                                   objectForKey:kKayokoPreferenceKeyMaximumHistoryAmount]
                                                    unsignedIntegerValue]];
-    kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
-    kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
-    kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];
-    kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
-    kayokoPrefsDismissOnOutsideTouch = [[kayokoPreferences objectForKey:kPreferenceKeyDismissOnOutsideTouch] boolValue];
-    kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
-    kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
-    kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
+    kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kKayokoPreferenceKeySaveText] boolValue];
+    kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kKayokoPreferenceKeySaveImages] boolValue];
+    kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kKayokoPreferenceKeySwipeToSelectWords] boolValue];
+    kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
+    kayokoPrefsDismissOnOutsideTouch =
+        [[kayokoPreferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
+    kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyDisablePasteTips] boolValue];
+    kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyPlaySoundEffects] boolValue];
+    kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     kayokoPrefsPreviewLineCount =
-        [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
-    kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
+        [[kayokoPreferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
+    kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
-    if (!didPreparePasteboardQueue) {
+    if (!kayokoDidPreparePasteboardQueue) {
         [pasteboardManager preparePasteboardQueue];
-        didPreparePasteboardQueue = YES;
+        kayokoDidPreparePasteboardQueue = YES;
     }
     if ([pasteboardManager maximumHistoryAmount] != kayokoPrefsMaximumHistoryAmount) {
         [pasteboardManager setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
@@ -236,27 +238,27 @@ void KayokoCoreLoadPreferences(void) {
         [pasteboardManager setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
     }
 
-    KayokoCoreApplyPreferencesToView();
+    kayokoCoreApplyPreferencesToView();
 }
 
 void KayokoCoreLoadHeightPreference(void) {
-    NSUserDefaults *heightPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    NSUserDefaults *heightPreferences = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
     [heightPreferences registerDefaults:@{
-        kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
+        kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
     }];
-    kayokoPrefsHeightInPoints = [[heightPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
-    if (pendingHeightPreferenceApply) {
+    kayokoPrefsHeightInPoints = [[heightPreferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
+    if (kayokoPendingHeightPreferenceApply) {
         return;
     }
 
-    pendingHeightPreferenceApply = YES;
+    kayokoPendingHeightPreferenceApply = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
-      pendingHeightPreferenceApply = NO;
-      KayokoCoreApplyHeightPreferenceToView(NO);
+      kayokoPendingHeightPreferenceApply = NO;
+      kayokoCoreApplyHeightPreferenceToView(NO);
     });
 }
 
-static BOOL KayokoCoreReadUILocked(BOOL *locked) {
+static BOOL kayokoCoreReadUILocked(BOOL *locked) {
     Class managerClass = NSClassFromString(@"SBLockScreenManager");
     if (![managerClass respondsToSelector:@selector(sharedInstance)]) {
         return NO;
@@ -273,7 +275,7 @@ static BOOL KayokoCoreReadUILocked(BOOL *locked) {
     return YES;
 }
 
-static BOOL KayokoCoreFrontmostAppIsLandscape(void) {
+static BOOL kayokoCoreFrontmostAppIsLandscape(void) {
     UIApplication *application = [UIApplication sharedApplication];
     if (![application respondsToSelector:@selector(_frontMostAppOrientation)]) {
         return NO;
@@ -283,7 +285,7 @@ static BOOL KayokoCoreFrontmostAppIsLandscape(void) {
     return UIInterfaceOrientationIsLandscape(orientation);
 }
 
-static AVAudioPlayer *KayokoCoreAudioPlayerForSound(NSString *soundName) {
+static AVAudioPlayer *kayokoCoreAudioPlayerForSound(NSString *soundName) {
     NSError *error = nil;
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient
                                      withOptions:AVAudioSessionCategoryOptionMixWithOthers
@@ -306,9 +308,9 @@ static AVAudioPlayer *KayokoCoreAudioPlayerForSound(NSString *soundName) {
     return player;
 }
 
-static AVAudioPlayer *KayokoCorePlayFeedbackSound(AVAudioPlayer *player, NSString *soundName) {
+static AVAudioPlayer *kayokoCorePlayFeedbackSound(AVAudioPlayer *player, NSString *soundName) {
     if (!player) {
-        player = KayokoCoreAudioPlayerForSound(soundName);
+        player = kayokoCoreAudioPlayerForSound(soundName);
     }
 
     [player setCurrentTime:0];
@@ -316,42 +318,42 @@ static AVAudioPlayer *KayokoCorePlayFeedbackSound(AVAudioPlayer *player, NSStrin
     return player;
 }
 
-static void KayokoCorePlaySuccessHapticFeedbackIfNeeded(void) {
+static void kayokoCorePlaySuccessHapticFeedbackIfNeeded(void) {
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
     }
 }
 
-static void KayokoCorePlayFailureHapticFeedbackIfNeeded(void) {
+static void kayokoCorePlayFailureHapticFeedbackIfNeeded(void) {
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1521);
     }
 }
 
-void KayokoCorePasteWillStart(void) { isInPasteProgress = YES; }
+void KayokoCorePasteWillStart(void) { kayokoIsInPasteProgress = YES; }
 
-static void KayokoCoreCopyNow(void) {
+static void kayokoCoreCopyNow(void) {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
-    if (isInPasteProgress) {
+    if (kayokoIsInPasteProgress) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-          isInPasteProgress = NO;
+          kayokoIsInPasteProgress = NO;
         });
         return;
     }
     NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastCopyFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
+    if (fabs(now - kayokoLastCopyFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
         return;
     }
-    lastCopyFeedbackOccurred = now;
+    kayokoLastCopyFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
-        copySoundPlayer = KayokoCorePlayFeedbackSound(copySoundPlayer, @"Copy");
+        copySoundPlayer = kayokoCorePlayFeedbackSound(copySoundPlayer, @"Copy");
     }
-    KayokoCorePlaySuccessHapticFeedbackIfNeeded();
+    kayokoCorePlaySuccessHapticFeedbackIfNeeded();
 }
 
 void KayokoCoreCopy(void) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-      KayokoCoreCopyNow();
+      kayokoCoreCopyNow();
     });
 }
 
@@ -361,17 +363,17 @@ void KayokoCoreShow(void) {
     }
 
     BOOL locked = NO;
-    if (KayokoCoreReadUILocked(&locked) && locked) {
-        KayokoCorePlayFailureHapticFeedbackIfNeeded();
+    if (kayokoCoreReadUILocked(&locked) && locked) {
+        kayokoCorePlayFailureHapticFeedbackIfNeeded();
         return;
     }
 
-    if (KayokoCoreFrontmostAppIsLandscape()) {
-        KayokoCorePlayFailureHapticFeedbackIfNeeded();
+    if (kayokoCoreFrontmostAppIsLandscape()) {
+        kayokoCorePlayFailureHapticFeedbackIfNeeded();
         return;
     }
 
-    KayokoCoreApplyHeightPreferenceToView(YES);
+    kayokoCoreApplyHeightPreferenceToView(YES);
     [kayokoMainViewController applyUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
 
     SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
@@ -380,8 +382,8 @@ void KayokoCoreShow(void) {
         if (styleRequest) {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
-            [kayokoMainViewController applyUserInterfaceStyle:isKindOfDark ? UIUserInterfaceStyleDark
-                                                                           : UIUserInterfaceStyleLight];
+            [kayokoMainViewController
+                applyUserInterfaceStyle:isKindOfDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight];
         }
     }
 
@@ -392,15 +394,15 @@ void KayokoCoreShow(void) {
         if (styleRequest) {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
-            [kayokoMainViewController applyUserInterfaceStyle:isKindOfDark ? UIUserInterfaceStyleDark
-                                                                           : UIUserInterfaceStyleLight];
+            [kayokoMainViewController
+                applyUserInterfaceStyle:isKindOfDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight];
         }
     }
 
     [kayokoMainViewController show];
 
     if (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey) {
-        KayokoCorePlaySuccessHapticFeedbackIfNeeded();
+        kayokoCorePlaySuccessHapticFeedbackIfNeeded();
     }
 }
 
@@ -426,19 +428,19 @@ void KayokoCoreReload(void) {
 
 void KayokoCorePaste(void) {
     NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastPasteFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
+    if (fabs(now - kayokoLastPasteFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
         return;
     }
-    lastPasteFeedbackOccurred = now;
+    kayokoLastPasteFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
-        pasteSoundPlayer = KayokoCorePlayFeedbackSound(pasteSoundPlayer, @"Paste");
+        pasteSoundPlayer = kayokoCorePlayFeedbackSound(pasteSoundPlayer, @"Paste");
     }
-    KayokoCorePlaySuccessHapticFeedbackIfNeeded();
+    kayokoCorePlaySuccessHapticFeedbackIfNeeded();
 }
 
-static void KayokoCoreHandleLockStateNotification(void) {
+static void kayokoCoreHandleLockStateNotification(void) {
     BOOL locked = NO;
-    if (!KayokoCoreReadUILocked(&locked) || !locked) {
+    if (!kayokoCoreReadUILocked(&locked) || !locked) {
         return;
     }
 
@@ -453,7 +455,7 @@ void KayokoCoreStartLockStateObserver(void) {
     int status = notify_register_dispatch("com.apple.springboard.lockstate", &kayokoLockStateToken,
                                           dispatch_get_main_queue(), ^(int token) {
                                             (void)token;
-                                            KayokoCoreHandleLockStateNotification();
+                                            kayokoCoreHandleLockStateNotification();
                                           });
     if (status != NOTIFY_STATUS_OK) {
         HBLogDebug(@"Kayoko: Unable to observe SpringBoard lock state: %d", status);

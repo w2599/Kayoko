@@ -2,8 +2,6 @@
 //  KayokoListItemsController.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoListItemsController.h"
 #import "NotificationKeys.h"
@@ -27,7 +25,7 @@
     id value = [self readPreferenceValue:self.specifier];
     _currentOptions = [value integerValue];
     if (_currentOptions == 0) {
-        _currentOptions = kPreferenceKeyActivationMethodDefaultValue;
+        _currentOptions = kKayokoPreferenceKeyActivationMethodDefaultValue;
     }
 
     // Initialize selected indices
@@ -75,7 +73,7 @@
 
     // Post notification
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
+                                         (CFStringRef)kKayokoNotificationKeyPreferencesReload, nil, nil, YES);
 
     [tableView reloadData];
 }
