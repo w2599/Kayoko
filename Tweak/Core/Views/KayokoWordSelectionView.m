@@ -151,7 +151,7 @@ NS_ASSUME_NONNULL_END
         [button setFrame:CGRectMake(x, y, buttonWidth, kKayokoWordSelectionTokenHeight)];
         x += buttonWidth + kKayokoWordSelectionTokenSpacing;
 
-        if ([self tokens][index][@"line_break_after"] && index + 1 < [[self tokenButtons] count]) {
+        if ([self tokens][index][@"lineBreakAfter"] && index + 1 < [[self tokenButtons] count]) {
             x = kKayokoWordSelectionHorizontalInset;
             y += kKayokoWordSelectionTokenHeight + kKayokoWordSelectionLineSpacing;
         }

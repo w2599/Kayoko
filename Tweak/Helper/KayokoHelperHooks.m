@@ -9,7 +9,7 @@
 #import "NotificationKeys.h"
 #import "PasteboardManager.h"
 
-#define ITEM_ID "com.82flex.kayoko.globe"
+static NSString *const kKayokoInputSwitcherItemIdentifier = @"com.82flex.kayoko.globe";
 
 CHDeclareClass(UIInputSwitcherView);
 CHDeclareClass(UIKeyboardDockItem);
@@ -337,7 +337,8 @@ CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
     }
     NSArray *items = kayokoObjectIvar(self, "m_inputSwitcherItems");
     NSMutableArray *newItems = [NSMutableArray arrayWithArray:items];
-    UIInputSwitcherItem *item = [[NSClassFromString(@"UIInputSwitcherItem") alloc] initWithIdentifier:@ITEM_ID];
+    UIInputSwitcherItem *item = [[NSClassFromString(@"UIInputSwitcherItem") alloc]
+        initWithIdentifier:kKayokoInputSwitcherItemIdentifier];
     [item setLocalizedTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
                                                                                     value:nil
                                                                                     table:@"Tweak"]];
@@ -350,7 +351,7 @@ CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
 CHOptimizedMethod1(self, void, UIInputSwitcherView, didSelectItemAtIndex, unsigned long long, index) {
     NSArray *items = kayokoObjectIvar(self, "m_inputSwitcherItems");
     UIInputSwitcherItem *item = items[index];
-    if ([item.identifier isEqualToString:@ITEM_ID]) {
+    if ([item.identifier isEqualToString:kKayokoInputSwitcherItemIdentifier]) {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                              (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
     }

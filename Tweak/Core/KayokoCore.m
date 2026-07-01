@@ -7,15 +7,17 @@
 
 #import "KayokoCore.h"
 
+#define CHUseSubstrate
+
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 
 #import <HBLog.h>
 #import <notify.h>
 #import <roothide.h>
-#import <substrate.h>
 
 #import "Controllers/KayokoMainViewController.h"
 #import "NotificationKeys.h"
@@ -56,7 +58,14 @@ static BOOL didRequestInitialHistoryPreload = NO;
 static int kayokoLockStateToken = 0;
 
 static void hide(void);
-static void hide_immediately(void);
+static void kayokoHideImmediately(void);
+
+CHDeclareClass(UIStatusBarWindow);
+CHDeclareClass(SpringBoard);
+CHDeclareClass(UIViewController);
+CHDeclareClass(SBHIconManager);
+CHDeclareClass(SBMainSwitcherViewController);
+CHDeclareClass(SBMainSwitcherControllerCoordinator);
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -104,7 +113,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-static void preload_initial_history() {
+static void kayokoPreloadInitialHistory() {
     didRequestInitialHistoryPreload = YES;
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
@@ -114,7 +123,7 @@ static void preload_initial_history() {
     }
 }
 
-static void apply_height_preference_to_view(BOOL applyWhenHidden) {
+static void kayokoApplyHeightPreferenceToView(BOOL applyWhenHidden) {
     if (!kayokoMainViewController) {
         return;
     }
@@ -137,7 +146,7 @@ static void apply_height_preference_to_view(BOOL applyWhenHidden) {
     }
 }
 
-static void apply_preferences_to_view() {
+static void kayokoApplyPreferencesToView() {
     if (!kayokoMainViewController) {
         return;
     }
@@ -158,47 +167,47 @@ static void apply_preferences_to_view() {
         [kayokoMainViewController setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
     }
 
-    apply_height_preference_to_view(YES);
+    kayokoApplyHeightPreferenceToView(YES);
 }
 
 #pragma mark - UIStatusBarWindow class hooks
 
-static void (*orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow *self, SEL _cmd, CGRect frame);
-static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
-    orig_UIStatusBarWindow_initWithFrame(self, _cmd, frame);
+CHOptimizedMethod1(self, id, UIStatusBarWindow, initWithFrame, CGRect, frame) {
+    UIStatusBarWindow *window = CHSuper1(UIStatusBarWindow, initWithFrame, frame);
 
     if (!kayokoMainViewController) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
-        UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[self bounds]];
+        UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[window bounds]];
         [outsideDismissOverlayView
             setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
         [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.18]];
         [outsideDismissOverlayView setAlpha:0];
         [outsideDismissOverlayView setHidden:YES];
         [outsideDismissOverlayView setUserInteractionEnabled:NO];
-        [self addSubview:outsideDismissOverlayView];
+        [window addSubview:outsideDismissOverlayView];
 
         kayokoMainViewController = [[KayokoMainViewController alloc]
             initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width,
                                      kayokoPrefsHeightInPoints)];
         [kayokoMainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
-        apply_preferences_to_view();
-        [self addSubview:[kayokoMainViewController view]];
+        kayokoApplyPreferencesToView();
+        [window addSubview:[kayokoMainViewController view]];
         if (didRequestInitialHistoryPreload) {
             [kayokoMainViewController preloadHistoryIfNeeded];
         }
     }
+
+    return window;
 }
 
 #pragma mark - SpringBoard class hooks
 
-static void (*orig_SpringBoard_applicationDidFinishLaunching)(SpringBoard *self, SEL _cmd, id application);
-static void override_SpringBoard_applicationDidFinishLaunching(SpringBoard *self, SEL _cmd, id application) {
-    orig_SpringBoard_applicationDidFinishLaunching(self, _cmd, application);
-    preload_initial_history();
+CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, application) {
+    CHSuper1(SpringBoard, applicationDidFinishLaunching, application);
+    kayokoPreloadInitialHistory();
 }
 
-static BOOL is_home_screen_controller(id controller) {
+static BOOL kayokoIsHomeScreenController(id controller) {
     static Class iconControllerClass = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -207,27 +216,25 @@ static BOOL is_home_screen_controller(id controller) {
     return iconControllerClass && [controller isKindOfClass:iconControllerClass];
 }
 
-static void hide_for_home_screen_if_visible(id controller) {
-    if (!is_home_screen_controller(controller)) {
+static void kayokoHideForHomeScreenIfVisible(id controller) {
+    if (!kayokoIsHomeScreenController(controller)) {
         return;
     }
 
     hide();
 }
 
-static void (*orig_UIViewController_viewWillAppear)(UIViewController *self, SEL _cmd, BOOL animated);
-static void override_UIViewController_viewWillAppear(UIViewController *self, SEL _cmd, BOOL animated) {
-    orig_UIViewController_viewWillAppear(self, _cmd, animated);
-    hide_for_home_screen_if_visible(self);
+CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
+    CHSuper1(UIViewController, viewWillAppear, animated);
+    kayokoHideForHomeScreenIfVisible(self);
 }
 
-static void (*orig_SBHIconManager_rootFolderControllerViewWillAppear)(SBHIconManager *self, SEL _cmd, id controller);
-static void override_SBHIconManager_rootFolderControllerViewWillAppear(SBHIconManager *self, SEL _cmd, id controller) {
-    orig_SBHIconManager_rootFolderControllerViewWillAppear(self, _cmd, controller);
+CHOptimizedMethod1(self, void, SBHIconManager, rootFolderControllerViewWillAppear, id, controller) {
+    CHSuper1(SBHIconManager, rootFolderControllerViewWillAppear, controller);
     hide();
 }
 
-static void hide_for_layout_state_transition(void) {
+static void kayokoHideForLayoutStateTransition(void) {
     if (!kayokoMainViewController || [kayokoMainViewController isHidden]) {
         return;
     }
@@ -235,7 +242,7 @@ static void hide_for_layout_state_transition(void) {
     hide();
 }
 
-static void hide_for_app_switcher_if_visible(id switcher) {
+static void kayokoHideForAppSwitcherIfVisible(id switcher) {
     if (!kayokoMainViewController || [kayokoMainViewController isHidden]) {
         return;
     }
@@ -252,47 +259,39 @@ static void hide_for_app_switcher_if_visible(id switcher) {
     }
 }
 
-static void (*orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext)(
-    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context);
-static void override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
-    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context) {
-    orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
-        self, _cmd, coordinator, context);
-    hide_for_layout_state_transition();
+CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidBeginWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
+             transitionDidBeginWithTransitionContext, context);
+    kayokoHideForLayoutStateTransition();
 }
 
-static void (*orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext)(
-    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context);
-static void override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
-    SBMainSwitcherViewController *self, SEL _cmd, id coordinator, id context) {
-    orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
-        self, _cmd, coordinator, context);
-    hide_for_app_switcher_if_visible(self);
+CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidEndWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
+             transitionDidEndWithTransitionContext, context);
+    kayokoHideForAppSwitcherIfVisible(self);
 }
 
-static void (*orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext)(
-    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context);
-static void override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
-    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context) {
-    orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext(
-        self, _cmd, coordinator, context);
-    hide_for_layout_state_transition();
+CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidBeginWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
+             transitionDidBeginWithTransitionContext, context);
+    kayokoHideForLayoutStateTransition();
 }
 
-static void (*orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext)(
-    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context);
-static void override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
-    SBMainSwitcherControllerCoordinator *self, SEL _cmd, id coordinator, id context) {
-    orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext(
-        self, _cmd, coordinator, context);
-    hide_for_app_switcher_if_visible(self);
+CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidEndWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
+             transitionDidEndWithTransitionContext, context);
+    kayokoHideForAppSwitcherIfVisible(self);
 }
 
 #pragma mark - Notification callbacks
 
 static void kayokoPasteWillStart() { isInPasteProgress = YES; }
 
-static BOOL read_ui_locked(BOOL *locked) {
+static BOOL kayokoReadUILocked(BOOL *locked) {
     Class managerClass = NSClassFromString(@"SBLockScreenManager");
     if (![managerClass respondsToSelector:@selector(sharedInstance)]) {
         return NO;
@@ -309,7 +308,7 @@ static BOOL read_ui_locked(BOOL *locked) {
     return YES;
 }
 
-static BOOL frontmost_app_is_landscape(void) {
+static BOOL kayokoFrontmostAppIsLandscape(void) {
     UIApplication *application = [UIApplication sharedApplication];
     if (![application respondsToSelector:@selector(_frontMostAppOrientation)]) {
         return NO;
@@ -319,16 +318,16 @@ static BOOL frontmost_app_is_landscape(void) {
     return UIInterfaceOrientationIsLandscape(orientation);
 }
 
-static void handle_lock_state_notification() {
+static void kayokoHandleLockStateNotification() {
     BOOL locked = NO;
-    if (!read_ui_locked(&locked) || !locked) {
+    if (!kayokoReadUILocked(&locked) || !locked) {
         return;
     }
 
-    hide_immediately();
+    kayokoHideImmediately();
 }
 
-static void start_lock_state_observer() {
+static void kayokoStartLockStateObserver() {
     if (kayokoLockStateToken != 0) {
         return;
     }
@@ -336,7 +335,7 @@ static void start_lock_state_observer() {
     int status = notify_register_dispatch("com.apple.springboard.lockstate", &kayokoLockStateToken,
                                           dispatch_get_main_queue(), ^(int token) {
                                             (void)token;
-                                            handle_lock_state_notification();
+                                            kayokoHandleLockStateNotification();
                                           });
     if (status != NOTIFY_STATUS_OK) {
         HBLogDebug(@"Kayoko: Unable to observe SpringBoard lock state: %d", status);
@@ -344,53 +343,46 @@ static void start_lock_state_observer() {
     }
 }
 
-static void install_home_screen_hooks() {
+static void kayokoInstallHomeScreenHooks() {
     Class iconControllerClass = NSClassFromString(@"SBIconController");
-    Class viewControllerClass = objc_getClass("UIViewController");
+    CHLoadClass(UIViewController);
     SEL viewWillAppearSelector = @selector(viewWillAppear:);
-    if (iconControllerClass && [viewControllerClass instancesRespondToSelector:viewWillAppearSelector]) {
-        MSHookMessageEx(viewControllerClass, viewWillAppearSelector, (IMP)&override_UIViewController_viewWillAppear,
-                        (IMP *)&orig_UIViewController_viewWillAppear);
+    if (iconControllerClass && [CHClass(UIViewController) instancesRespondToSelector:viewWillAppearSelector]) {
+        CHHook1(UIViewController, viewWillAppear);
     }
 
-    Class iconManagerClass = objc_getClass("SBHIconManager");
+    Class iconManagerClass = NSClassFromString(@"SBHIconManager");
+    CHLoadClass_(&SBHIconManager$, iconManagerClass);
     SEL rootFolderWillAppearSelector = @selector(rootFolderControllerViewWillAppear:);
     if ([iconManagerClass instancesRespondToSelector:rootFolderWillAppearSelector]) {
-        MSHookMessageEx(iconManagerClass, rootFolderWillAppearSelector,
-                        (IMP)&override_SBHIconManager_rootFolderControllerViewWillAppear,
-                        (IMP *)&orig_SBHIconManager_rootFolderControllerViewWillAppear);
+        CHHook1(SBHIconManager, rootFolderControllerViewWillAppear);
     }
 }
 
-static void install_app_switcher_hooks() {
+static void kayokoInstallAppSwitcherHooks() {
     SEL transitionBeginSelector =
         @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
     SEL transitionEndSelector = @selector(layoutStateTransitionCoordinator:transitionDidEndWithTransitionContext:);
 
-    Class switcherViewControllerClass = objc_getClass("SBMainSwitcherViewController");
+    Class switcherViewControllerClass = NSClassFromString(@"SBMainSwitcherViewController");
+    CHLoadClass_(&SBMainSwitcherViewController$, switcherViewControllerClass);
     if ([switcherViewControllerClass instancesRespondToSelector:transitionBeginSelector]) {
-        MSHookMessageEx(switcherViewControllerClass, transitionBeginSelector,
-                        (IMP)&override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext,
-                        (IMP *)&orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext);
+        CHHook2(SBMainSwitcherViewController, layoutStateTransitionCoordinator,
+                transitionDidBeginWithTransitionContext);
     }
     if ([switcherViewControllerClass instancesRespondToSelector:transitionEndSelector]) {
-        MSHookMessageEx(switcherViewControllerClass, transitionEndSelector,
-                        (IMP)&override_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext,
-                        (IMP *)&orig_SBMainSwitcherViewController_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext);
+        CHHook2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, transitionDidEndWithTransitionContext);
     }
 
-    Class switcherCoordinatorClass = objc_getClass("SBMainSwitcherControllerCoordinator");
+    Class switcherCoordinatorClass = NSClassFromString(@"SBMainSwitcherControllerCoordinator");
+    CHLoadClass_(&SBMainSwitcherControllerCoordinator$, switcherCoordinatorClass);
     if ([switcherCoordinatorClass instancesRespondToSelector:transitionBeginSelector]) {
-        MSHookMessageEx(
-            switcherCoordinatorClass, transitionBeginSelector,
-            (IMP)&override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext,
-            (IMP *)&orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidBeginWithTransitionContext);
+        CHHook2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator,
+                transitionDidBeginWithTransitionContext);
     }
     if ([switcherCoordinatorClass instancesRespondToSelector:transitionEndSelector]) {
-        MSHookMessageEx(
-            switcherCoordinatorClass, transitionEndSelector,
-            (IMP)&override_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext,
-            (IMP *)&orig_SBMainSwitcherControllerCoordinator_layoutStateTransitionCoordinator_transitionDidEndWithTransitionContext);
+        CHHook2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator,
+                transitionDidEndWithTransitionContext);
     }
 }
 
@@ -464,7 +456,7 @@ static void kayokoCopy() {
     });
 }
 
-static void apply_user_interface_style_to_view(UIUserInterfaceStyle style) {
+static void kayokoApplyUserInterfaceStyleToView(UIUserInterfaceStyle style) {
     [kayokoMainViewController applyUserInterfaceStyle:style];
 }
 
@@ -474,18 +466,18 @@ static void show() {
     }
 
     BOOL locked = NO;
-    if (read_ui_locked(&locked) && locked) {
+    if (kayokoReadUILocked(&locked) && locked) {
         kayokoPlayFailureHapticFeedbackIfNeeded();
         return;
     }
 
-    if (frontmost_app_is_landscape()) {
+    if (kayokoFrontmostAppIsLandscape()) {
         kayokoPlayFailureHapticFeedbackIfNeeded();
         return;
     }
 
-    apply_height_preference_to_view(YES);
-    apply_user_interface_style_to_view(UIUserInterfaceStyleUnspecified);
+    kayokoApplyHeightPreferenceToView(YES);
+    kayokoApplyUserInterfaceStyleToView(UIUserInterfaceStyleUnspecified);
 
     /* iOS 15 */
     SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
@@ -495,9 +487,9 @@ static void show() {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
             if (isKindOfDark) {
-                apply_user_interface_style_to_view(UIUserInterfaceStyleDark);
+                kayokoApplyUserInterfaceStyleToView(UIUserInterfaceStyleDark);
             } else {
-                apply_user_interface_style_to_view(UIUserInterfaceStyleLight);
+                kayokoApplyUserInterfaceStyleToView(UIUserInterfaceStyleLight);
             }
         }
     }
@@ -511,9 +503,9 @@ static void show() {
             long long style = [styleRequest style];
             BOOL isKindOfDark = style == 1;
             if (isKindOfDark) {
-                apply_user_interface_style_to_view(UIUserInterfaceStyleDark);
+                kayokoApplyUserInterfaceStyleToView(UIUserInterfaceStyleDark);
             } else {
-                apply_user_interface_style_to_view(UIUserInterfaceStyleLight);
+                kayokoApplyUserInterfaceStyleToView(UIUserInterfaceStyleLight);
             }
         }
     }
@@ -531,7 +523,7 @@ static void hide() {
     }
 }
 
-static void hide_immediately() {
+static void kayokoHideImmediately() {
     if (![kayokoMainViewController isHidden]) {
         [kayokoMainViewController hideImmediately];
     }
@@ -547,7 +539,7 @@ static void reload() {
 
 #pragma mark - Preferences
 
-static void load_preferences() {
+static void kayokoLoadPreferences() {
     kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
 
     [kayokoPreferences registerDefaults:@{
@@ -602,10 +594,10 @@ static void load_preferences() {
         [pasteboardManager setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
     }
 
-    apply_preferences_to_view();
+    kayokoApplyPreferencesToView();
 }
 
-static void load_height_preference() {
+static void kayokoLoadHeightPreference() {
     NSUserDefaults *heightPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
     [heightPreferences registerDefaults:@{
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
@@ -618,7 +610,7 @@ static void load_height_preference() {
     pendingHeightPreferenceApply = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
       pendingHeightPreferenceApply = NO;
-      apply_height_preference_to_view(NO);
+      kayokoApplyHeightPreferenceToView(NO);
     });
 }
 
@@ -642,7 +634,7 @@ __attribute((constructor)) static void initialize() {
     NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
     BOOL isSpringBoard = [bundleIdentifier isEqualToString:@"com.apple.springboard"];
     if (isSpringBoard) {
-        load_preferences();
+        kayokoLoadPreferences();
 
         if (!kayokoPrefsEnabled) {
             return;
@@ -655,14 +647,13 @@ __attribute((constructor)) static void initialize() {
             statusBarWindowCls = objc_getClass("SBStatusBarWindow");
         }
 
-        MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:), (IMP)&override_UIStatusBarWindow_initWithFrame,
-                        (IMP *)&orig_UIStatusBarWindow_initWithFrame);
-        MSHookMessageEx(objc_getClass("SpringBoard"), @selector(applicationDidFinishLaunching:),
-                        (IMP)&override_SpringBoard_applicationDidFinishLaunching,
-                        (IMP *)&orig_SpringBoard_applicationDidFinishLaunching);
-        install_home_screen_hooks();
-        install_app_switcher_hooks();
-        start_lock_state_observer();
+        CHLoadClass_(&UIStatusBarWindow$, statusBarWindowCls);
+        CHHook1(UIStatusBarWindow, initWithFrame);
+        CHLoadClass_(&SpringBoard$, NSClassFromString(@"SpringBoard"));
+        CHHook1(SpringBoard, applicationDidFinishLaunching);
+        kayokoInstallHomeScreenHooks();
+        kayokoInstallAppSwitcherHooks();
+        kayokoStartLockStateObserver();
 
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
@@ -689,11 +680,11 @@ __attribute((constructor)) static void initialize() {
             (CFStringRef)kNotificationKeyCoreReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoLoadPreferences,
             (CFStringRef)kNotificationKeyPreferencesReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_height_preference,
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoLoadHeightPreference,
             (CFStringRef)kNotificationKeyPreferencesHeightReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
@@ -715,7 +706,7 @@ __attribute((constructor)) static void initialize() {
         ([executablePath hasPrefix:@"/System/Library/"] || [executablePath hasPrefix:@"/usr/libexec/"]) &&
         ([processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"]);
     if (isDruidOrPasted) {
-        load_preferences();
+        kayokoLoadPreferences();
 
         if (!kayokoPrefsEnabled) {
             return;
@@ -723,7 +714,7 @@ __attribute((constructor)) static void initialize() {
 
         EnableKayokoDisablePasteTips();
         CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoLoadPreferences,
             (CFStringRef)kNotificationKeyPreferencesReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 

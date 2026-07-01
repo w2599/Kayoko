@@ -111,7 +111,7 @@
     }
 
     NSMutableDictionary<NSString *, id> *token = [tokens[index] mutableCopy];
-    token[@"line_break_after"] = @YES;
+    token[@"lineBreakAfter"] = @YES;
     tokens[index] = token;
 }
 

@@ -6,16 +6,19 @@
 //
 
 #import "KayokoHelper.h"
+
+#define CHUseSubstrate
+
 #import "KayokoMenu.h"
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
 
+#import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CFNotificationCenter.h>
 #import <Foundation/Foundation.h>
 #import <libSandy.h>
-#import <substrate.h>
 
 @interface TIKeyboardCandidate : NSObject
 @end
@@ -92,6 +95,15 @@
 @interface UICalloutBar : UIView
 @end
 
+CHDeclareClass(UIKeyboardAutocorrectionController);
+CHDeclareClass(UIPredictionViewController);
+CHDeclareClass(UIKeyboardLayoutStar);
+CHDeclareClass(UIKBInputBackdropView);
+CHDeclareClass(UIKeyboardImpl);
+CHDeclareClass(UISystemKeyboardDockController);
+CHDeclareClass(_UIEditMenuPresentation);
+CHDeclareClass(UICalloutBar);
+
 NSUserDefaults *kayokoHelperPreferences = nil;
 
 BOOL kayokoHelperPrefsEnabled = NO;
@@ -111,29 +123,21 @@ static BOOL kayokoIsKeyboardExtensionProcess(void);
 
 #pragma mark - UIKeyboardAutocorrectionController class hooks
 
-static void (*orig_UIKeyboardAutocorrectionController_setTextSuggestionList)(UIKeyboardAutocorrectionController *self,
-                                                                             SEL _cmd,
-                                                                             TIAutocorrectionList *textSuggestionList);
-static void
-override_UIKeyboardAutocorrectionController_setTextSuggestionList(UIKeyboardAutocorrectionController *self, SEL _cmd,
-                                                                  TIAutocorrectionList *textSuggestionList) {
+CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setTextSuggestionList, TIAutocorrectionList *,
+                   textSuggestionList) {
     if (shouldShowCustomSuggestions) {
-        orig_UIKeyboardAutocorrectionController_setTextSuggestionList(self, _cmd, kayokoCreateAutocorrectionList());
+        CHSuper1(UIKeyboardAutocorrectionController, setTextSuggestionList, kayokoCreateAutocorrectionList());
     } else {
-        orig_UIKeyboardAutocorrectionController_setTextSuggestionList(self, _cmd, textSuggestionList);
+        CHSuper1(UIKeyboardAutocorrectionController, setTextSuggestionList, textSuggestionList);
     }
 }
 
-static void (*orig_UIKeyboardAutocorrectionController_setAutocorrectionList)(UIKeyboardAutocorrectionController *self,
-                                                                             SEL _cmd,
-                                                                             TIAutocorrectionList *autoCorrectionList);
-static void
-override_UIKeyboardAutocorrectionController_setAutocorrectionList(UIKeyboardAutocorrectionController *self, SEL _cmd,
-                                                                  TIAutocorrectionList *autoCorrectionList) {
+CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setAutocorrectionList, TIAutocorrectionList *,
+                   autoCorrectionList) {
     if (shouldShowCustomSuggestions) {
-        orig_UIKeyboardAutocorrectionController_setAutocorrectionList(self, _cmd, kayokoCreateAutocorrectionList());
+        CHSuper1(UIKeyboardAutocorrectionController, setAutocorrectionList, kayokoCreateAutocorrectionList());
     } else {
-        orig_UIKeyboardAutocorrectionController_setAutocorrectionList(self, _cmd, autoCorrectionList);
+        CHSuper1(UIKeyboardAutocorrectionController, setAutocorrectionList, autoCorrectionList);
     }
 }
 
@@ -155,14 +159,8 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
 
 #pragma mark - UIPredictionViewController class hooks
 
-static void (*orig_UIPredictionViewController_predictionView_didSelectCandidate)(UIPredictionViewController *self,
-                                                                                 SEL _cmd,
-                                                                                 TUIPredictionView *predictionView,
-                                                                                 TIZephyrCandidate *candidate);
-static void override_UIPredictionViewController_predictionView_didSelectCandidate(UIPredictionViewController *self,
-                                                                                  SEL _cmd,
-                                                                                  TUIPredictionView *predictionView,
-                                                                                  TIZephyrCandidate *candidate) {
+CHOptimizedMethod2(self, void, UIPredictionViewController, predictionView, TUIPredictionView *, predictionView,
+                   didSelectCandidate, TIZephyrCandidate *, candidate) {
     if ([candidate respondsToSelector:@selector(fromBundleId)] &&
         [[candidate fromBundleId] isEqualToString:@"com.82flex.kayoko"]) {
         if ([[candidate candidate] isEqualToString:@"{kayoko-History}"]) {
@@ -191,21 +189,19 @@ static void override_UIPredictionViewController_predictionView_didSelectCandidat
             kayokoPaste();
         }
     } else {
-        orig_UIPredictionViewController_predictionView_didSelectCandidate(self, _cmd, predictionView, candidate);
+        CHSuper2(UIPredictionViewController, predictionView, predictionView, didSelectCandidate, candidate);
     }
 }
 
-static BOOL override_UIPredictionViewController_isVisibleForInputDelegate_inputViews(UIPredictionViewController *self,
-                                                                                     SEL _cmd, id delegate,
-                                                                                     id inputViews) {
+CHOptimizedMethod2(self, BOOL, UIPredictionViewController, isVisibleForInputDelegate, id, delegate, inputViews, id,
+                   inputViews) {
     return YES;
 }
 
 #pragma mark - UIKeyboardLayoutStar class hooks
 
-static void (*orig_UIKeyboardLayoutStar_setKeyplaneName)(UIKeyboardLayoutStar *self, SEL _cmd, NSString *name);
-static void override_UIKeyboardLayoutStar_setKeyplaneName(UIKeyboardLayoutStar *self, SEL _cmd, NSString *name) {
-    orig_UIKeyboardLayoutStar_setKeyplaneName(self, _cmd, name);
+CHOptimizedMethod1(self, void, UIKeyboardLayoutStar, setKeyplaneName, NSString *, name) {
+    CHSuper1(UIKeyboardLayoutStar, setKeyplaneName, name);
 
     shouldShowCustomSuggestions = [name isEqualToString:@"numbers-and-punctuation"] ||
                                   [name isEqualToString:@"numbers-and-punctuation-alternate"];
@@ -217,9 +213,8 @@ static void override_UIKeyboardLayoutStar_setKeyplaneName(UIKeyboardLayoutStar *
     }
 }
 
-static UIKBTree *(*orig_UIKeyboardLayoutStar_keyHitTest)(UIKeyboardLayoutStar *self, SEL _cmd, CGPoint point);
-static UIKBTree *override_UIKeyboardLayoutStar_keyHitTest(UIKeyboardLayoutStar *self, SEL _cmd, CGPoint point) {
-    UIKBTree *orig = orig_UIKeyboardLayoutStar_keyHitTest(self, _cmd, point);
+CHOptimizedMethod1(self, UIKBTree *, UIKeyboardLayoutStar, keyHitTest, CGPoint, point) {
+    UIKBTree *orig = CHSuper1(UIKeyboardLayoutStar, keyHitTest, point);
 
     // Unset the original action and tell the core to show the history.
     if ([[orig name] isEqualToString:@"Dictation-Key"]) {
@@ -231,56 +226,49 @@ static UIKBTree *override_UIKeyboardLayoutStar_keyHitTest(UIKeyboardLayoutStar *
     return orig;
 }
 
-static void (*orig_UIKeyboardLayoutStar_didMoveToWindow)(UIKeyboardLayoutStar *self, SEL _cmd);
-static void override_UIKeyboardLayoutStar_didMoveToWindow(UIKeyboardLayoutStar *self, SEL _cmd) {
-    orig_UIKeyboardLayoutStar_didMoveToWindow(self, _cmd);
+CHOptimizedMethod0(self, void, UIKeyboardLayoutStar, didMoveToWindow) {
+    CHSuper0(UIKeyboardLayoutStar, didMoveToWindow);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
 }
 
-static void (*orig_UIKBInputBackdropView_didMoveToWindow)(UIKBInputBackdropView *self, SEL _cmd);
-static void override_UIKBInputBackdropView_didMoveToWindow(UIKBInputBackdropView *self, SEL _cmd) {
-    orig_UIKBInputBackdropView_didMoveToWindow(self, _cmd);
+CHOptimizedMethod0(self, void, UIKBInputBackdropView, didMoveToWindow) {
+    CHSuper0(UIKBInputBackdropView, didMoveToWindow);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
 }
 
 #pragma mark - UIKeyboardImpl class hooks
 
-static BOOL override_UIKeyboardImpl_shouldShowDictationKey(UIKeyboardImpl *self, SEL _cmd) { return YES; }
+CHOptimizedMethod0(self, BOOL, UIKeyboardImpl, shouldShowDictationKey) { return YES; }
 
-static void (*orig_UIKeyboardImpl_applicationDidBecomeActive)(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive);
-static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive) {
-    orig_UIKeyboardImpl_applicationDidBecomeActive(self, _cmd, didBecomeActive);
+CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationDidBecomeActive, BOOL, didBecomeActive) {
+    CHSuper1(UIKeyboardImpl, applicationDidBecomeActive, didBecomeActive);
     applicationIsInForeground = YES;
 }
 
-static void (*orig_UIKeyboardImpl_applicationWillResignActive)(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive);
-static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive) {
-    orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
+CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillResignActive, BOOL, willResignActive) {
+    CHSuper1(UIKeyboardImpl, applicationWillResignActive, willResignActive);
     applicationIsInForeground = NO;
 }
 
-static void (*orig_UIKeyboardImpl_applicationWillSuspend)(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend);
-static void override_UIKeyboardImpl_applicationWillSuspend(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend) {
-    orig_UIKeyboardImpl_applicationWillSuspend(self, _cmd, willSuspend);
+CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillSuspend, BOOL, willSuspend) {
+    CHSuper1(UIKeyboardImpl, applicationWillSuspend, willSuspend);
     applicationIsInForeground = NO;
 }
 
 #pragma mark - UISystemKeyboardDockController class hooks
 
-static void
-override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent(UISystemKeyboardDockController *self,
-                                                                                SEL _cmd, UIEvent *event) {
+CHOptimizedMethod2(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1, withEvent,
+                   UIEvent *, event) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
 }
 
 #pragma mark - _UIEditMenuPresentation class hooks (iOS 16+)
 
-static void (*orig__UIEditMenuPresentation_displayMenu_configuration_)(id, SEL, UIMenu *, id);
-static void override__UIEditMenuPresentation_displayMenu_configuration_(id self, SEL _cmd, UIMenu *menu,
-                                                                        id configuration) {
+CHOptimizedMethod2(self, void, _UIEditMenuPresentation, displayMenu, UIMenu *, menu, configuration, id,
+                   configuration) {
     NSMutableArray<UIMenuElement *> *build = [NSMutableArray new];
     for (id item in [menu children]) {
         if (KayokoMenuItemIsWritingTool(item)) {
@@ -301,29 +289,27 @@ static void override__UIEditMenuPresentation_displayMenu_configuration_(id self,
         [build addObject:rebuildAppleMenu];
     }
     UIMenu *newMenu = [menu menuByReplacingChildren:build];
-    orig__UIEditMenuPresentation_displayMenu_configuration_(self, _cmd, newMenu, configuration);
+    CHSuper2(_UIEditMenuPresentation, displayMenu, newMenu, configuration, configuration);
 }
 
 #pragma mark - UICalloutBar class hooks (iOS 15)
 
-static void (*orig_UICalloutBar_setExtraItems_)(UICalloutBar *, SEL, NSArray<UIMenuItem *> *);
-static void override_UICalloutBar_setExtraItems_(UICalloutBar *self, SEL _cmd, NSArray<UIMenuItem *> *items) {
+CHOptimizedMethod1(self, void, UICalloutBar, setExtraItems, NSArray<UIMenuItem *> *, items) {
     NSMutableArray<UIMenuItem *> *newItems = [NSMutableArray arrayWithCapacity:items.count];
     for (UIMenuItem *item in items) {
         NSString *selectorName = NSStringFromSelector(item.action);
         if ([selectorName isEqualToString:kayokoSelectorName]) {
-            item.action = NSSelectorFromString(@"__kayoko_dummy__");
+            item.action = NSSelectorFromString(@"kayokoDummyAction");
         }
         [newItems addObject:item];
     }
-    orig_UICalloutBar_setExtraItems_(self, _cmd, [newItems copy]);
+    CHSuper1(UICalloutBar, setExtraItems, [newItems copy]);
 }
 
-static void (*orig_UICalloutBar_updateAvailableButtons)(UICalloutBar *, SEL);
-static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL _cmd) {
+CHOptimizedMethod0(self, void, UICalloutBar, updateAvailableButtons) {
     Class cbsbdCls = NSClassFromString(@"_UICalloutBarSystemButtonDescription");
     if (!cbsbdCls || ![cbsbdCls respondsToSelector:@selector(buttonDescriptionWithTitle:action:type:)]) {
-        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+        return CHSuper0(UICalloutBar, updateAvailableButtons);
     }
 
     UIMenuItem *kayokoNowItem = KayokoMenuItem();
@@ -333,12 +319,12 @@ static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL
                                         type:1];
 
     if (!buttonDescription) {
-        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+        return CHSuper0(UICalloutBar, updateAvailableButtons);
     }
 
     Ivar msbd = class_getInstanceVariable(object_getClass(self), "m_systemButtonDescriptions");
     if (!msbd) {
-        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+        return CHSuper0(UICalloutBar, updateAvailableButtons);
     }
 
     NSMutableArray<_UICalloutBarSystemButtonDescription *> *buttonDescriptions = object_getIvar(self, msbd);
@@ -348,7 +334,7 @@ static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL
         }
         NSString *selectorName = NSStringFromSelector(description.action);
         if ([selectorName isEqualToString:NSStringFromSelector(buttonDescription.action)]) {
-            return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+            return CHSuper0(UICalloutBar, updateAvailableButtons);
         }
     }
 
@@ -366,7 +352,7 @@ static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL
     }
 
     if (insertIndex == 0) {
-        return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+        return CHSuper0(UICalloutBar, updateAvailableButtons);
     }
 
     if (insertIndex == NSNotFound) {
@@ -375,12 +361,12 @@ static void override_UICalloutBar_updateAvailableButtons(UICalloutBar *self, SEL
         [buttonDescriptions insertObject:buttonDescription atIndex:insertIndex];
     }
 
-    return orig_UICalloutBar_updateAvailableButtons(self, _cmd);
+    return CHSuper0(UICalloutBar, updateAvailableButtons);
 }
 
 #pragma mark - UIResponder additions
 
-static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
+static void kayokoOpenKayokoFromResponder(id self, SEL _cmd) {
     dispatch_async(dispatch_get_main_queue(), ^{
       CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                            (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
@@ -480,7 +466,7 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Preferences
 
-static void load_preferences() {
+static void kayokoLoadPreferences() {
     kayokoHelperPreferences = [[NSUserDefaults alloc]
         initWithSuiteName:[NSString
                               stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]];
@@ -521,7 +507,7 @@ static BOOL kayokoIsKeyboardExtensionProcess() {
 }
 
 __attribute((constructor)) static void initialize() {
-    load_preferences();
+    kayokoLoadPreferences();
 
     if (!kayokoHelperPrefsEnabled) {
         return;
@@ -574,35 +560,28 @@ __attribute((constructor)) static void initialize() {
 
     // Prediction Bar
     if (kayokoHelperPrefsActivationMethod & kActivationMethodPredictionBar) {
+        CHLoadClass_(&UIKeyboardAutocorrectionController$, NSClassFromString(@"UIKeyboardAutocorrectionController"));
         if (@available(iOS 15.0, *)) {
-            MSHookMessageEx(objc_getClass("UIKeyboardAutocorrectionController"), @selector(setAutocorrectionList:),
-                            (IMP)&override_UIKeyboardAutocorrectionController_setAutocorrectionList,
-                            (IMP *)&orig_UIKeyboardAutocorrectionController_setAutocorrectionList);
+            CHHook1(UIKeyboardAutocorrectionController, setAutocorrectionList);
         } else {
-            MSHookMessageEx(objc_getClass("UIKeyboardAutocorrectionController"), @selector(setTextSuggestionList:),
-                            (IMP)&override_UIKeyboardAutocorrectionController_setTextSuggestionList,
-                            (IMP *)&orig_UIKeyboardAutocorrectionController_setTextSuggestionList);
+            CHHook1(UIKeyboardAutocorrectionController, setTextSuggestionList);
         }
-        MSHookMessageEx(objc_getClass("UIPredictionViewController"), @selector(isVisibleForInputDelegate:inputViews:),
-                        (IMP)&override_UIPredictionViewController_isVisibleForInputDelegate_inputViews, (IMP *)nil);
-        MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(setKeyplaneName:),
-                        (IMP)&override_UIKeyboardLayoutStar_setKeyplaneName,
-                        (IMP *)&orig_UIKeyboardLayoutStar_setKeyplaneName);
-        MSHookMessageEx(objc_getClass("UIPredictionViewController"), @selector(predictionView:didSelectCandidate:),
-                        (IMP)&override_UIPredictionViewController_predictionView_didSelectCandidate,
-                        (IMP *)&orig_UIPredictionViewController_predictionView_didSelectCandidate);
+        CHLoadClass_(&UIPredictionViewController$, NSClassFromString(@"UIPredictionViewController"));
+        CHHook2(UIPredictionViewController, isVisibleForInputDelegate, inputViews);
+        CHLoadClass_(&UIKeyboardLayoutStar$, NSClassFromString(@"UIKeyboardLayoutStar"));
+        CHHook1(UIKeyboardLayoutStar, setKeyplaneName);
+        CHHook2(UIPredictionViewController, predictionView, didSelectCandidate);
     }
 
     // Dictation Key
     if (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey) {
         EnableKayokoActivationDictation();
-        MSHookMessageEx(objc_getClass("UISystemKeyboardDockController"),
-                        @selector(dictationItemButtonWasPressed:withEvent:),
-                        (IMP)&override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent, nil);
-        MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(shouldShowDictationKey),
-                        (IMP)&override_UIKeyboardImpl_shouldShowDictationKey, nil);
-        MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(keyHitTest:),
-                        (IMP)&override_UIKeyboardLayoutStar_keyHitTest, (IMP *)&orig_UIKeyboardLayoutStar_keyHitTest);
+        CHLoadClass_(&UISystemKeyboardDockController$, NSClassFromString(@"UISystemKeyboardDockController"));
+        CHHook2(UISystemKeyboardDockController, dictationItemButtonWasPressed, withEvent);
+        CHLoadClass_(&UIKeyboardImpl$, NSClassFromString(@"UIKeyboardImpl"));
+        CHHook0(UIKeyboardImpl, shouldShowDictationKey);
+        CHLoadClass_(&UIKeyboardLayoutStar$, NSClassFromString(@"UIKeyboardLayoutStar"));
+        CHHook1(UIKeyboardLayoutStar, keyHitTest);
     }
 
     // Input Switcher
@@ -618,40 +597,30 @@ __attribute((constructor)) static void initialize() {
     // Callout Bar
     if (kayokoHelperPrefsActivationMethod & kActivationMethodCalloutBar) {
         class_addMethod(NSClassFromString(@"UIResponder"), NSSelectorFromString(kayokoSelectorName),
-                        (IMP)addon_UIResponder_openKayoko, "v@:");
+                        (IMP)kayokoOpenKayokoFromResponder, "v@:");
 
         if (@available(iOS 16, *)) {
             Class targetCls = NSClassFromString(@"_UIEditMenuContentPresentation");
             if (!targetCls) {
                 targetCls = NSClassFromString(@"_UIEditMenuPresentation");
             }
-            MSHookMessageEx(targetCls, @selector(displayMenu:configuration:),
-                            (IMP)override__UIEditMenuPresentation_displayMenu_configuration_,
-                            (IMP *)&orig__UIEditMenuPresentation_displayMenu_configuration_);
+            CHLoadClass_(&_UIEditMenuPresentation$, targetCls);
+            CHHook2(_UIEditMenuPresentation, displayMenu, configuration);
         } else {
-            MSHookMessageEx(NSClassFromString(@"UICalloutBar"), @selector(setExtraItems:),
-                            (IMP)override_UICalloutBar_setExtraItems_, (IMP *)&orig_UICalloutBar_setExtraItems_);
-            MSHookMessageEx(NSClassFromString(@"UICalloutBar"), @selector(updateAvailableButtons),
-                            (IMP)override_UICalloutBar_updateAvailableButtons,
-                            (IMP *)&orig_UICalloutBar_updateAvailableButtons);
+            CHLoadClass_(&UICalloutBar$, NSClassFromString(@"UICalloutBar"));
+            CHHook1(UICalloutBar, setExtraItems);
+            CHHook0(UICalloutBar, updateAvailableButtons);
         }
     }
 
-    MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow),
-                    (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow,
-                    (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
-    MSHookMessageEx(objc_getClass("UIKBInputBackdropView"), @selector(didMoveToWindow),
-                    (IMP)&override_UIKBInputBackdropView_didMoveToWindow,
-                    (IMP *)&orig_UIKBInputBackdropView_didMoveToWindow);
-    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:),
-                    (IMP)&override_UIKeyboardImpl_applicationDidBecomeActive,
-                    (IMP *)&orig_UIKeyboardImpl_applicationDidBecomeActive);
-    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:),
-                    (IMP)&override_UIKeyboardImpl_applicationWillResignActive,
-                    (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
-    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillSuspend:),
-                    (IMP)&override_UIKeyboardImpl_applicationWillSuspend,
-                    (IMP *)&orig_UIKeyboardImpl_applicationWillSuspend);
+    CHLoadClass_(&UIKeyboardLayoutStar$, NSClassFromString(@"UIKeyboardLayoutStar"));
+    CHHook0(UIKeyboardLayoutStar, didMoveToWindow);
+    CHLoadClass_(&UIKBInputBackdropView$, NSClassFromString(@"UIKBInputBackdropView"));
+    CHHook0(UIKBInputBackdropView, didMoveToWindow);
+    CHLoadClass_(&UIKeyboardImpl$, NSClassFromString(@"UIKeyboardImpl"));
+    CHHook1(UIKeyboardImpl, applicationDidBecomeActive);
+    CHHook1(UIKeyboardImpl, applicationWillResignActive);
+    CHHook1(UIKeyboardImpl, applicationWillSuspend);
 
     if (kayokoHelperPrefsAutomaticallyPaste) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
