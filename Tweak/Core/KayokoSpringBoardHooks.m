@@ -53,6 +53,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
+static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
+static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
+
 CHOptimizedMethod1(self, id, UIStatusBarWindow, initWithFrame, CGRect, frame) {
     UIStatusBarWindow *window = CHSuper1(UIStatusBarWindow, initWithFrame, frame);
     KayokoCoreInstallPanelInStatusBarWindow(window);
@@ -108,7 +111,8 @@ CHOptimizedMethod1(self, void, SBSpotlightMultiplexingViewController, viewWillDi
 }
 
 CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
-    if (type == 1 && KayokoCoreFullscreenSearchActive()) {
+    if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter)
+        && KayokoCoreFullscreenSearchActive()) {
         return NO;
     }
 

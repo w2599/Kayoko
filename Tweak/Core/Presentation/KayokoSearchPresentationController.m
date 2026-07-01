@@ -11,7 +11,7 @@
 
 static CGFloat const kKayokoSearchHeaderHeight = 56;
 static CGFloat const kKayokoSearchBarHorizontalInset = 16;
-static NSTimeInterval const kKayokoSearchFullscreenAnimationDuration = 0.34;
+static NSTimeInterval const kKayokoSearchFullscreenAnimationDuration = 0.42;
 static CGFloat const kKayokoSearchFullscreenAnimationDamping = 0.86;
 static CGFloat const kKayokoSearchFullscreenGrabberFoldDistance = 20;
 static CGFloat const kKayokoSearchFullscreenCollapseVelocity = 900;
