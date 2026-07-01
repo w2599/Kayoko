@@ -1,5 +1,5 @@
 //
-//  KayokoInputSwitcherHooks.m
+//  KayokoInputSwitcherHooks.mm
 //  Kayoko
 //
 
@@ -11,7 +11,7 @@
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
-#import <objc/runtime.h>
+#import <substrate.h>
 
 static NSString *const kKayokoInputSwitcherItemIdentifier = @"com.82flex.kayoko.globe";
 
@@ -33,44 +33,13 @@ CHDeclareClass(UIInputSwitcherView);
 - (instancetype)initWithIdentifier:(NSString *)identifier;
 @end
 
-static Ivar kayokoInstanceIvar(id object, const char *name) {
-    return class_getInstanceVariable(object_getClass(object), name);
-}
-
-static id kayokoObjectIvar(id object, const char *name) {
-    Ivar ivar = kayokoInstanceIvar(object, name);
-    if (!ivar) {
-        return nil;
-    }
-
-    return object_getIvar(object, ivar);
-}
-
-static void kayokoSetObjectIvar(id object, const char *name, id value) {
-    Ivar ivar = kayokoInstanceIvar(object, name);
-    if (!ivar) {
-        return;
-    }
-
-    object_setIvar(object, ivar, value);
-}
-
-static BOOL kayokoBoolIvar(id object, const char *name) {
-    Ivar ivar = kayokoInstanceIvar(object, name);
-    if (!ivar) {
-        return NO;
-    }
-
-    return *(BOOL *)((uint8_t *)(__bridge void *)object + ivar_getOffset(ivar));
-}
-
 CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
     CHSuper0(UIInputSwitcherView, _reloadInputSwitcherItems);
-    BOOL isForDictation = kayokoBoolIvar(self, "m_isForDictation");
+    BOOL isForDictation = MSHookIvar<BOOL>(self, "m_isForDictation");
     if (isForDictation) {
         return;
     }
-    NSArray *items = kayokoObjectIvar(self, "m_inputSwitcherItems");
+    NSArray *items = MSHookIvar<NSArray *>(self, "m_inputSwitcherItems");
     NSMutableArray *newItems = [NSMutableArray arrayWithArray:items];
     UIInputSwitcherItem *item =
         [[NSClassFromString(@"UIInputSwitcherItem") alloc] initWithIdentifier:kKayokoInputSwitcherItemIdentifier];
@@ -80,11 +49,11 @@ CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
     if (item) {
         [newItems insertObject:item atIndex:newItems.count - 1];
     }
-    kayokoSetObjectIvar(self, "m_inputSwitcherItems", newItems);
+    MSHookIvar<NSArray *>(self, "m_inputSwitcherItems") = newItems;
 }
 
 CHOptimizedMethod1(self, void, UIInputSwitcherView, didSelectItemAtIndex, unsigned long long, index) {
-    NSArray *items = kayokoObjectIvar(self, "m_inputSwitcherItems");
+    NSArray *items = MSHookIvar<NSArray *>(self, "m_inputSwitcherItems");
     UIInputSwitcherItem *item = items[index];
     if ([item.identifier isEqualToString:kKayokoInputSwitcherItemIdentifier]) {
         KayokoHelperCaptureCurrentFirstResponder();

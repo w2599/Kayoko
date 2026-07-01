@@ -111,8 +111,8 @@ CHOptimizedMethod1(self, void, SBSpotlightMultiplexingViewController, viewWillDi
 }
 
 CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
-    if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter)
-        && KayokoCoreFullscreenSearchActive()) {
+    if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter) &&
+        KayokoCoreFullscreenSearchActive()) {
         return NO;
     }
 
