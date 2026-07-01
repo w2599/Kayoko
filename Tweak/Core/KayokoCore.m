@@ -67,6 +67,10 @@ NS_ASSUME_NONNULL_BEGIN
 @interface UIStatusBarWindow : UIWindow
 @end
 
+@interface UIApplication (KayokoPrivate)
+- (UIInterfaceOrientation)_frontMostAppOrientation;
+@end
+
 @interface SBStatusBarManager : NSObject
 + (nullable instancetype)sharedInstance;
 - (nullable UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
@@ -305,6 +309,16 @@ static BOOL read_ui_locked(BOOL *locked) {
     return YES;
 }
 
+static BOOL frontmost_app_is_landscape(void) {
+    UIApplication *application = [UIApplication sharedApplication];
+    if (![application respondsToSelector:@selector(_frontMostAppOrientation)]) {
+        return NO;
+    }
+
+    UIInterfaceOrientation orientation = [application _frontMostAppOrientation];
+    return UIInterfaceOrientationIsLandscape(orientation);
+}
+
 static void handle_lock_state_notification() {
     BOOL locked = NO;
     if (!read_ui_locked(&locked) || !locked) {
@@ -413,6 +427,18 @@ static AVAudioPlayer *kayokoPlayFeedbackSound(AVAudioPlayer *player, NSString *s
     return player;
 }
 
+static void kayokoPlaySuccessHapticFeedbackIfNeeded(void) {
+    if (kayokoPrefsPlayHapticFeedback) {
+        AudioServicesPlaySystemSound(1519);
+    }
+}
+
+static void kayokoPlayFailureHapticFeedbackIfNeeded(void) {
+    if (kayokoPrefsPlayHapticFeedback) {
+        AudioServicesPlaySystemSound(1521);
+    }
+}
+
 static void _kayokoCopy() {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
     if (isInPasteProgress) {
@@ -429,9 +455,7 @@ static void _kayokoCopy() {
     if (kayokoPrefsPlaySoundEffects) {
         copySoundPlayer = kayokoPlayFeedbackSound(copySoundPlayer, @"Copy");
     }
-    if (kayokoPrefsPlayHapticFeedback) {
-        AudioServicesPlaySystemSound(1519);
-    }
+    kayokoPlaySuccessHapticFeedbackIfNeeded();
 }
 
 static void kayokoCopy() {
@@ -451,6 +475,12 @@ static void show() {
 
     BOOL locked = NO;
     if (read_ui_locked(&locked) && locked) {
+        kayokoPlayFailureHapticFeedbackIfNeeded();
+        return;
+    }
+
+    if (frontmost_app_is_landscape()) {
+        kayokoPlayFailureHapticFeedbackIfNeeded();
         return;
     }
 
@@ -490,8 +520,8 @@ static void show() {
 
     [kayokoMainViewController show];
 
-    if (kayokoPrefsPlayHapticFeedback && (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey)) {
-        AudioServicesPlaySystemSound(1519);
+    if (kayokoHelperPrefsActivationMethod & kActivationMethodDictationKey) {
+        kayokoPlaySuccessHapticFeedbackIfNeeded();
     }
 }
 
@@ -603,9 +633,7 @@ static void kayokoPaste() {
     if (kayokoPrefsPlaySoundEffects) {
         pasteSoundPlayer = kayokoPlayFeedbackSound(pasteSoundPlayer, @"Paste");
     }
-    if (kayokoPrefsPlayHapticFeedback) {
-        AudioServicesPlaySystemSound(1519);
-    }
+    kayokoPlaySuccessHapticFeedbackIfNeeded();
 }
 
 #pragma mark - Constructor
