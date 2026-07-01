@@ -254,6 +254,15 @@ NS_ASSUME_NONNULL_END
     [self hide];
 }
 
+- (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
+    return [[self searchController] isSearchActive];
+}
+
+- (void)panelPresentationController:(KayokoPanelPresentationController *)controller
+    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
+    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer];
+}
+
 - (BOOL)historyControllerIsPanelVisible:(KayokoHistoryController *)controller {
     return ![self isHidden];
 }

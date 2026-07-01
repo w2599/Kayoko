@@ -172,6 +172,18 @@ NS_ASSUME_NONNULL_END
                     clearsSearch:(BOOL)clearsSearch
                       animations:(void (^)(void))animations
                       completion:(void (^)(void))completion {
+    [self endSearchRestoringFrame:restoresFrame
+                      clearsSearch:clearsSearch
+                        animations:animations
+                     panVelocityY:0
+                        completion:completion];
+}
+
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                    clearsSearch:(BOOL)clearsSearch
+                      animations:(void (^)(void))animations
+                   panVelocityY:(CGFloat)panVelocityY
+                      completion:(void (^)(void))completion {
     if (![self isSearchActive] && !clearsSearch) {
         if (animations) {
             animations();
@@ -199,6 +211,7 @@ NS_ASSUME_NONNULL_END
     [[self presentationController] endSearchRestoringFrame:restoresFrame
                                            activeTableView:[[self activeListViewController] tableView]
                                                 animations:animations
+                                             panVelocityY:panVelocityY
                                                 completion:^{
                                                   [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
                                                   if (completion) {
@@ -223,6 +236,14 @@ NS_ASSUME_NONNULL_END
 
 - (void)cancelSearchWithAnimations:(void (^)(void))animations completion:(void (^)(void))completion {
     [self endSearchRestoringFrame:YES clearsSearch:YES animations:animations completion:completion];
+}
+
+- (void)collapseSearchFromFullscreenPanWithVelocity:(CGFloat)velocityY {
+    [self endSearchRestoringFrame:YES clearsSearch:YES animations:nil panVelocityY:velocityY completion:nil];
+}
+
+- (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
+    [[self presentationController] handleFullscreenPanGestureRecognizer:recognizer activeTableView:[self activeTableView]];
 }
 
 - (void)resetBeforeHide {
@@ -253,6 +274,11 @@ NS_ASSUME_NONNULL_END
 - (void)searchPresentationController:(KayokoSearchPresentationController *)controller
         didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset {
     [[self delegate] searchController:self didUpdateKeyboardBottomInset:keyboardBottomInset];
+}
+
+- (void)searchPresentationController:(KayokoSearchPresentationController *)controller
+    didRequestCollapseFromFullscreenPanWithVelocity:(CGFloat)velocityY {
+    [self collapseSearchFromFullscreenPanWithVelocity:velocityY];
 }
 
 - (void)handleSearchTextFieldEditingChanged:(UITextField *)textField {

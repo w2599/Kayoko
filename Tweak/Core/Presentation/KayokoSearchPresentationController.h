@@ -14,6 +14,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)searchPresentationController:(KayokoSearchPresentationController *)controller
         didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset;
+- (void)searchPresentationController:(KayokoSearchPresentationController *)controller
+    didRequestCollapseFromFullscreenPanWithVelocity:(CGFloat)velocityY;
 
 @end
 
@@ -46,6 +48,13 @@ NS_ASSUME_NONNULL_BEGIN
                 activeTableView:(KayokoHistoryListView *)activeTableView
                       animations:(nullable void (^)(void))animations
                       completion:(nullable void (^)(void))completion;
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                activeTableView:(KayokoHistoryListView *)activeTableView
+                      animations:(nullable void (^)(void))animations
+                   panVelocityY:(CGFloat)panVelocityY
+                      completion:(nullable void (^)(void))completion;
+- (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                             activeTableView:(KayokoHistoryListView *)activeTableView;
 - (void)resetKeyboardInsets;
 
 @end

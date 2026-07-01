@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL panGestureDidReachZeroAlpha;
+@property(nonatomic, assign) CGFloat pendingPanDismissTranslationY;
+@property(nonatomic, assign) CGFloat pendingPanDismissVelocityY;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -113,9 +115,23 @@ NS_ASSUME_NONNULL_END
     [[self outsideDismissOverlayView] setHidden:YES];
 }
 
+- (void)preparePanDismissAnimationWithTranslation:(CGPoint)translation velocity:(CGPoint)velocity {
+    CGFloat visibleTranslationY = MAX([[self panelView] transform].ty, 0);
+    CGFloat startingTranslationY = MAX(MAX(translation.y, visibleTranslationY), 0);
+    CGFloat targetTranslationY = startingTranslationY + MAX([[self panelView] bounds].size.height / 3, 120);
+    [self setPendingPanDismissTranslationY:targetTranslationY];
+    [self setPendingPanDismissVelocityY:MAX(velocity.y, 0)];
+}
+
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
+    if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
+        [[self delegate] panelPresentationController:self handleFullscreenSearchPanGestureRecognizer:recognizer];
+        return;
+    }
+
     CGPoint translation = [recognizer translationInView:[self panelView]];
     CGFloat const kFadeOutDistance = 100;
+    CGFloat const kFastDismissVelocity = 900;
 
     if ([recognizer state] == UIGestureRecognizerStateBegan) {
         [self setPanGestureDidReachZeroAlpha:NO];
@@ -142,12 +158,23 @@ NS_ASSUME_NONNULL_END
                          animations:^{
                            [[self panelView] setTransform:CGAffineTransformMakeTranslation(0, translation.y)];
                            [[self panelView] setAlpha:1 - fadeProgress];
+                           [[self outsideDismissOverlayView] setAlpha:1 - fadeProgress];
                          }
                          completion:nil];
     } else if ([recognizer state] == UIGestureRecognizerStateEnded ||
                [recognizer state] == UIGestureRecognizerStateCancelled ||
                [recognizer state] == UIGestureRecognizerStateFailed) {
-        if (![self panGestureDidReachZeroAlpha]) {
+        BOOL shouldDismiss = [self panGestureDidReachZeroAlpha];
+        BOOL shouldUseFastDismissAnimation = NO;
+        CGPoint velocity = CGPointZero;
+        if ([recognizer state] == UIGestureRecognizerStateEnded) {
+            velocity = [recognizer velocityInView:[self panelView]];
+            shouldUseFastDismissAnimation =
+                ![self panGestureDidReachZeroAlpha] && translation.y > 0 && velocity.y >= kFastDismissVelocity;
+            shouldDismiss = shouldDismiss || shouldUseFastDismissAnimation;
+        }
+
+        if (!shouldDismiss) {
             [UIView animateWithDuration:0.4
                 delay:0
                 usingSpringWithDamping:1
@@ -156,11 +183,15 @@ NS_ASSUME_NONNULL_END
                 animations:^{
                   [[self panelView] setTransform:CGAffineTransformIdentity];
                   [[self panelView] setAlpha:1];
+                  [[self outsideDismissOverlayView] setAlpha:1];
                 }
                 completion:^(__unused BOOL finished) {
                   [self finishOutsideDismissOverlayShow];
                 }];
         } else {
+            if (shouldUseFastDismissAnimation) {
+                [self preparePanDismissAnimationWithTranslation:translation velocity:velocity];
+            }
             [[self delegate] panelPresentationControllerDidRequestDismiss:self];
         }
     }
@@ -202,13 +233,31 @@ NS_ASSUME_NONNULL_END
     }
 
     [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
+    CGFloat panDismissTranslationY = [self pendingPanDismissTranslationY];
+    CGFloat panDismissVelocityY = [self pendingPanDismissVelocityY];
+    [self setPendingPanDismissTranslationY:0];
+    [self setPendingPanDismissVelocityY:0];
+
     [self setAnimating:YES];
-    [UIView animateWithDuration:0.33
+    CGFloat animationDuration = 0.33;
+    CGFloat initialSpringVelocity = 0;
+    if (panDismissTranslationY > 0) {
+        CGFloat currentTranslationY = MAX([[self panelView] transform].ty, 0);
+        CGFloat remainingDistance = MAX(panDismissTranslationY - currentTranslationY, 1);
+        CGFloat effectiveVelocityY = MAX(panDismissVelocityY, 900);
+        animationDuration = MIN(MAX(remainingDistance / effectiveVelocityY, 0.12), 0.33);
+        initialSpringVelocity = effectiveVelocityY / remainingDistance;
+    }
+
+    [UIView animateWithDuration:animationDuration
         delay:0
         usingSpringWithDamping:1
-        initialSpringVelocity:0
+        initialSpringVelocity:initialSpringVelocity
         options:UIViewAnimationOptionCurveEaseOut
         animations:^{
+          if (panDismissTranslationY > 0) {
+              [[self panelView] setTransform:CGAffineTransformMakeTranslation(0, panDismissTranslationY)];
+          }
           [[self panelView] setAlpha:0];
           [[self outsideDismissOverlayView] setAlpha:0];
         }

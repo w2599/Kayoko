@@ -18,15 +18,14 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
     KayokoContentTransitionDirectionModalDismissing,
 };
 
-@interface _UIGrabber : UIControl
-@end
+@class KayokoGrabberView;
 
 @interface KayokoMainView : UIView
 
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
-@property(nonatomic, strong) _UIGrabber *grabber;
+@property(nonatomic, strong) KayokoGrabberView *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIControl *titleTapControl;
 @property(nonatomic, strong) UIButton *clearButton;
@@ -44,6 +43,7 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
                       andTintColor:(UIColor *)color;
 - (void)setTitleText:(NSString *)title;
 - (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount;
+- (void)setGrabberFoldProgress:(CGFloat)progress;
 - (UIEdgeInsets)effectiveContentSafeAreaInsets;
 - (void)installContentView:(UIView *)contentView hidden:(BOOL)hidden;
 - (void)showContentView:(UIView *)viewToShow

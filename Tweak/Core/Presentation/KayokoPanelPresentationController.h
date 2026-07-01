@@ -13,6 +13,9 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol KayokoPanelPresentationControllerDelegate <NSObject>
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller;
+- (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller;
+- (void)panelPresentationController:(KayokoPanelPresentationController *)controller
+    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
 
 @end
 
