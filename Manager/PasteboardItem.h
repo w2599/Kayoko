@@ -27,6 +27,7 @@ static NSString *const kItemKeyHasLink = @"has_link";
                           withImageNamed:(nullable NSString *)imageName;
 
 + (nullable PasteboardItem *)itemFromDictionary:(nullable NSDictionary<NSString *, id> *)dictionary;
+- (NSDictionary<NSString *, id> *)dictionaryRepresentation;
 
 @end
 

@@ -37,4 +37,13 @@
                                              withImageNamed:imageName];
 }
 
+- (NSDictionary<NSString *, id> *)dictionaryRepresentation {
+    return @{
+        kItemKeyBundleIdentifier : [self bundleIdentifier] ?: @"com.apple.springboard",
+        kItemKeyContent : [self content] ?: @"",
+        kItemKeyImageName : [self imageName] ?: @"",
+        kItemKeyHasLink : @([self hasLink])
+    };
+}
+
 @end
