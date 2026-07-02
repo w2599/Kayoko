@@ -5,7 +5,8 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
+#import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperRuntime.h"
 #import "KayokoSwipeUpGestureRecognizer.h"
 
 #import <CaptainHook/CaptainHook.h>
@@ -82,13 +83,14 @@ static void kayokoCancelAllTouches(void) {
 }
 
 static void kayokoShowKayokoAndCancelTouches(void) {
-    KayokoHelperCaptureCurrentFirstResponder();
-    KayokoHelperPostCoreShow();
+    [[KayokoHelperRuntime sharedRuntime] showKayokoAfterCapturingCurrentFocus];
     kayokoCancelAllTouches();
 }
 
 static void kayokoDiscardSwipeUpGestureRecognizer(UIView *view);
 static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
 - (instancetype)initWithView:(UIView *)view keyboardExtension:(BOOL)keyboardExtension;
@@ -99,6 +101,8 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
 @property(nonatomic, weak, readonly) UIView *view;
 @property(nonatomic, assign, readonly, getter=isKeyboardExtension) BOOL keyboardExtension;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoSwipeUpGestureHandler
 
@@ -284,7 +288,9 @@ CHOptimizedMethod1(self, void, _UIHostedWindow, sendEvent, UIEvent *, event) {
     CHSuper1(_UIHostedWindow, sendEvent, event);
 }
 
-void EnableKayokoActivationSwipeUp(void) {
+@implementation KayokoHelperHookInstaller (SwipeUp)
+
++ (void)installSwipeUpHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&UIInputSetHostView$, NSClassFromString(@"UIInputSetHostView"));
@@ -293,7 +299,7 @@ void EnableKayokoActivationSwipeUp(void) {
     });
 }
 
-void EnableKayokoActivationSwipeUpForKeyboardExtension(void) {
++ (void)installKeyboardExtensionSwipeUpHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&_UIHostedWindow$, NSClassFromString(@"_UIHostedWindow"));
@@ -301,3 +307,5 @@ void EnableKayokoActivationSwipeUpForKeyboardExtension(void) {
       CHHook1(_UIHostedWindow, sendEvent);
     });
 }
+
+@end

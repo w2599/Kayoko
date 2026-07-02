@@ -5,17 +5,15 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
+#import "KayokoHelperRuntime.h"
 
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
-#import "PreferenceKeys.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CFNotificationCenter.h>
 #import <Foundation/Foundation.h>
-#import <libSandy.h>
 #import <objc/runtime.h>
 
 CHDeclareClass(UIKeyboardLayoutStar);
@@ -23,28 +21,6 @@ CHDeclareClass(UIKBInputBackdropView);
 CHDeclareClass(UIKeyboardImpl);
 CHDeclareClass(UISearchBar);
 CHDeclareClass(UITextField);
-
-static NSUserDefaults *kayokoHelperPreferences = nil;
-static BOOL kayokoHelperPrefsEnabled = NO;
-static NSUInteger kayokoHelperPrefsActivationMethod = 0;
-static BOOL kayokoHelperPrefsAutomaticallyPaste = NO;
-
-static BOOL kayokoHelperRuntimeIsSpringBoard = NO;
-static BOOL kayokoApplicationIsInForeground = YES;
-static BOOL kayokoHasCapturedFocusSession = NO;
-static BOOL kayokoLastKeyboardInputWasKayokoOwned = NO;
-static NSTimeInterval kayokoLastKayokoKeyboardInputTime = 0;
-static __weak UIResponder *kayokoResolvedCurrentFirstResponder = nil;
-static __weak UIResponder *kayokoFirstResponderBeforeShowingKayoko = nil;
-static __weak UIResponder *kayokoKeyboardInputDelegateBeforeShowingKayoko = nil;
-static __weak UIWindow *kayokoKeyWindowBeforeShowingKayoko = nil;
-
-static BOOL kayokoHasPendingPaste = NO;
-static BOOL kayokoPendingPasteCanExecute = NO;
-static BOOL kayokoPendingPasteRequiresKeyboardDelegate = NO;
-static NSUInteger kayokoPendingPasteToken = 0;
-static __weak UIResponder *kayokoPendingPasteResponder = nil;
-static __weak UIWindow *kayokoPendingPasteKeyWindow = nil;
 
 static const NSTimeInterval kKayokoPendingPasteExpirationDelay = 2.8;
 static const NSTimeInterval kKayokoKeyboardHideSuppressionInterval = 1.0;
@@ -60,63 +36,332 @@ static const NSTimeInterval kKayokoKeyboardHideSuppressionInterval = 1.0;
 @property(nonatomic, strong, readonly) id inputDelegate;
 @end
 
-BOOL KayokoHelperEnabled(void) { return kayokoHelperPrefsEnabled; }
+NS_ASSUME_NONNULL_BEGIN
 
-NSUInteger KayokoHelperActivationMethod(void) { return kayokoHelperPrefsActivationMethod; }
+@interface KayokoHelperFocusSession : NSObject
+@property(nonatomic, assign, getter=hasCapturedFocusSession) BOOL capturedFocusSession;
+@property(nonatomic, weak, nullable) UIResponder *firstResponder;
+@property(nonatomic, weak, nullable) UIResponder *keyboardInputDelegate;
+@property(nonatomic, weak, nullable) UIWindow *keyWindow;
+- (void)clear;
+- (void)finishCapturing;
+- (BOOL)matchesKeyWindow:(UIWindow *)keyWindow;
+@end
 
-BOOL KayokoHelperAutomaticallyPasteEnabled(void) { return kayokoHelperPrefsAutomaticallyPaste; }
+NS_ASSUME_NONNULL_END
+
+@implementation KayokoHelperFocusSession
+
+- (void)clear {
+    self.capturedFocusSession = NO;
+    self.firstResponder = nil;
+    self.keyboardInputDelegate = nil;
+    self.keyWindow = nil;
+}
+
+- (void)finishCapturing {
+    self.capturedFocusSession = self.keyboardInputDelegate || self.firstResponder;
+}
+
+- (BOOL)matchesKeyWindow:(UIWindow *)keyWindow {
+    UIWindow *capturedKeyWindow = self.keyWindow;
+    return !capturedKeyWindow || capturedKeyWindow == keyWindow;
+}
+
+@end
+
+@interface KayokoHelperPendingPasteSession : NSObject
+@property(nonatomic, assign, getter=hasPendingPaste) BOOL pendingPaste;
+@property(nonatomic, assign) BOOL canExecute;
+@property(nonatomic, assign) BOOL requiresKeyboardDelegate;
+@property(nonatomic, assign) NSUInteger token;
+@property(nonatomic, weak, nullable) UIResponder *responder;
+@property(nonatomic, weak, nullable) UIWindow *keyWindow;
+- (void)clear;
+@end
+
+@implementation KayokoHelperPendingPasteSession
+
+- (void)clear {
+    self.pendingPaste = NO;
+    self.canExecute = NO;
+    self.requiresKeyboardDelegate = NO;
+    self.responder = nil;
+    self.keyWindow = nil;
+}
+
+@end
+
+@class KayokoKeyboardObserver;
+
+@interface KayokoHelperRuntime ()
+
+@property(nonatomic, assign, getter=isSpringBoardRuntime) BOOL springBoardRuntime;
+@property(nonatomic, assign, getter=isAutomaticallyPasteEnabled) BOOL automaticallyPasteEnabled;
+@property(nonatomic, assign) BOOL applicationInForeground;
+@property(nonatomic, strong) KayokoHelperFocusSession *focusSession;
+@property(nonatomic, strong) KayokoHelperPendingPasteSession *pendingPasteSession;
+@property(nonatomic, assign) BOOL lastKeyboardInputWasKayokoOwned;
+@property(nonatomic, assign) NSTimeInterval lastKayokoKeyboardInputTime;
+@property(nonatomic, weak, nullable) UIResponder *resolvedCurrentFirstResponder;
+@property(nonatomic, strong, nullable) KayokoKeyboardObserver *keyboardObserver;
+@property(nonatomic, assign, getter=hasInstalledObservers) BOOL installedObservers;
+
+- (void)keyboardWindowDidMoveToWindow;
+- (void)keyboardImplDidBecomeActive;
+- (void)keyboardImplWillLeaveActive;
+- (void)keyboardImplDidSetDelegate:(id)delegate;
+- (void)rememberResponderWillResign:(UIResponder *)responder;
+
+@end
+
+@interface KayokoKeyboardObserver : NSObject
+- (instancetype)initWithRuntime:(KayokoHelperRuntime *)runtime;
+@end
 
 static CFStringRef kayokoHelperNotificationName(NSString *name) { return (__bridge CFStringRef)name; }
 
-void KayokoHelperPostCoreShow(void) {
+static void kayokoHelperPasteNotificationCallback(CFNotificationCenterRef center, void *observer,
+                                                  CFNotificationName name, const void *object,
+                                                  CFDictionaryRef userInfo) {
+    [[KayokoHelperRuntime sharedRuntime] paste];
+}
+
+static void kayokoHelperCaptureFocusNotificationCallback(CFNotificationCenterRef center, void *observer,
+                                                         CFNotificationName name, const void *object,
+                                                         CFDictionaryRef userInfo) {
+    [[KayokoHelperRuntime sharedRuntime] captureCurrentFirstResponder];
+}
+
+static void kayokoHelperRestoreFocusNotificationCallback(CFNotificationCenterRef center, void *observer,
+                                                         CFNotificationName name, const void *object,
+                                                         CFDictionaryRef userInfo) {
+    [[KayokoHelperRuntime sharedRuntime] restoreCapturedFirstResponder];
+}
+
+CHOptimizedMethod0(self, void, UIKeyboardLayoutStar, didMoveToWindow) {
+    CHSuper0(UIKeyboardLayoutStar, didMoveToWindow);
+    [[KayokoHelperRuntime sharedRuntime] keyboardWindowDidMoveToWindow];
+}
+
+CHOptimizedMethod0(self, void, UIKBInputBackdropView, didMoveToWindow) {
+    CHSuper0(UIKBInputBackdropView, didMoveToWindow);
+    [[KayokoHelperRuntime sharedRuntime] keyboardWindowDidMoveToWindow];
+}
+
+CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationDidBecomeActive, BOOL, didBecomeActive) {
+    CHSuper1(UIKeyboardImpl, applicationDidBecomeActive, didBecomeActive);
+    [[KayokoHelperRuntime sharedRuntime] keyboardImplDidBecomeActive];
+}
+
+CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillResignActive, BOOL, willResignActive) {
+    CHSuper1(UIKeyboardImpl, applicationWillResignActive, willResignActive);
+    [[KayokoHelperRuntime sharedRuntime] keyboardImplWillLeaveActive];
+}
+
+CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillSuspend, BOOL, willSuspend) {
+    CHSuper1(UIKeyboardImpl, applicationWillSuspend, willSuspend);
+    [[KayokoHelperRuntime sharedRuntime] keyboardImplWillLeaveActive];
+}
+
+CHOptimizedMethod3(self, void, UIKeyboardImpl, setDelegate, id, delegate, force, BOOL, force, fromBecomeFirstResponder,
+                   BOOL, fromBecomeFirstResponder) {
+    CHSuper3(UIKeyboardImpl, setDelegate, delegate, force, force, fromBecomeFirstResponder, fromBecomeFirstResponder);
+    [[KayokoHelperRuntime sharedRuntime] keyboardImplDidSetDelegate:delegate];
+}
+
+CHOptimizedMethod0(self, BOOL, UISearchBar, resignFirstResponder) {
+    [[KayokoHelperRuntime sharedRuntime] rememberResponderWillResign:self];
+    return CHSuper0(UISearchBar, resignFirstResponder);
+}
+
+CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
+    [[KayokoHelperRuntime sharedRuntime] rememberResponderWillResign:self];
+    return CHSuper0(UITextField, resignFirstResponder);
+}
+
+@implementation KayokoHelperRuntime
+
++ (instancetype)sharedRuntime {
+    static KayokoHelperRuntime *runtime;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      runtime = [[self alloc] initPrivate];
+    });
+    return runtime;
+}
+
+- (instancetype)initPrivate {
+    self = [super init];
+    if (self) {
+        _applicationInForeground = YES;
+        _focusSession = [[KayokoHelperFocusSession alloc] init];
+        _pendingPasteSession = [[KayokoHelperPendingPasteSession alloc] init];
+    }
+    return self;
+}
+
+- (void)installApplicationRuntimeWithConfiguration:(KayokoHelperConfiguration *)configuration {
+    self.springBoardRuntime = NO;
+    self.automaticallyPasteEnabled = configuration.automaticallyPasteEnabled;
+    [self installRuntimeHooks];
+    [self installRuntimeObserversObservingWindowResign:YES];
+}
+
+- (void)installSpringBoardRuntimeWithConfiguration:(KayokoHelperConfiguration *)configuration {
+    self.springBoardRuntime = YES;
+    self.automaticallyPasteEnabled = configuration.automaticallyPasteEnabled;
+    [self installSpringBoardInputIsolationHooks];
+    [self installRuntimeHooks];
+    [self installRuntimeObserversObservingWindowResign:NO];
+}
+
+- (void)showKayoko {
+    [self postCoreShow];
+}
+
+- (void)showKayokoAfterCapturingCurrentFocus {
+    [self captureCurrentFirstResponder];
+    [self postCoreShow];
+}
+
+- (void)showKayokoFromResponder:(UIResponder *)responder {
+    if ([responder isKindOfClass:[UIResponder class]] && ![self responderIsKayokoOwned:responder]) {
+        [self captureFocusSessionFromResponder:responder
+                                     keyWindow:[self activeKeyWindowForApplication:[UIApplication sharedApplication]]];
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self postCoreShow];
+    });
+}
+
+- (void)captureCurrentFirstResponder {
+    UIApplication *application = [UIApplication sharedApplication];
+    UIWindow *keyWindow = [self activeKeyWindowForApplication:application];
+    if (!keyWindow) {
+        return;
+    }
+
+    if ([self currentInputIsKayokoOwned]) {
+        return;
+    }
+
+    [self captureFocusSessionInKeyWindow:keyWindow];
+    [application sendAction:@selector(kayokoCaptureFirstResponderForFocusRestore:) to:nil from:nil forEvent:nil];
+    [self.focusSession finishCapturing];
+}
+
+- (void)restoreCapturedFirstResponder {
+    UIApplication *application = [UIApplication sharedApplication];
+    UIWindow *keyWindow = [self activeKeyWindowForApplication:application];
+    [self restoreCapturedFocusSessionInKeyWindow:keyWindow];
+}
+
+- (void)paste {
+    if (!self.applicationInForeground) {
+        return;
+    }
+
+    UIApplication *application = [UIApplication sharedApplication];
+    if (![self applicationHasActiveKeyWindow:application]) {
+        return;
+    }
+
+    BOOL hasPendingPaste = [self beginPendingPaste];
+    [self restoreCapturedFirstResponder];
+
+    if (hasPendingPaste) {
+        self.pendingPasteSession.canExecute = YES;
+        [self schedulePendingPasteCheck];
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self performPaste];
+        });
+    }
+}
+
+- (void)keyboardWindowDidMoveToWindow {
+    if ([self keyboardHideIsFromKayokoInput]) {
+        return;
+    }
+    [self postCoreHide];
+}
+
+- (void)keyboardImplDidBecomeActive {
+    self.applicationInForeground = YES;
+    [self schedulePendingPasteCheck];
+}
+
+- (void)keyboardImplWillLeaveActive {
+    self.applicationInForeground = NO;
+    [self.pendingPasteSession clear];
+}
+
+- (void)keyboardImplDidSetDelegate:(id)delegate {
+    if ([delegate isKindOfClass:[UIResponder class]] && [self responderIsKayokoOwned:(UIResponder *)delegate]) {
+        [self rememberKayokoKeyboardInput];
+        return;
+    }
+    if ([delegate isKindOfClass:[UIResponder class]] && self.isSpringBoardRuntime) {
+        [self clearLastKayokoKeyboardInput];
+    }
+    [self attemptPendingPaste];
+}
+
+- (void)rememberResponderWillResign:(UIResponder *)responder {
+    if ([self responderIsKayokoOwned:responder]) {
+        [self rememberKayokoKeyboardInput];
+    }
+}
+
+- (void)windowDidResignKeyWithNotification:(NSNotification *)notification {
+    if ([self keyboardHideIsFromKayokoInput]) {
+        return;
+    }
+    [self postCoreHide];
+}
+
+- (void)keyboardWillHideWithNotification:(NSNotification *)notification {
+    NSDictionary<NSString *, id> *userInfo = [notification userInfo];
+    BOOL isLocalKeyboard = [userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
+    if (!isLocalKeyboard) {
+        return;
+    }
+
+    if ([self keyboardHideIsFromKayokoInput]) {
+        return;
+    }
+
+    [self postCoreHide];
+}
+
+- (void)keyboardDidShowWithNotification:(NSNotification *)notification {
+    if ([self currentInputIsKayokoOwned]) {
+        return;
+    }
+    [self attemptPendingPaste];
+}
+
+- (void)captureResponderForFocusRestore:(UIResponder *)responder {
+    if ([self responderIsKayokoOwned:responder]) {
+        return;
+    }
+
+    self.focusSession.firstResponder = responder;
+}
+
+- (void)postCoreShow {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          kayokoHelperNotificationName(kKayokoNotificationKeyCoreShow), nil, nil, YES);
 }
 
-static void kayokoHelperPostCoreHide(void) {
+- (void)postCoreHide {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          kayokoHelperNotificationName(kKayokoNotificationKeyCoreHide), nil, nil, YES);
 }
 
-void KayokoHelperLoadPreferences(void) {
-    kayokoHelperPreferences = [[NSUserDefaults alloc]
-        initWithSuiteName:[NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist",
-                                                     kKayokoPreferencesIdentifier]];
-
-#if THEOS_PACKAGE_SCHEME_ROOTHIDE
-    libSandy_applyProfile("Kayoko_RootHide");
-#else
-    libSandy_applyProfile("Kayoko");
-#endif
-
-    [kayokoHelperPreferences registerDefaults:@{
-        kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
-        kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
-        kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue)
-    }];
-
-    kayokoHelperPrefsEnabled = [[kayokoHelperPreferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
-    kayokoHelperPrefsActivationMethod =
-        [[kayokoHelperPreferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
-    kayokoHelperPrefsAutomaticallyPaste =
-        [[kayokoHelperPreferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
-}
-
-BOOL KayokoHelperIsKeyboardExtensionProcess(void) {
-    NSBundle *mainBundle = [NSBundle mainBundle];
-    NSString *bundlePath = [mainBundle bundlePath];
-    BOOL isPluginBundle = [[bundlePath pathExtension] isEqualToString:@"appex"] ||
-                          [bundlePath rangeOfString:@"/PlugIns/"].location != NSNotFound;
-    if (!isPluginBundle) {
-        return NO;
-    }
-
-    NSDictionary<NSString *, id> *extensionInfo = [[mainBundle infoDictionary] objectForKey:@"NSExtension"];
-    NSString *extensionPointIdentifier = [extensionInfo objectForKey:@"NSExtensionPointIdentifier"];
-    return [extensionPointIdentifier isEqualToString:@"com.apple.keyboard-service"];
-}
-
-static UIWindow *kayokoHelperActiveKeyWindow(UIApplication *application) {
+- (UIWindow *)activeKeyWindowForApplication:(UIApplication *)application {
     if (!application || [application applicationState] != UIApplicationStateActive) {
         return nil;
     }
@@ -145,11 +390,11 @@ static UIWindow *kayokoHelperActiveKeyWindow(UIApplication *application) {
     return [keyWindow isKeyWindow] ? keyWindow : nil;
 }
 
-static BOOL kayokoHelperApplicationHasActiveKeyWindow(UIApplication *application) {
-    return kayokoHelperActiveKeyWindow(application) != nil;
+- (BOOL)applicationHasActiveKeyWindow:(UIApplication *)application {
+    return [self activeKeyWindowForApplication:application] != nil;
 }
 
-static UIKeyboardImpl *kayokoHelperActiveKeyboardImpl(void) {
+- (UIKeyboardImpl *)activeKeyboardImpl {
     Class keyboardImplClass = NSClassFromString(@"UIKeyboardImpl");
     SEL activeInstanceSelector = @selector(activeInstance);
     if (![keyboardImplClass respondsToSelector:activeInstanceSelector]) {
@@ -162,8 +407,8 @@ static UIKeyboardImpl *kayokoHelperActiveKeyboardImpl(void) {
 #pragma clang diagnostic pop
 }
 
-static UIResponder *kayokoHelperActiveKeyboardInputDelegate(void) {
-    UIKeyboardImpl *keyboardImpl = kayokoHelperActiveKeyboardImpl();
+- (UIResponder *)activeKeyboardInputDelegate {
+    UIKeyboardImpl *keyboardImpl = [self activeKeyboardImpl];
     SEL inputDelegateSelector = @selector(inputDelegate);
     if (![keyboardImpl respondsToSelector:inputDelegateSelector]) {
         return nil;
@@ -180,8 +425,8 @@ static UIResponder *kayokoHelperActiveKeyboardInputDelegate(void) {
     return inputDelegate;
 }
 
-static BOOL kayokoHelperObjectHasKayokoClassPrefix(id object) {
-    if (!kayokoHelperRuntimeIsSpringBoard || !object) {
+- (BOOL)objectHasKayokoClassPrefix:(id)object {
+    if (!self.isSpringBoardRuntime || !object) {
         return NO;
     }
 
@@ -195,14 +440,14 @@ static BOOL kayokoHelperObjectHasKayokoClassPrefix(id object) {
     return NO;
 }
 
-static BOOL kayokoHelperViewHierarchyIsKayokoOwned(UIView *view) {
-    if (!kayokoHelperRuntimeIsSpringBoard) {
+- (BOOL)viewHierarchyIsKayokoOwned:(UIView *)view {
+    if (!self.isSpringBoardRuntime) {
         return NO;
     }
 
     NSUInteger depth = 0;
     while (view && depth < 64) {
-        if (kayokoHelperObjectHasKayokoClassPrefix(view)) {
+        if ([self objectHasKayokoClassPrefix:view]) {
             return YES;
         }
         view = [view superview];
@@ -211,19 +456,19 @@ static BOOL kayokoHelperViewHierarchyIsKayokoOwned(UIView *view) {
     return NO;
 }
 
-static BOOL kayokoHelperResponderIsKayokoOwned(UIResponder *responder) {
-    if (!kayokoHelperRuntimeIsSpringBoard || !responder) {
+- (BOOL)responderIsKayokoOwned:(UIResponder *)responder {
+    if (!self.isSpringBoardRuntime || !responder) {
         return NO;
     }
 
     UIResponder *currentResponder = responder;
     NSUInteger depth = 0;
     while (currentResponder && depth < 64) {
-        if (kayokoHelperObjectHasKayokoClassPrefix(currentResponder)) {
+        if ([self objectHasKayokoClassPrefix:currentResponder]) {
             return YES;
         }
         if ([currentResponder isKindOfClass:[UIView class]] &&
-            kayokoHelperViewHierarchyIsKayokoOwned([(UIView *)currentResponder superview])) {
+            [self viewHierarchyIsKayokoOwned:[(UIView *)currentResponder superview]]) {
             return YES;
         }
         currentResponder = [currentResponder nextResponder];
@@ -232,65 +477,70 @@ static BOOL kayokoHelperResponderIsKayokoOwned(UIResponder *responder) {
     return NO;
 }
 
-static void kayokoHelperRememberKayokoKeyboardInput(void) {
-    kayokoLastKeyboardInputWasKayokoOwned = YES;
-    kayokoLastKayokoKeyboardInputTime = [NSDate timeIntervalSinceReferenceDate];
+- (void)rememberKayokoKeyboardInput {
+    self.lastKeyboardInputWasKayokoOwned = YES;
+    self.lastKayokoKeyboardInputTime = [NSDate timeIntervalSinceReferenceDate];
 }
 
-static BOOL kayokoHelperHasRecentKayokoKeyboardInput(void) {
-    if (!kayokoLastKeyboardInputWasKayokoOwned) {
+- (void)clearLastKayokoKeyboardInput {
+    self.lastKeyboardInputWasKayokoOwned = NO;
+    self.lastKayokoKeyboardInputTime = 0;
+}
+
+- (BOOL)hasRecentKayokoKeyboardInput {
+    if (!self.lastKeyboardInputWasKayokoOwned) {
         return NO;
     }
 
-    NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] - kayokoLastKayokoKeyboardInputTime;
+    NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] - self.lastKayokoKeyboardInputTime;
     if (elapsed <= kKayokoKeyboardHideSuppressionInterval) {
         return YES;
     }
 
-    kayokoLastKeyboardInputWasKayokoOwned = NO;
-    kayokoLastKayokoKeyboardInputTime = 0;
+    [self clearLastKayokoKeyboardInput];
     return NO;
 }
 
-static UIResponder *kayokoHelperCurrentFirstResponder(void) {
-    if (!kayokoHelperRuntimeIsSpringBoard) {
+- (UIResponder *)currentFirstResponder {
+    if (!self.isSpringBoardRuntime) {
         return nil;
     }
 
-    kayokoResolvedCurrentFirstResponder = nil;
-    [[UIApplication sharedApplication] sendAction:@selector(kayokoResolveCurrentFirstResponder:) to:nil from:nil
+    self.resolvedCurrentFirstResponder = nil;
+    [[UIApplication sharedApplication] sendAction:@selector(kayokoResolveCurrentFirstResponder:)
+                                               to:nil
+                                             from:nil
                                          forEvent:nil];
-    return kayokoResolvedCurrentFirstResponder;
+    return self.resolvedCurrentFirstResponder;
 }
 
-static BOOL kayokoHelperCurrentInputIsKayokoOwnedUpdatingLast(BOOL clearsLastForExternalInput) {
-    if (!kayokoHelperRuntimeIsSpringBoard) {
+- (BOOL)currentInputIsKayokoOwnedUpdatingLast:(BOOL)clearsLastForExternalInput {
+    if (!self.isSpringBoardRuntime) {
         return NO;
     }
 
     BOOL foundCurrentInput = NO;
-    UIResponder *keyboardInputDelegate = kayokoHelperActiveKeyboardInputDelegate();
+    UIResponder *keyboardInputDelegate = [self activeKeyboardInputDelegate];
     if (keyboardInputDelegate) {
         foundCurrentInput = YES;
-        if (kayokoHelperResponderIsKayokoOwned(keyboardInputDelegate)) {
-            kayokoHelperRememberKayokoKeyboardInput();
+        if ([self responderIsKayokoOwned:keyboardInputDelegate]) {
+            [self rememberKayokoKeyboardInput];
             return YES;
         }
     }
 
-    UIResponder *firstResponder = kayokoHelperCurrentFirstResponder();
+    UIResponder *firstResponder = [self currentFirstResponder];
     if (firstResponder) {
         foundCurrentInput = YES;
-        if (kayokoHelperResponderIsKayokoOwned(firstResponder)) {
-            kayokoHelperRememberKayokoKeyboardInput();
+        if ([self responderIsKayokoOwned:firstResponder]) {
+            [self rememberKayokoKeyboardInput];
             return YES;
         }
     }
 
     if (foundCurrentInput) {
         if (clearsLastForExternalInput) {
-            kayokoLastKeyboardInputWasKayokoOwned = NO;
-            kayokoLastKayokoKeyboardInputTime = 0;
+            [self clearLastKayokoKeyboardInput];
         }
         return NO;
     }
@@ -298,42 +548,36 @@ static BOOL kayokoHelperCurrentInputIsKayokoOwnedUpdatingLast(BOOL clearsLastFor
     return NO;
 }
 
-static BOOL kayokoHelperCurrentInputIsKayokoOwned(void) {
-    return kayokoHelperCurrentInputIsKayokoOwnedUpdatingLast(YES);
+- (BOOL)currentInputIsKayokoOwned {
+    return [self currentInputIsKayokoOwnedUpdatingLast:YES];
 }
 
-static BOOL kayokoHelperKeyboardHideIsFromKayokoInput(void) {
-    if (!kayokoHelperRuntimeIsSpringBoard) {
+- (BOOL)keyboardHideIsFromKayokoInput {
+    if (!self.isSpringBoardRuntime) {
         return NO;
     }
 
-    if (kayokoHelperCurrentInputIsKayokoOwnedUpdatingLast(NO)) {
+    if ([self currentInputIsKayokoOwnedUpdatingLast:NO]) {
         return YES;
     }
 
-    if (kayokoHelperHasRecentKayokoKeyboardInput()) {
+    if ([self hasRecentKayokoKeyboardInput]) {
         return YES;
     }
 
     return NO;
 }
 
-static void kayokoHelperRememberKayokoResponderWillResign(UIResponder *responder) {
-    if (kayokoHelperResponderIsKayokoOwned(responder)) {
-        kayokoHelperRememberKayokoKeyboardInput();
-    }
-}
-
-static UIResponder *kayokoHelperRestorableKeyboardInputDelegate(void) {
-    UIResponder *keyboardInputDelegate = kayokoHelperActiveKeyboardInputDelegate();
-    if (kayokoHelperResponderIsKayokoOwned(keyboardInputDelegate)) {
+- (UIResponder *)restorableKeyboardInputDelegate {
+    UIResponder *keyboardInputDelegate = [self activeKeyboardInputDelegate];
+    if ([self responderIsKayokoOwned:keyboardInputDelegate]) {
         return nil;
     }
     return keyboardInputDelegate;
 }
 
-static BOOL kayokoHelperRestoreResponder(UIResponder *responder) {
-    if (kayokoHelperResponderIsKayokoOwned(responder)) {
+- (BOOL)restoreResponder:(UIResponder *)responder {
+    if ([self responderIsKayokoOwned:responder]) {
         return NO;
     }
 
@@ -344,58 +588,41 @@ static BOOL kayokoHelperRestoreResponder(UIResponder *responder) {
     return [responder becomeFirstResponder];
 }
 
-static void kayokoHelperClearCapturedFocusSession(void) {
-    kayokoHasCapturedFocusSession = NO;
-    kayokoFirstResponderBeforeShowingKayoko = nil;
-    kayokoKeyboardInputDelegateBeforeShowingKayoko = nil;
-    kayokoKeyWindowBeforeShowingKayoko = nil;
-}
-
-static void kayokoHelperFinishCapturingFocusSession(void) {
-    kayokoHasCapturedFocusSession =
-        kayokoKeyboardInputDelegateBeforeShowingKayoko || kayokoFirstResponderBeforeShowingKayoko;
-}
-
-static void kayokoHelperCaptureFocusSessionInKeyWindow(UIWindow *keyWindow) {
-    kayokoHelperClearCapturedFocusSession();
+- (void)captureFocusSessionInKeyWindow:(UIWindow *)keyWindow {
+    [self.focusSession clear];
     if (!keyWindow) {
         return;
     }
 
-    kayokoKeyWindowBeforeShowingKayoko = keyWindow;
-    kayokoKeyboardInputDelegateBeforeShowingKayoko = kayokoHelperRestorableKeyboardInputDelegate();
+    self.focusSession.keyWindow = keyWindow;
+    self.focusSession.keyboardInputDelegate = [self restorableKeyboardInputDelegate];
 }
 
-static void kayokoHelperCaptureFocusSessionFromResponder(UIResponder *responder, UIWindow *keyWindow) {
-    if (kayokoHelperResponderIsKayokoOwned(responder)) {
+- (void)captureFocusSessionFromResponder:(UIResponder *)responder keyWindow:(UIWindow *)keyWindow {
+    if ([self responderIsKayokoOwned:responder]) {
         return;
     }
 
-    kayokoHelperCaptureFocusSessionInKeyWindow(keyWindow);
-    kayokoFirstResponderBeforeShowingKayoko = responder;
-    kayokoHelperFinishCapturingFocusSession();
+    [self captureFocusSessionInKeyWindow:keyWindow];
+    self.focusSession.firstResponder = responder;
+    [self.focusSession finishCapturing];
 }
 
-static BOOL kayokoHelperCapturedFocusSessionMatchesKeyWindow(UIWindow *keyWindow) {
-    UIWindow *capturedKeyWindow = kayokoKeyWindowBeforeShowingKayoko;
-    return !capturedKeyWindow || capturedKeyWindow == keyWindow;
-}
-
-static BOOL kayokoHelperRestoreCapturedFocusSessionInKeyWindow(UIWindow *keyWindow) {
-    if (!keyWindow || !kayokoHasCapturedFocusSession || !kayokoHelperCapturedFocusSessionMatchesKeyWindow(keyWindow)) {
+- (BOOL)restoreCapturedFocusSessionInKeyWindow:(UIWindow *)keyWindow {
+    if (!keyWindow || !self.focusSession.hasCapturedFocusSession || ![self.focusSession matchesKeyWindow:keyWindow]) {
         return NO;
     }
 
-    if (kayokoHelperRestoreResponder(kayokoKeyboardInputDelegateBeforeShowingKayoko)) {
+    if ([self restoreResponder:self.focusSession.keyboardInputDelegate]) {
         return YES;
     }
 
-    return kayokoHelperRestoreResponder(kayokoFirstResponderBeforeShowingKayoko);
+    return [self restoreResponder:self.focusSession.firstResponder];
 }
 
-static UIResponder *kayokoHelperCapturedFocusResponderForPaste(BOOL *requiresKeyboardDelegate) {
-    UIResponder *keyboardInputDelegate = kayokoKeyboardInputDelegateBeforeShowingKayoko;
-    if (keyboardInputDelegate && !kayokoHelperResponderIsKayokoOwned(keyboardInputDelegate)) {
+- (UIResponder *)capturedFocusResponderForPasteRequiringKeyboardDelegate:(BOOL *)requiresKeyboardDelegate {
+    UIResponder *keyboardInputDelegate = self.focusSession.keyboardInputDelegate;
+    if (keyboardInputDelegate && ![self responderIsKayokoOwned:keyboardInputDelegate]) {
         if (requiresKeyboardDelegate) {
             *requiresKeyboardDelegate = YES;
         }
@@ -405,54 +632,16 @@ static UIResponder *kayokoHelperCapturedFocusResponderForPaste(BOOL *requiresKey
     if (requiresKeyboardDelegate) {
         *requiresKeyboardDelegate = NO;
     }
-    UIResponder *firstResponder = kayokoFirstResponderBeforeShowingKayoko;
-    return kayokoHelperResponderIsKayokoOwned(firstResponder) ? nil : firstResponder;
+    UIResponder *firstResponder = self.focusSession.firstResponder;
+    return [self responderIsKayokoOwned:firstResponder] ? nil : firstResponder;
 }
 
-@implementation UIResponder (KayokoFocusRestoration)
-
-- (void)kayokoCaptureFirstResponderForFocusRestore:(id)sender {
-    if (kayokoHelperResponderIsKayokoOwned(self)) {
-        return;
-    }
-
-    kayokoFirstResponderBeforeShowingKayoko = self;
-}
-
-- (void)kayokoResolveCurrentFirstResponder:(id)sender {
-    kayokoResolvedCurrentFirstResponder = self;
-}
-
-@end
-
-void KayokoHelperCaptureCurrentFirstResponder(void) {
-    UIApplication *application = [UIApplication sharedApplication];
-    UIWindow *keyWindow = kayokoHelperActiveKeyWindow(application);
-    if (!keyWindow) {
-        return;
-    }
-
-    if (kayokoHelperCurrentInputIsKayokoOwned()) {
-        return;
-    }
-
-    kayokoHelperCaptureFocusSessionInKeyWindow(keyWindow);
-    [application sendAction:@selector(kayokoCaptureFirstResponderForFocusRestore:) to:nil from:nil forEvent:nil];
-    kayokoHelperFinishCapturingFocusSession();
-}
-
-void KayokoHelperRestoreCapturedFirstResponder(void) {
-    UIApplication *application = [UIApplication sharedApplication];
-    UIWindow *keyWindow = kayokoHelperActiveKeyWindow(application);
-    kayokoHelperRestoreCapturedFocusSessionInKeyWindow(keyWindow);
-}
-
-static void kayokoHelperPerformPaste(void) {
+- (void)performPaste {
     UIApplication *activeApplication = [UIApplication sharedApplication];
-    if (!kayokoApplicationIsInForeground || !kayokoHelperApplicationHasActiveKeyWindow(activeApplication)) {
+    if (!self.applicationInForeground || ![self applicationHasActiveKeyWindow:activeApplication]) {
         return;
     }
-    if (kayokoHelperCurrentInputIsKayokoOwned()) {
+    if ([self currentInputIsKayokoOwned]) {
         return;
     }
 
@@ -476,284 +665,187 @@ static void kayokoHelperPerformPaste(void) {
     [activeApplication sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
 }
 
-static void kayokoHelperClearPendingPaste(void) {
-    kayokoHasPendingPaste = NO;
-    kayokoPendingPasteCanExecute = NO;
-    kayokoPendingPasteRequiresKeyboardDelegate = NO;
-    kayokoPendingPasteResponder = nil;
-    kayokoPendingPasteKeyWindow = nil;
-}
-
-static BOOL kayokoHelperPendingPasteIsReady(void) {
-    UIResponder *pendingResponder = kayokoPendingPasteResponder;
+- (BOOL)pendingPasteIsReady {
+    UIResponder *pendingResponder = self.pendingPasteSession.responder;
     if (!pendingResponder) {
         return NO;
     }
 
-    UIResponder *activeKeyboardInputDelegate = kayokoHelperActiveKeyboardInputDelegate();
+    UIResponder *activeKeyboardInputDelegate = [self activeKeyboardInputDelegate];
     if (activeKeyboardInputDelegate == pendingResponder) {
         return YES;
     }
 
-    return !kayokoPendingPasteRequiresKeyboardDelegate && [pendingResponder isFirstResponder];
+    return !self.pendingPasteSession.requiresKeyboardDelegate && [pendingResponder isFirstResponder];
 }
 
-static void kayokoHelperAttemptPendingPaste(void) {
-    if (!kayokoHasPendingPaste || !kayokoPendingPasteCanExecute) {
+- (void)attemptPendingPaste {
+    if (!self.pendingPasteSession.hasPendingPaste || !self.pendingPasteSession.canExecute) {
         return;
     }
-    if (kayokoHelperCurrentInputIsKayokoOwned()) {
+    if ([self currentInputIsKayokoOwned]) {
         return;
     }
 
     UIApplication *application = [UIApplication sharedApplication];
-    UIWindow *activeKeyWindow = kayokoHelperActiveKeyWindow(application);
-    if (!kayokoApplicationIsInForeground || !activeKeyWindow || activeKeyWindow != kayokoPendingPasteKeyWindow) {
-        kayokoHelperClearPendingPaste();
+    UIWindow *activeKeyWindow = [self activeKeyWindowForApplication:application];
+    if (!self.applicationInForeground || !activeKeyWindow || activeKeyWindow != self.pendingPasteSession.keyWindow) {
+        [self.pendingPasteSession clear];
         return;
     }
 
-    if (!kayokoHelperPendingPasteIsReady()) {
+    if (![self pendingPasteIsReady]) {
         return;
     }
 
-    kayokoHelperClearPendingPaste();
-    kayokoHelperPerformPaste();
+    [self.pendingPasteSession clear];
+    [self performPaste];
 }
 
-static void kayokoHelperSchedulePendingPasteCheck(void) {
+- (void)schedulePendingPasteCheck {
     dispatch_async(dispatch_get_main_queue(), ^{
-      kayokoHelperAttemptPendingPaste();
+      [self attemptPendingPaste];
     });
 }
 
-static BOOL kayokoHelperBeginPendingPaste(void) {
+- (BOOL)beginPendingPaste {
     UIApplication *application = [UIApplication sharedApplication];
-    UIWindow *activeKeyWindow = kayokoHelperActiveKeyWindow(application);
+    UIWindow *activeKeyWindow = [self activeKeyWindowForApplication:application];
     BOOL requiresKeyboardDelegate = NO;
-    UIResponder *pendingResponder = kayokoHelperCapturedFocusResponderForPaste(&requiresKeyboardDelegate);
+    UIResponder *pendingResponder =
+        [self capturedFocusResponderForPasteRequiringKeyboardDelegate:&requiresKeyboardDelegate];
     if (!activeKeyWindow || !pendingResponder) {
         return NO;
     }
 
-    kayokoHasPendingPaste = YES;
-    kayokoPendingPasteCanExecute = NO;
-    kayokoPendingPasteRequiresKeyboardDelegate = requiresKeyboardDelegate;
-    kayokoPendingPasteResponder = pendingResponder;
-    kayokoPendingPasteKeyWindow = activeKeyWindow;
-    kayokoPendingPasteToken++;
+    self.pendingPasteSession.pendingPaste = YES;
+    self.pendingPasteSession.canExecute = NO;
+    self.pendingPasteSession.requiresKeyboardDelegate = requiresKeyboardDelegate;
+    self.pendingPasteSession.responder = pendingResponder;
+    self.pendingPasteSession.keyWindow = activeKeyWindow;
+    self.pendingPasteSession.token++;
 
-    NSUInteger pendingPasteToken = kayokoPendingPasteToken;
+    NSUInteger pendingPasteToken = self.pendingPasteSession.token;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kKayokoPendingPasteExpirationDelay * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
-                     if (kayokoHasPendingPaste && kayokoPendingPasteToken == pendingPasteToken) {
-                         kayokoHelperClearPendingPaste();
+                     if (self.pendingPasteSession.hasPendingPaste &&
+                         self.pendingPasteSession.token == pendingPasteToken) {
+                         [self.pendingPasteSession clear];
                      }
                    });
 
     return YES;
 }
 
-void KayokoHelperOpenKayokoFromResponder(id self, SEL _cmd) {
-    if ([self isKindOfClass:[UIResponder class]] && !kayokoHelperResponderIsKayokoOwned(self)) {
-        kayokoHelperCaptureFocusSessionFromResponder(self,
-                                                     kayokoHelperActiveKeyWindow([UIApplication sharedApplication]));
-    }
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-      KayokoHelperPostCoreShow();
+- (void)installRuntimeHooks {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      CHLoadClass_(&UIKeyboardLayoutStar$, NSClassFromString(@"UIKeyboardLayoutStar"));
+      CHHook0(UIKeyboardLayoutStar, didMoveToWindow);
+      CHLoadClass_(&UIKBInputBackdropView$, NSClassFromString(@"UIKBInputBackdropView"));
+      CHHook0(UIKBInputBackdropView, didMoveToWindow);
+      CHLoadClass_(&UIKeyboardImpl$, NSClassFromString(@"UIKeyboardImpl"));
+      CHHook1(UIKeyboardImpl, applicationDidBecomeActive);
+      CHHook1(UIKeyboardImpl, applicationWillResignActive);
+      CHHook1(UIKeyboardImpl, applicationWillSuspend);
+      CHHook3(UIKeyboardImpl, setDelegate, force, fromBecomeFirstResponder);
     });
 }
 
-void KayokoHelperPaste(void) {
-    if (!kayokoApplicationIsInForeground) {
+- (void)installSpringBoardInputIsolationHooks {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      CHLoadClass(UISearchBar);
+      CHHook0(UISearchBar, resignFirstResponder);
+      CHLoadClass(UITextField);
+      CHHook0(UITextField, resignFirstResponder);
+    });
+}
+
+- (void)installRuntimeObserversObservingWindowResign:(BOOL)observesWindowResign {
+    if (self.hasInstalledObservers) {
         return;
     }
+    self.installedObservers = YES;
 
-    UIApplication *application = [UIApplication sharedApplication];
-    if (!kayokoHelperApplicationHasActiveKeyWindow(application)) {
-        return;
-    }
-
-    BOOL hasPendingPaste = kayokoHelperBeginPendingPaste();
-    KayokoHelperRestoreCapturedFirstResponder();
-
-    if (hasPendingPaste) {
-        kayokoPendingPasteCanExecute = YES;
-        kayokoHelperSchedulePendingPasteCheck();
-    } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          kayokoHelperPerformPaste();
-        });
-    }
-}
-
-CHOptimizedMethod0(self, void, UIKeyboardLayoutStar, didMoveToWindow) {
-    CHSuper0(UIKeyboardLayoutStar, didMoveToWindow);
-    if (kayokoHelperKeyboardHideIsFromKayokoInput()) {
-        return;
-    }
-    kayokoHelperPostCoreHide();
-}
-
-CHOptimizedMethod0(self, void, UIKBInputBackdropView, didMoveToWindow) {
-    CHSuper0(UIKBInputBackdropView, didMoveToWindow);
-    if (kayokoHelperKeyboardHideIsFromKayokoInput()) {
-        return;
-    }
-    kayokoHelperPostCoreHide();
-}
-
-CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationDidBecomeActive, BOOL, didBecomeActive) {
-    CHSuper1(UIKeyboardImpl, applicationDidBecomeActive, didBecomeActive);
-    kayokoApplicationIsInForeground = YES;
-    kayokoHelperSchedulePendingPasteCheck();
-}
-
-CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillResignActive, BOOL, willResignActive) {
-    CHSuper1(UIKeyboardImpl, applicationWillResignActive, willResignActive);
-    kayokoApplicationIsInForeground = NO;
-    kayokoHelperClearPendingPaste();
-}
-
-CHOptimizedMethod1(self, void, UIKeyboardImpl, applicationWillSuspend, BOOL, willSuspend) {
-    CHSuper1(UIKeyboardImpl, applicationWillSuspend, willSuspend);
-    kayokoApplicationIsInForeground = NO;
-    kayokoHelperClearPendingPaste();
-}
-
-CHOptimizedMethod3(self, void, UIKeyboardImpl, setDelegate, id, delegate, force, BOOL, force, fromBecomeFirstResponder,
-                   BOOL, fromBecomeFirstResponder) {
-    CHSuper3(UIKeyboardImpl, setDelegate, delegate, force, force, fromBecomeFirstResponder, fromBecomeFirstResponder);
-    if ([delegate isKindOfClass:[UIResponder class]] && kayokoHelperResponderIsKayokoOwned((UIResponder *)delegate)) {
-        kayokoHelperRememberKayokoKeyboardInput();
-        return;
-    }
-    if ([delegate isKindOfClass:[UIResponder class]] && kayokoHelperRuntimeIsSpringBoard) {
-        kayokoLastKeyboardInputWasKayokoOwned = NO;
-        kayokoLastKayokoKeyboardInputTime = 0;
-    }
-    kayokoHelperAttemptPendingPaste();
-}
-
-CHOptimizedMethod0(self, BOOL, UISearchBar, resignFirstResponder) {
-    kayokoHelperRememberKayokoResponderWillResign(self);
-    return CHSuper0(UISearchBar, resignFirstResponder);
-}
-
-CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
-    kayokoHelperRememberKayokoResponderWillResign(self);
-    return CHSuper0(UITextField, resignFirstResponder);
-}
-
-void KayokoHelperInstallRuntimeHooks(void) {
-    CHLoadClass_(&UIKeyboardLayoutStar$, NSClassFromString(@"UIKeyboardLayoutStar"));
-    CHHook0(UIKeyboardLayoutStar, didMoveToWindow);
-    CHLoadClass_(&UIKBInputBackdropView$, NSClassFromString(@"UIKBInputBackdropView"));
-    CHHook0(UIKBInputBackdropView, didMoveToWindow);
-    CHLoadClass_(&UIKeyboardImpl$, NSClassFromString(@"UIKeyboardImpl"));
-    CHHook1(UIKeyboardImpl, applicationDidBecomeActive);
-    CHHook1(UIKeyboardImpl, applicationWillResignActive);
-    CHHook1(UIKeyboardImpl, applicationWillSuspend);
-    CHHook3(UIKeyboardImpl, setDelegate, force, fromBecomeFirstResponder);
-}
-
-static void kayokoHelperInstallSpringBoardInputIsolationHooks(void) {
-    CHLoadClass(UISearchBar);
-    CHHook0(UISearchBar, resignFirstResponder);
-    CHLoadClass(UITextField);
-    CHHook0(UITextField, resignFirstResponder);
-}
-
-NS_ASSUME_NONNULL_BEGIN
-
-@interface KayokoKeyboardObserver : NSObject
-@end
-
-NS_ASSUME_NONNULL_END
-
-@implementation KayokoKeyboardObserver
-
-- (void)windowDidResignKey:(NSNotification *)notification {
-    if (kayokoHelperKeyboardHideIsFromKayokoInput()) {
-        return;
-    }
-    kayokoHelperPostCoreHide();
-}
-
-- (void)keyboardWillHide:(NSNotification *)notification {
-    NSDictionary<NSString *, id> *userInfo = [notification userInfo];
-    BOOL isLocalKeyboard = [userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
-    if (!isLocalKeyboard) {
-        return;
-    }
-
-    if (kayokoHelperKeyboardHideIsFromKayokoInput()) {
-        return;
-    }
-
-    kayokoHelperPostCoreHide();
-}
-
-- (void)keyboardDidShow:(NSNotification *)notification {
-    if (kayokoHelperCurrentInputIsKayokoOwned()) {
-        return;
-    }
-    kayokoHelperAttemptPendingPaste();
-}
-
-@end
-
-static void kayokoHelperInstallRuntimeObservers(BOOL observesWindowResign) {
-    if (KayokoHelperAutomaticallyPasteEnabled()) {
+    if (self.isAutomaticallyPasteEnabled) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                        (CFNotificationCallback)KayokoHelperPaste,
+                                        kayokoHelperPasteNotificationCallback,
                                         kayokoHelperNotificationName(kKayokoNotificationKeyHelperPaste), NULL,
                                         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDrop);
     }
 
     CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-        (CFNotificationCallback)KayokoHelperCaptureCurrentFirstResponder,
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL, kayokoHelperCaptureFocusNotificationCallback,
         kayokoHelperNotificationName(kKayokoNotificationKeyCoreShow), NULL,
         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-        (CFNotificationCallback)KayokoHelperCaptureCurrentFirstResponder,
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL, kayokoHelperCaptureFocusNotificationCallback,
         kayokoHelperNotificationName(kKayokoLegacyNotificationKeyCoreShow), NULL,
         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-        (CFNotificationCallback)KayokoHelperRestoreCapturedFirstResponder,
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL, kayokoHelperRestoreFocusNotificationCallback,
         kayokoHelperNotificationName(kKayokoNotificationKeyHelperRestoreFocus), NULL,
         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 
-    static KayokoKeyboardObserver *observer;
-    observer = [[KayokoKeyboardObserver alloc] init];
+    self.keyboardObserver = [[KayokoKeyboardObserver alloc] initWithRuntime:self];
 
     if (observesWindowResign) {
-        [[NSNotificationCenter defaultCenter] addObserver:observer
+        [[NSNotificationCenter defaultCenter] addObserver:self.keyboardObserver
                                                  selector:@selector(windowDidResignKey:)
                                                      name:UIWindowDidResignKeyNotification
                                                    object:nil];
     }
 
-    [[NSNotificationCenter defaultCenter] addObserver:observer
+    [[NSNotificationCenter defaultCenter] addObserver:self.keyboardObserver
                                              selector:@selector(keyboardWillHide:)
                                                  name:UIKeyboardWillHideNotification
                                                object:nil];
 
-    [[NSNotificationCenter defaultCenter] addObserver:observer
+    [[NSNotificationCenter defaultCenter] addObserver:self.keyboardObserver
                                              selector:@selector(keyboardDidShow:)
                                                  name:UIKeyboardDidShowNotification
                                                object:nil];
 }
 
-void KayokoHelperInstallRuntimeObservers(void) { kayokoHelperInstallRuntimeObservers(YES); }
+@end
 
-void KayokoHelperInstallSpringBoardRuntime(void) {
-    kayokoHelperRuntimeIsSpringBoard = YES;
-    kayokoHelperInstallSpringBoardInputIsolationHooks();
-    KayokoHelperInstallRuntimeHooks();
-    kayokoHelperInstallRuntimeObservers(NO);
+@implementation UIResponder (KayokoFocusRestoration)
+
+- (void)kayokoCaptureFirstResponderForFocusRestore:(id)sender {
+    [[KayokoHelperRuntime sharedRuntime] captureResponderForFocusRestore:self];
 }
+
+- (void)kayokoResolveCurrentFirstResponder:(id)sender {
+    [KayokoHelperRuntime sharedRuntime].resolvedCurrentFirstResponder = self;
+}
+
+@end
+
+@interface KayokoKeyboardObserver ()
+@property(nonatomic, weak, readonly) KayokoHelperRuntime *runtime;
+@end
+
+@implementation KayokoKeyboardObserver
+
+- (instancetype)initWithRuntime:(KayokoHelperRuntime *)runtime {
+    self = [super init];
+    if (self) {
+        _runtime = runtime;
+    }
+    return self;
+}
+
+- (void)windowDidResignKey:(NSNotification *)notification {
+    [self.runtime windowDidResignKeyWithNotification:notification];
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification {
+    [self.runtime keyboardWillHideWithNotification:notification];
+}
+
+- (void)keyboardDidShow:(NSNotification *)notification {
+    [self.runtime keyboardDidShowWithNotification:notification];
+}
+
+@end

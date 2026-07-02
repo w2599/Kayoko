@@ -5,7 +5,8 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
+#import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperRuntime.h"
 
 #import "PasteboardManager.h"
 
@@ -56,13 +57,14 @@ CHOptimizedMethod1(self, void, UIInputSwitcherView, didSelectItemAtIndex, unsign
     NSArray *items = MSHookIvar<NSArray *>(self, "m_inputSwitcherItems");
     UIInputSwitcherItem *item = items[index];
     if ([item.identifier isEqualToString:kKayokoInputSwitcherItemIdentifier]) {
-        KayokoHelperCaptureCurrentFirstResponder();
-        KayokoHelperPostCoreShow();
+        [[KayokoHelperRuntime sharedRuntime] showKayokoAfterCapturingCurrentFocus];
     }
     CHSuper1(UIInputSwitcherView, didSelectItemAtIndex, index);
 }
 
-void EnableKayokoActivationGlobe(void) {
+@implementation KayokoHelperHookInstaller (InputSwitcher)
+
++ (void)installInputSwitcherHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&UIInputSwitcherView$, NSClassFromString(@"UIInputSwitcherView"));
@@ -71,3 +73,5 @@ void EnableKayokoActivationGlobe(void) {
       CHHook1(UIInputSwitcherView, didSelectItemAtIndex);
     });
 }
+
+@end
