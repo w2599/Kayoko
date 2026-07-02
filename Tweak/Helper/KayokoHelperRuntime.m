@@ -107,11 +107,76 @@ NS_ASSUME_NONNULL_END
 @property(nonatomic, strong, nullable) KayokoKeyboardObserver *keyboardObserver;
 @property(nonatomic, assign, getter=hasInstalledObservers) BOOL installedObservers;
 
+#pragma mark - Runtime Hook Events
+
 - (void)keyboardWindowDidMoveToWindow;
 - (void)keyboardImplDidBecomeActive;
 - (void)keyboardImplWillLeaveActive;
 - (void)keyboardImplDidSetDelegate:(id)delegate;
 - (void)rememberResponderWillResign:(UIResponder *)responder;
+
+#pragma mark - Keyboard Notifications
+
+- (void)windowDidResignKeyWithNotification:(NSNotification *)notification;
+- (void)keyboardWillHideWithNotification:(NSNotification *)notification;
+- (void)keyboardDidShowWithNotification:(NSNotification *)notification;
+
+#pragma mark - Darwin Notifications
+
+- (void)postCoreShow;
+- (void)postCoreHide;
+
+#pragma mark - Application And Window State
+
+- (UIWindow *)activeKeyWindowForApplication:(UIApplication *)application;
+- (BOOL)applicationHasActiveKeyWindow:(UIApplication *)application;
+- (UIWindow *)capturedFocusKeyWindowForSpringBoard;
+- (BOOL)makeCapturedFocusKeyWindowKeyIfNeeded:(UIWindow *)keyWindow;
+- (UIWindow *)keyWindowForRestoringCapturedFocusInApplication:(UIApplication *)application;
+- (BOOL)applicationHasPasteContext:(UIApplication *)application;
+- (BOOL)applicationCanPerformPaste:(UIApplication *)application;
+
+#pragma mark - Keyboard State
+
+- (UIKeyboardImpl *)activeKeyboardImpl;
+- (UIResponder *)activeKeyboardInputDelegate;
+
+#pragma mark - SpringBoard Input Isolation
+
+- (BOOL)objectHasKayokoClassPrefix:(id)object;
+- (BOOL)viewHierarchyIsKayokoOwned:(UIView *)view;
+- (BOOL)responderIsKayokoOwned:(UIResponder *)responder;
+- (void)rememberKayokoKeyboardInput;
+- (void)clearLastKayokoKeyboardInput;
+- (BOOL)hasRecentKayokoKeyboardInput;
+- (UIResponder *)currentFirstResponder;
+- (BOOL)currentInputIsKayokoOwnedUpdatingLast:(BOOL)clearsLastForExternalInput;
+- (BOOL)currentInputIsKayokoOwned;
+- (BOOL)keyboardHideIsFromKayokoInput;
+
+#pragma mark - Focus Capture And Restore
+
+- (UIResponder *)restorableKeyboardInputDelegate;
+- (BOOL)restoreResponder:(UIResponder *)responder;
+- (void)captureFocusSessionInKeyWindow:(UIWindow *)keyWindow;
+- (void)captureFocusSessionFromResponder:(UIResponder *)responder keyWindow:(UIWindow *)keyWindow;
+- (void)captureResponderForFocusRestore:(UIResponder *)responder;
+- (BOOL)restoreCapturedFocusSessionInKeyWindow:(UIWindow *)keyWindow;
+
+#pragma mark - Pending Paste
+
+- (UIResponder *)capturedFocusResponderForPasteRequiringKeyboardDelegate:(BOOL *)requiresKeyboardDelegate;
+- (void)performPaste;
+- (BOOL)pendingPasteIsReady;
+- (void)attemptPendingPaste;
+- (void)schedulePendingPasteCheck;
+- (BOOL)beginPendingPaste;
+
+#pragma mark - Installation
+
+- (void)installRuntimeHooks;
+- (void)installSpringBoardInputIsolationHooks;
+- (void)installRuntimeObserversObservingWindowResign:(BOOL)observesWindowResign;
 
 @end
 
@@ -182,6 +247,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 @implementation KayokoHelperRuntime
 
+#pragma mark - Lifecycle
+
 + (instancetype)sharedRuntime {
     static KayokoHelperRuntime *runtime;
     static dispatch_once_t onceToken;
@@ -201,6 +268,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return self;
 }
 
+#pragma mark - Runtime Installation Entry Points
+
 - (void)installApplicationRuntimeWithConfiguration:(KayokoHelperConfiguration *)configuration {
     self.springBoardRuntime = NO;
     self.automaticallyPasteEnabled = configuration.automaticallyPasteEnabled;
@@ -215,6 +284,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     [self installRuntimeHooks];
     [self installRuntimeObserversObservingWindowResign:NO];
 }
+
+#pragma mark - Public Runtime API
 
 - (void)showKayoko {
     [self postCoreShow];
@@ -254,7 +325,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 - (void)restoreCapturedFirstResponder {
     UIApplication *application = [UIApplication sharedApplication];
-    UIWindow *keyWindow = [self activeKeyWindowForApplication:application];
+    UIWindow *keyWindow = [self keyWindowForRestoringCapturedFocusInApplication:application];
     [self restoreCapturedFocusSessionInKeyWindow:keyWindow];
 }
 
@@ -264,7 +335,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     }
 
     UIApplication *application = [UIApplication sharedApplication];
-    if (![self applicationHasActiveKeyWindow:application]) {
+    if (![self applicationHasPasteContext:application]) {
         return;
     }
 
@@ -280,6 +351,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         });
     }
 }
+
+#pragma mark - Runtime Hook Events
 
 - (void)keyboardWindowDidMoveToWindow {
     if ([self keyboardHideIsFromKayokoInput]) {
@@ -315,6 +388,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     }
 }
 
+#pragma mark - Keyboard Notifications
+
 - (void)windowDidResignKeyWithNotification:(NSNotification *)notification {
     if ([self keyboardHideIsFromKayokoInput]) {
         return;
@@ -343,13 +418,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     [self attemptPendingPaste];
 }
 
-- (void)captureResponderForFocusRestore:(UIResponder *)responder {
-    if ([self responderIsKayokoOwned:responder]) {
-        return;
-    }
-
-    self.focusSession.firstResponder = responder;
-}
+#pragma mark - Darwin Notifications
 
 - (void)postCoreShow {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
@@ -360,6 +429,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          kayokoHelperNotificationName(kKayokoNotificationKeyCoreHide), nil, nil, YES);
 }
+
+#pragma mark - Application And Window State
 
 - (UIWindow *)activeKeyWindowForApplication:(UIApplication *)application {
     if (!application || [application applicationState] != UIApplicationStateActive) {
@@ -394,6 +465,63 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return [self activeKeyWindowForApplication:application] != nil;
 }
 
+- (UIWindow *)capturedFocusKeyWindowForSpringBoard {
+    if (!self.isSpringBoardRuntime || !self.focusSession.hasCapturedFocusSession) {
+        return nil;
+    }
+
+    return self.focusSession.keyWindow;
+}
+
+- (BOOL)makeCapturedFocusKeyWindowKeyIfNeeded:(UIWindow *)keyWindow {
+    UIWindow *capturedKeyWindow = [self capturedFocusKeyWindowForSpringBoard];
+    if (!capturedKeyWindow || keyWindow != capturedKeyWindow || [keyWindow isKeyWindow]) {
+        return YES;
+    }
+
+    [keyWindow makeKeyWindow];
+    return [keyWindow isKeyWindow];
+}
+
+- (UIWindow *)keyWindowForRestoringCapturedFocusInApplication:(UIApplication *)application {
+    UIWindow *activeKeyWindow = [self activeKeyWindowForApplication:application];
+    UIWindow *capturedKeyWindow = [self capturedFocusKeyWindowForSpringBoard];
+    if (!capturedKeyWindow) {
+        return activeKeyWindow;
+    }
+
+    if (!activeKeyWindow || ![self.focusSession matchesKeyWindow:activeKeyWindow]) {
+        return capturedKeyWindow;
+    }
+
+    return activeKeyWindow;
+}
+
+- (BOOL)applicationHasPasteContext:(UIApplication *)application {
+    if (!application || [application applicationState] != UIApplicationStateActive) {
+        return NO;
+    }
+
+    if ([self applicationHasActiveKeyWindow:application]) {
+        return YES;
+    }
+
+    return [self capturedFocusKeyWindowForSpringBoard] != nil;
+}
+
+- (BOOL)applicationCanPerformPaste:(UIApplication *)application {
+    if ([self applicationHasActiveKeyWindow:application]) {
+        return YES;
+    }
+    if (!self.isSpringBoardRuntime || ![self capturedFocusKeyWindowForSpringBoard]) {
+        return NO;
+    }
+
+    return [self pendingPasteIsReady];
+}
+
+#pragma mark - Keyboard State
+
 - (UIKeyboardImpl *)activeKeyboardImpl {
     Class keyboardImplClass = NSClassFromString(@"UIKeyboardImpl");
     SEL activeInstanceSelector = @selector(activeInstance);
@@ -424,6 +552,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
     return inputDelegate;
 }
+
+#pragma mark - SpringBoard Input Isolation
 
 - (BOOL)objectHasKayokoClassPrefix:(id)object {
     if (!self.isSpringBoardRuntime || !object) {
@@ -568,6 +698,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return NO;
 }
 
+#pragma mark - Focus Capture And Restore
+
 - (UIResponder *)restorableKeyboardInputDelegate {
     UIResponder *keyboardInputDelegate = [self activeKeyboardInputDelegate];
     if ([self responderIsKayokoOwned:keyboardInputDelegate]) {
@@ -581,11 +713,34 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         return NO;
     }
 
-    if (!responder || [responder isFirstResponder]) {
-        return responder != nil;
+    if (!responder) {
+        return NO;
     }
 
-    return [responder becomeFirstResponder];
+    BOOL requiresKeyboardInputDelegate =
+        self.isSpringBoardRuntime && responder == self.focusSession.keyboardInputDelegate;
+    if (!requiresKeyboardInputDelegate) {
+        if ([responder isFirstResponder]) {
+            return YES;
+        }
+
+        return [responder becomeFirstResponder];
+    }
+
+    if ([self activeKeyboardInputDelegate] == responder) {
+        return YES;
+    }
+
+    if ([responder isFirstResponder]) {
+        [responder resignFirstResponder];
+        [self makeCapturedFocusKeyWindowKeyIfNeeded:self.focusSession.keyWindow];
+    }
+
+    if (![responder becomeFirstResponder]) {
+        return NO;
+    }
+
+    return [self activeKeyboardInputDelegate] == responder;
 }
 
 - (void)captureFocusSessionInKeyWindow:(UIWindow *)keyWindow {
@@ -608,8 +763,20 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     [self.focusSession finishCapturing];
 }
 
+- (void)captureResponderForFocusRestore:(UIResponder *)responder {
+    if ([self responderIsKayokoOwned:responder]) {
+        return;
+    }
+
+    self.focusSession.firstResponder = responder;
+}
+
 - (BOOL)restoreCapturedFocusSessionInKeyWindow:(UIWindow *)keyWindow {
     if (!keyWindow || !self.focusSession.hasCapturedFocusSession || ![self.focusSession matchesKeyWindow:keyWindow]) {
+        return NO;
+    }
+
+    if (![self makeCapturedFocusKeyWindowKeyIfNeeded:keyWindow]) {
         return NO;
     }
 
@@ -619,6 +786,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
     return [self restoreResponder:self.focusSession.firstResponder];
 }
+
+#pragma mark - Pending Paste
 
 - (UIResponder *)capturedFocusResponderForPasteRequiringKeyboardDelegate:(BOOL *)requiresKeyboardDelegate {
     UIResponder *keyboardInputDelegate = self.focusSession.keyboardInputDelegate;
@@ -638,7 +807,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 - (void)performPaste {
     UIApplication *activeApplication = [UIApplication sharedApplication];
-    if (!self.applicationInForeground || ![self applicationHasActiveKeyWindow:activeApplication]) {
+    if (!self.applicationInForeground || ![self applicationCanPerformPaste:activeApplication]) {
         return;
     }
     if ([self currentInputIsKayokoOwned]) {
@@ -689,17 +858,27 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
     UIApplication *application = [UIApplication sharedApplication];
     UIWindow *activeKeyWindow = [self activeKeyWindowForApplication:application];
-    if (!self.applicationInForeground || !activeKeyWindow || activeKeyWindow != self.pendingPasteSession.keyWindow) {
+    BOOL pendingPasteIsReady = [self pendingPasteIsReady];
+    if (!self.applicationInForeground) {
         [self.pendingPasteSession clear];
         return;
     }
-
-    if (![self pendingPasteIsReady]) {
+    if (!self.isSpringBoardRuntime &&
+        (!activeKeyWindow || activeKeyWindow != self.pendingPasteSession.keyWindow)) {
+        [self.pendingPasteSession clear];
+        return;
+    }
+    if (self.isSpringBoardRuntime && activeKeyWindow && activeKeyWindow != self.pendingPasteSession.keyWindow &&
+        !pendingPasteIsReady) {
         return;
     }
 
-    [self.pendingPasteSession clear];
+    if (!pendingPasteIsReady) {
+        return;
+    }
+
     [self performPaste];
+    [self.pendingPasteSession clear];
 }
 
 - (void)schedulePendingPasteCheck {
@@ -710,7 +889,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 - (BOOL)beginPendingPaste {
     UIApplication *application = [UIApplication sharedApplication];
-    UIWindow *activeKeyWindow = [self activeKeyWindowForApplication:application];
+    UIWindow *activeKeyWindow = [self keyWindowForRestoringCapturedFocusInApplication:application];
     BOOL requiresKeyboardDelegate = NO;
     UIResponder *pendingResponder =
         [self capturedFocusResponderForPasteRequiringKeyboardDelegate:&requiresKeyboardDelegate];
@@ -736,6 +915,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
     return YES;
 }
+
+#pragma mark - Installation
 
 - (void)installRuntimeHooks {
     static dispatch_once_t onceToken;
@@ -810,6 +991,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 @end
 
+#pragma mark - Responder Focus Restoration Bridge
+
 @implementation UIResponder (KayokoFocusRestoration)
 
 - (void)kayokoCaptureFirstResponderForFocusRestore:(id)sender {
@@ -821,6 +1004,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 }
 
 @end
+
+#pragma mark - Keyboard Observer
 
 @interface KayokoKeyboardObserver ()
 @property(nonatomic, weak, readonly) KayokoHelperRuntime *runtime;
