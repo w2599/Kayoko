@@ -342,21 +342,59 @@ static int kKayokoImageCacheLimit = 20;
         [self clearPendingAutoPasteItem];
     }
 
+    // 立即触发粘贴操作，以免被下方的历史记录管理逻辑所延迟，
+    // 因为该逻辑可能涉及读写体积较大的历史记录文件。
+    if ([self automaticallyPaste] && shouldAutoPaste) {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                             (CFStringRef)kNotificationKeyHelperPaste, nil, nil, YES);
+    }
+
     if ([historyKey isEqualToString:kHistoryKeyHistory]) {
         SBApplication *frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
         PasteboardItem *updatedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                               andContent:[item content]
                                                               withImageNamed:[item imageName]
                                                               remark:[item remark]];
-        [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:NO];
-        [self addPasteboardItem:updatedItem toHistoryWithKey:historyKey];
+        [self moveItemToFront:updatedItem inHistoryWithKey:historyKey];
+    }
+}
+
+/**
+    * 将某个条目移至指定历史记录的最前面，并替换内容相同的已有条目。
+    *
+    * @param item 要移至最前面的条目。
+    * @param historyKey 要更新的历史记录的键。
+ */
+- (void)moveItemToFront:(PasteboardItem *)item inHistoryWithKey:(NSString *)historyKey {
+    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
+
+    for (NSUInteger index = 0; index < [history count]; index++) {
+        @autoreleasepool {
+            NSDictionary *dictionary = history[index];
+            PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
+
+            if ([[historyItem content] isEqualToString:[item content]]) {
+                [history removeObjectAtIndex:index];
+                break;
+            }
+        }
     }
 
-    // Automatic paste should not occur for asynchronous operations.
-    if ([self automaticallyPaste] && shouldAutoPaste) {
-        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                             (CFStringRef)kNotificationKeyHelperPaste, nil, nil, NO);
+    [history insertObject:@{
+        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
+        kItemKeyContent : [item content] ?: @"",
+        kItemKeyImageName : [item imageName] ?: @"",
+        kItemKeyRemark : [item remark] ?: @"",
+        kItemKeyHasLink : @([item hasLink]),
+        kItemKeyRecordedAt : @([item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970])
     }
+                  atIndex:0];
+
+    while ([history count] > [self maximumHistoryAmount]) {
+        [history removeLastObject];
+    }
+
+    [self setItems:history forHistoryWithKey:historyKey];
 }
 
 /**

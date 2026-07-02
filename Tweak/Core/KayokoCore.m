@@ -177,7 +177,7 @@ static void KayokoEnsureBackdropInStatusBarWindow(UIWindow *statusBarWindow) {
     if (!kayokoBackdropView) {
         kayokoBackdropView = [[UIControl alloc] initWithFrame:KayokoBackdropFrameForWindow(statusBarWindow)];
         [kayokoBackdropView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
-        [kayokoBackdropView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.025]];
+        [kayokoBackdropView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.001]];
         [kayokoBackdropView setHidden:YES];
 
         if (!kayokoBackdropTapHandler) {

@@ -40,6 +40,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage;
+- (void)moveItemToFront:(PasteboardItem *)item inHistoryWithKey:(NSString *)historyKey;
 - (void)updateRemark:(NSString *)remark
          forItem:(PasteboardItem *)item
     inHistoryWithKey:(NSString *)historyKey;

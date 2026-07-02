@@ -294,7 +294,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         dayMonthFormatter = [[NSDateFormatter alloc] init];
-        [dayMonthFormatter setDateFormat:@"dd-MM"];
+        [dayMonthFormatter setDateFormat:@"MM-dd"];
 
         timeFormatter = [[NSDateFormatter alloc] init];
         [timeFormatter setDateFormat:@"HH:mm"];

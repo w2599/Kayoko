@@ -38,10 +38,10 @@ static void kayokoRestoreFirstResponder(CFNotificationCenterRef center, void *ob
 static BOOL (*orig_UIResponder_becomeFirstResponder)(UIResponder *self, SEL _cmd);
 static BOOL override_UIResponder_becomeFirstResponder(UIResponder *self, SEL _cmd) {
     BOOL didBecome = orig_UIResponder_becomeFirstResponder(self, _cmd);
-    NSLogDebug(@"[----] UIResponder becomeFirstResponder: %d", didBecome);
+    // NSLogDebug(@"[----] UIResponder becomeFirstResponder: %d", didBecome);
     if (didBecome) {
         if ([self conformsToProtocol:@protocol(UITextInput)] && ![self isKindOfClass:[UISearchBar class]]) {
-            NSLogDebug(@"[----] UIResponder is text input responder");
+            // NSLogDebug(@"[----] UIResponder is text input responder");
             kayokoLastTextInputResponder = self;
             applicationIsInForeground = YES;
         }
@@ -261,7 +261,7 @@ static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *s
     // 延时1秒再给YES
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         applicationIsInForeground = YES;
-        NSLogDebug(@"[----] YES UIKeyboardImpl");
+        // NSLogDebug(@"[----] YES UIKeyboardImpl");
     });
 }
 
@@ -275,7 +275,7 @@ static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *
     orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
       applicationIsInForeground = NO;
-      NSLogDebug(@"[----] NO UIKeyboardImpl");
+    //   NSLogDebug(@"[----] NO UIKeyboardImpl");
     });
 }
 
@@ -413,7 +413,7 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
  * Pastes the last copied item from the history.
  */
 static void kayokoPaste() {
-    NSLogDebug(@"[----] kayokoPaste called, applicationIsInForeground: %d", applicationIsInForeground);
+    // NSLogDebug(@"[----] kayokoPaste called, applicationIsInForeground: %d", applicationIsInForeground);
     if (!applicationIsInForeground) {
         return;
     }
@@ -496,12 +496,12 @@ static void kayokoRestoreFirstResponder(CFNotificationCenterRef center, void *ob
  * Loads the user's preferences.
  */
 static void load_preferences() {
-    NSLogDebug(@"[----] Loading Kayoko Helper preferences");
+    // NSLogDebug(@"[----] Loading Kayoko Helper preferences");
     NSString *preferencesPath = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier];
     preferencesPath = jbroot(preferencesPath);
     NSDictionary *storedPreferences = [NSDictionary dictionaryWithContentsOfFile:preferencesPath] ?: @{};
 
-    NSLogDebug(@"[----] Preferences loaded: %@", storedPreferences);
+    // NSLogDebug(@"[----] Preferences loaded: %@", storedPreferences);
     libSandy_applyProfile("Kayoko");
 
     NSDictionary *defaultPreferences = @{
@@ -530,7 +530,7 @@ static void load_preferences() {
  * Finally it sets up the hooks.
  */
 __attribute((constructor)) static void initialize() {
-    NSLogDebug(@"[----] Initializing Kayoko Helper");
+    // NSLogDebug(@"[----] Initializing Kayoko Helper");
     load_preferences();
 
     if (!kayokoHelperPrefsEnabled) {

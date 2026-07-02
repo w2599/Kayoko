@@ -49,6 +49,7 @@ fi
 
 if [ $1 -eq "1" ]
 then
+    export package FINALPACKAGE=0
 	export THEOS_PACKAGE_SCHEME=roothide
 	make do 
 	exit
