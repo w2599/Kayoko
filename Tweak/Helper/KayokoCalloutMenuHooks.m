@@ -35,6 +35,16 @@ static SEL kayokoMenuActionSelector(void) { return NSSelectorFromString(kKayokoM
 
 static const char *kayokoMenuActionTypeEncoding(void) { return "v@:"; }
 
+static BOOL kayokoShouldHandleActivationOrReject(void) {
+    KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
+    if ([runtime shouldHandleActivationForCurrentInput]) {
+        return YES;
+    }
+
+    [runtime playActivationRejectedFeedbackIfNeeded];
+    return NO;
+}
+
 static UIMenuItem *kayokoMenuItem(void) {
     static UIMenuItem *menuItem = nil;
     if (!menuItem) {
@@ -78,6 +88,10 @@ static BOOL kayokoMenuItemIsWritingTool(id input) {
 }
 
 static void kayokoOpenKayokoResponderAction(id self, SEL _cmd) {
+    if (!kayokoShouldHandleActivationOrReject()) {
+        return;
+    }
+
     if ([self isKindOfClass:[UIResponder class]]) {
         [[KayokoHelperRuntime sharedRuntime] showKayokoFromResponder:self];
     } else {

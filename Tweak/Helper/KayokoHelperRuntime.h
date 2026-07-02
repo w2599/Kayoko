@@ -19,9 +19,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showKayoko;
 - (void)showKayokoAfterCapturingCurrentFocus;
 - (void)showKayokoFromResponder:(UIResponder *)responder;
+- (BOOL)shouldHandleActivationForCurrentInput;
+- (void)playActivationRejectedFeedbackIfNeeded;
 - (void)captureCurrentFirstResponder;
 - (void)restoreCapturedFirstResponder;
 - (void)paste;
+- (BOOL)pasteIntoCurrentKayokoInput;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

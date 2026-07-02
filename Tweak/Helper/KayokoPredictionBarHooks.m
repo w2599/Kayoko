@@ -83,6 +83,36 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList(void) {
     return [objc_getClass("TIAutocorrectionList") listWithAutocorrection:nil predictions:candidates emojiList:nil];
 }
 
+static NSString *kayokoSelectedTextFromCurrentInput(void) {
+    if (@available(iOS 15.0, *)) {
+        UIKBInputDelegateManager *delegateManager =
+            [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegateManager];
+        UITextRange *range = [delegateManager selectedTextRange];
+        return [delegateManager textInRange:range];
+    }
+
+    id delegate = [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegate];
+    UITextRange *range = [delegate selectedTextRange];
+    return [delegate textInRange:range];
+}
+
+static void kayokoCopySelectedTextFromCurrentInput(void) {
+    NSString *text = kayokoSelectedTextFromCurrentInput();
+    if (text.length > 0) {
+        [[UIPasteboard generalPasteboard] setString:text];
+    }
+}
+
+static BOOL kayokoShouldHandleActivationOrReject(void) {
+    KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
+    if ([runtime shouldHandleActivationForCurrentInput]) {
+        return YES;
+    }
+
+    [runtime playActivationRejectedFeedbackIfNeeded];
+    return NO;
+}
+
 CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setTextSuggestionList, TIAutocorrectionList *,
                    textSuggestionList) {
     if (kayokoShouldShowCustomSuggestions) {
@@ -106,28 +136,18 @@ CHOptimizedMethod2(self, void, UIPredictionViewController, predictionView, TUIPr
     if ([candidate respondsToSelector:@selector(fromBundleId)] &&
         [[candidate fromBundleId] isEqualToString:@"com.82flex.kayoko"]) {
         if ([[candidate candidate] isEqualToString:@"{kayoko-History}"]) {
-            [[KayokoHelperRuntime sharedRuntime] showKayoko];
-        } else if ([[candidate candidate] isEqualToString:@"{kayoko-Copy}"]) {
-            if (@available(iOS 15.0, *)) {
-                UIKBInputDelegateManager *delegateManager =
-                    [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegateManager];
-                UITextRange *range = [delegateManager selectedTextRange];
-                NSString *text = [delegateManager textInRange:range];
-
-                if (![text isEqualToString:@""]) {
-                    [[UIPasteboard generalPasteboard] setString:text];
-                }
-            } else {
-                id delegate = [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegate];
-                UITextRange *range = [delegate selectedTextRange];
-                NSString *text = [delegate textInRange:range];
-
-                if (![text isEqualToString:@""]) {
-                    [[UIPasteboard generalPasteboard] setString:text];
-                }
+            if (kayokoShouldHandleActivationOrReject()) {
+                [[KayokoHelperRuntime sharedRuntime] showKayoko];
             }
+        } else if ([[candidate candidate] isEqualToString:@"{kayoko-Copy}"]) {
+            kayokoCopySelectedTextFromCurrentInput();
         } else if ([[candidate candidate] isEqualToString:@"{kayoko-Paste}"]) {
-            [[KayokoHelperRuntime sharedRuntime] paste];
+            KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
+            if ([runtime shouldHandleActivationForCurrentInput]) {
+                [runtime paste];
+            } else {
+                [runtime pasteIntoCurrentKayokoInput];
+            }
         }
     } else {
         CHSuper2(UIPredictionViewController, predictionView, predictionView, didSelectCandidate, candidate);

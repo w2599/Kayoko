@@ -9,6 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperHookInstaller : NSObject
 + (void)installApplicationHooksWithActivationMethod:(NSUInteger)activationMethod;
++ (void)installSpringBoardActivationHooksWithActivationMethod:(NSUInteger)activationMethod;
 + (void)installKeyboardExtensionHooksWithActivationMethod:(NSUInteger)activationMethod;
 @end
 

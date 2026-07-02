@@ -8,7 +8,7 @@
 
 @implementation KayokoHelperHookInstaller
 
-+ (void)installApplicationHooksWithActivationMethod:(NSUInteger)activationMethod {
++ (void)installActivationHooksWithActivationMethod:(NSUInteger)activationMethod {
     if (activationMethod & kActivationMethodPredictionBar) {
         [self installPredictionBarHooks];
     }
@@ -24,6 +24,14 @@
     if (activationMethod & kActivationMethodCalloutBar) {
         [self installCalloutBarHooks];
     }
+}
+
++ (void)installApplicationHooksWithActivationMethod:(NSUInteger)activationMethod {
+    [self installActivationHooksWithActivationMethod:activationMethod];
+}
+
++ (void)installSpringBoardActivationHooksWithActivationMethod:(NSUInteger)activationMethod {
+    [self installActivationHooksWithActivationMethod:activationMethod];
 }
 
 + (void)installKeyboardExtensionHooksWithActivationMethod:(NSUInteger)activationMethod {

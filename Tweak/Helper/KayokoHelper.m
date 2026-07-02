@@ -23,6 +23,8 @@ __attribute((constructor)) static void initialize() {
         return;
     case KayokoHelperProcessKindSpringBoard:
         [[KayokoHelperRuntime sharedRuntime] installSpringBoardRuntimeWithConfiguration:configuration];
+        [KayokoHelperHookInstaller
+            installSpringBoardActivationHooksWithActivationMethod:configuration.activationMethod];
         return;
     case KayokoHelperProcessKindApplication:
         [KayokoHelperHookInstaller installApplicationHooksWithActivationMethod:configuration.activationMethod];

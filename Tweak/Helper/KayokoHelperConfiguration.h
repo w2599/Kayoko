@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readonly, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readonly) NSUInteger activationMethod;
 @property(nonatomic, assign, readonly, getter=isAutomaticallyPasteEnabled) BOOL automaticallyPasteEnabled;
+@property(nonatomic, assign, readonly, getter=isHapticFeedbackEnabled) BOOL hapticFeedbackEnabled;
 
 + (instancetype)currentConfiguration;
 

@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readwrite, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readwrite) NSUInteger activationMethod;
 @property(nonatomic, assign, readwrite, getter=isAutomaticallyPasteEnabled) BOOL automaticallyPasteEnabled;
+@property(nonatomic, assign, readwrite, getter=isHapticFeedbackEnabled) BOOL hapticFeedbackEnabled;
 
 - (instancetype)initWithPreferences:(NSUserDefaults *)preferences;
 
@@ -38,7 +39,8 @@ NS_ASSUME_NONNULL_END
     [preferences registerDefaults:@{
         kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
         kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
-        kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue)
+        kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
+        kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue)
     }];
 
     KayokoHelperConfiguration *configuration = [[self alloc] initWithPreferences:preferences];
@@ -51,6 +53,7 @@ NS_ASSUME_NONNULL_END
         _enabled = [[preferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
         _activationMethod = [[preferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
         _automaticallyPasteEnabled = [[preferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
+        _hapticFeedbackEnabled = [[preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     }
     return self;
 }

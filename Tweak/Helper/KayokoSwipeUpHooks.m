@@ -82,7 +82,21 @@ static void kayokoCancelAllTouches(void) {
 #pragma clang diagnostic pop
 }
 
+static BOOL kayokoShouldHandleActivationOrReject(void) {
+    KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
+    if ([runtime shouldHandleActivationForCurrentInput]) {
+        return YES;
+    }
+
+    [runtime playActivationRejectedFeedbackIfNeeded];
+    return NO;
+}
+
 static void kayokoShowKayokoAndCancelTouches(void) {
+    if (!kayokoShouldHandleActivationOrReject()) {
+        return;
+    }
+
     [[KayokoHelperRuntime sharedRuntime] showKayokoAfterCapturingCurrentFocus];
     kayokoCancelAllTouches();
 }

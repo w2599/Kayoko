@@ -34,6 +34,7 @@ KayokoHelper_FRAMEWORKS += CoreGraphics
 KayokoHelper_FRAMEWORKS += ImageIO
 KayokoHelper_FRAMEWORKS += QuartzCore
 KayokoHelper_FRAMEWORKS += UIKit
+KayokoHelper_FRAMEWORKS += AudioToolbox
 
 KayokoHelper_LIBRARIES += sandy
 KayokoHelper_LIBRARIES += sqlite3

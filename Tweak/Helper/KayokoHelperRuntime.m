@@ -11,6 +11,7 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
+#import <AudioToolbox/AudioToolbox.h>
 #import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CFNotificationCenter.h>
 #import <Foundation/Foundation.h>
@@ -98,6 +99,7 @@ NS_ASSUME_NONNULL_END
 
 @property(nonatomic, assign, getter=isSpringBoardRuntime) BOOL springBoardRuntime;
 @property(nonatomic, assign, getter=isAutomaticallyPasteEnabled) BOOL automaticallyPasteEnabled;
+@property(nonatomic, assign, getter=isHapticFeedbackEnabled) BOOL hapticFeedbackEnabled;
 @property(nonatomic, assign) BOOL applicationInForeground;
 @property(nonatomic, strong) KayokoHelperFocusSession *focusSession;
 @property(nonatomic, strong) KayokoHelperPendingPasteSession *pendingPasteSession;
@@ -150,6 +152,7 @@ NS_ASSUME_NONNULL_END
 - (void)clearLastKayokoKeyboardInput;
 - (BOOL)hasRecentKayokoKeyboardInput;
 - (UIResponder *)currentFirstResponder;
+- (UIResponder *)currentKayokoInputResponder;
 - (BOOL)currentInputIsKayokoOwnedUpdatingLast:(BOOL)clearsLastForExternalInput;
 - (BOOL)currentInputIsKayokoOwned;
 - (BOOL)keyboardHideIsFromKayokoInput;
@@ -166,6 +169,8 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Pending Paste
 
 - (UIResponder *)capturedFocusResponderForPasteRequiringKeyboardDelegate:(BOOL *)requiresKeyboardDelegate;
+- (void)postPasteWillStart;
+- (BOOL)preparePasteboardForPaste;
 - (void)performPaste;
 - (BOOL)pendingPasteIsReady;
 - (void)attemptPendingPaste;
@@ -273,6 +278,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 - (void)installApplicationRuntimeWithConfiguration:(KayokoHelperConfiguration *)configuration {
     self.springBoardRuntime = NO;
     self.automaticallyPasteEnabled = configuration.automaticallyPasteEnabled;
+    self.hapticFeedbackEnabled = configuration.hapticFeedbackEnabled;
     [self installRuntimeHooks];
     [self installRuntimeObserversObservingWindowResign:YES];
 }
@@ -280,6 +286,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 - (void)installSpringBoardRuntimeWithConfiguration:(KayokoHelperConfiguration *)configuration {
     self.springBoardRuntime = YES;
     self.automaticallyPasteEnabled = configuration.automaticallyPasteEnabled;
+    self.hapticFeedbackEnabled = configuration.hapticFeedbackEnabled;
     [self installSpringBoardInputIsolationHooks];
     [self installRuntimeHooks];
     [self installRuntimeObserversObservingWindowResign:NO];
@@ -305,6 +312,20 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     dispatch_async(dispatch_get_main_queue(), ^{
       [self postCoreShow];
     });
+}
+
+- (BOOL)shouldHandleActivationForCurrentInput {
+    if (!self.isSpringBoardRuntime) {
+        return YES;
+    }
+
+    return ![self currentInputIsKayokoOwned];
+}
+
+- (void)playActivationRejectedFeedbackIfNeeded {
+    if (self.isHapticFeedbackEnabled) {
+        AudioServicesPlaySystemSound(1521);
+    }
 }
 
 - (void)captureCurrentFirstResponder {
@@ -350,6 +371,26 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
           [self performPaste];
         });
     }
+}
+
+- (BOOL)pasteIntoCurrentKayokoInput {
+    UIResponder *responder = [self currentKayokoInputResponder];
+    if (!responder) {
+        return NO;
+    }
+
+    UIApplication *activeApplication = [UIApplication sharedApplication];
+    if (!activeApplication || [activeApplication applicationState] != UIApplicationStateActive) {
+        return NO;
+    }
+
+    [self postPasteWillStart];
+    if (![self preparePasteboardForPaste]) {
+        return NO;
+    }
+
+    [activeApplication sendAction:@selector(paste:) to:responder from:nil forEvent:nil];
+    return YES;
 }
 
 #pragma mark - Runtime Hook Events
@@ -644,6 +685,22 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return self.resolvedCurrentFirstResponder;
 }
 
+- (UIResponder *)currentKayokoInputResponder {
+    UIResponder *keyboardInputDelegate = [self activeKeyboardInputDelegate];
+    if ([self responderIsKayokoOwned:keyboardInputDelegate]) {
+        [self rememberKayokoKeyboardInput];
+        return keyboardInputDelegate;
+    }
+
+    UIResponder *firstResponder = [self currentFirstResponder];
+    if ([self responderIsKayokoOwned:firstResponder]) {
+        [self rememberKayokoKeyboardInput];
+        return firstResponder;
+    }
+
+    return nil;
+}
+
 - (BOOL)currentInputIsKayokoOwnedUpdatingLast:(BOOL)clearsLastForExternalInput {
     if (!self.isSpringBoardRuntime) {
         return NO;
@@ -805,6 +862,32 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return [self responderIsKayokoOwned:firstResponder] ? nil : firstResponder;
 }
 
+- (void)postPasteWillStart {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         kayokoHelperNotificationName(kKayokoNotificationKeyPasteWillStart), nil, nil,
+                                         YES);
+}
+
+- (BOOL)preparePasteboardForPaste {
+    UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
+    if ([pasteboard string] || [pasteboard image]) {
+        return YES;
+    }
+
+    PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
+    if (!item) {
+        return NO;
+    }
+
+    if (![[item imageName] isEqualToString:@""]) {
+        [pasteboard setImage:[[PasteboardManager sharedInstance] getImageForItem:item]];
+    } else {
+        [pasteboard setString:[item content]];
+    }
+
+    return YES;
+}
+
 - (void)performPaste {
     UIApplication *activeApplication = [UIApplication sharedApplication];
     if (!self.applicationInForeground || ![self applicationCanPerformPaste:activeApplication]) {
@@ -814,21 +897,9 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         return;
     }
 
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         kayokoHelperNotificationName(kKayokoNotificationKeyPasteWillStart), nil, nil,
-                                         YES);
-    UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-    if (![pasteboard string] && ![pasteboard image]) {
-        PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
-        if (!item) {
-            return;
-        }
-
-        if (![[item imageName] isEqualToString:@""]) {
-            [pasteboard setImage:[[PasteboardManager sharedInstance] getImageForItem:item]];
-        } else {
-            [pasteboard setString:[item content]];
-        }
+    [self postPasteWillStart];
+    if (![self preparePasteboardForPaste]) {
+        return;
     }
 
     [activeApplication sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
@@ -863,8 +934,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         [self.pendingPasteSession clear];
         return;
     }
-    if (!self.isSpringBoardRuntime &&
-        (!activeKeyWindow || activeKeyWindow != self.pendingPasteSession.keyWindow)) {
+    if (!self.isSpringBoardRuntime && (!activeKeyWindow || activeKeyWindow != self.pendingPasteSession.keyWindow)) {
         [self.pendingPasteSession clear];
         return;
     }

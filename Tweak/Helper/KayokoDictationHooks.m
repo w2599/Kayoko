@@ -43,6 +43,16 @@ CHDeclareClass(UIKeyboardLayoutStar);
 
 static const void *kKayokoScaledDockImageAssociatedKey = &kKayokoScaledDockImageAssociatedKey;
 
+static BOOL kayokoShouldHandleActivationOrReject(void) {
+    KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
+    if ([runtime shouldHandleActivationForCurrentInput]) {
+        return YES;
+    }
+
+    [runtime playActivationRejectedFeedbackIfNeeded];
+    return NO;
+}
+
 static CGFloat kayokoDockIconScaleFactor(void) {
     if (@available(iOS 16, *)) {
         return 0.92;
@@ -153,12 +163,16 @@ CHOptimizedMethod1(self, CGRect, UIKeyboardDockItemButton, imageRectForContentRe
 
 CHOptimizedMethod3(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1, withEvent, id,
                    arg2, isRunningButton, BOOL, arg3) {
-    [[KayokoHelperRuntime sharedRuntime] showKayokoAfterCapturingCurrentFocus];
+    if (kayokoShouldHandleActivationOrReject()) {
+        [[KayokoHelperRuntime sharedRuntime] showKayokoAfterCapturingCurrentFocus];
+    }
 }
 
 CHOptimizedMethod2(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1, withEvent,
                    UIEvent *, event) {
-    [[KayokoHelperRuntime sharedRuntime] showKayoko];
+    if (kayokoShouldHandleActivationOrReject()) {
+        [[KayokoHelperRuntime sharedRuntime] showKayoko];
+    }
 }
 
 CHOptimizedMethod0(self, BOOL, UIKeyboardImpl, shouldShowDictationKey) { return YES; }
@@ -168,7 +182,9 @@ CHOptimizedMethod1(self, UIKBTree *, UIKeyboardLayoutStar, keyHitTest, CGPoint, 
 
     if ([[orig name] isEqualToString:@"Dictation-Key"]) {
         [[orig properties] setValue:@(0) forKey:@"KBinteractionType"];
-        [[KayokoHelperRuntime sharedRuntime] showKayoko];
+        if (kayokoShouldHandleActivationOrReject()) {
+            [[KayokoHelperRuntime sharedRuntime] showKayoko];
+        }
     }
 
     return orig;
