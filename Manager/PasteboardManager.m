@@ -141,18 +141,6 @@ NS_ASSUME_NONNULL_END
     _lastChangeCount = [_pasteboard changeCount];
 }
 
-- (void)performPasteboardOperation:(dispatch_block_t)operation {
-    if (!operation) {
-        return;
-    }
-
-    if (@available(iOS 16, *)) {
-        dispatch_async(_pasteboardQueue, operation);
-    } else {
-        operation();
-    }
-}
-
 - (void)warmUpHistoryAccess {
     [_historyRepository prepareStore];
 }
@@ -205,9 +193,19 @@ NS_ASSUME_NONNULL_END
       });
     };
 
-    [self performPasteboardOperation:^{
-      complete([self _reallyPullPasteboardChanges]);
-    }];
+    if (@available(iOS 16, *)) {
+        dispatch_async(_pasteboardQueue, ^{
+          complete([self _reallyPullPasteboardChanges]);
+        });
+        return;
+    }
+
+    NSArray<PasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    [self savePasteboardItems:items
+             toHistoryWithKey:kKayokoHistoryKeyHistory
+                   completion:^(BOOL didSaveAnyItem) {
+                     complete(didSaveAnyItem);
+                   }];
 }
 
 - (BOOL)pasteboardContainsType:(NSString *)pasteboardType {
@@ -222,26 +220,25 @@ NS_ASSUME_NONNULL_END
     return [self pasteboardContainsType:@"com.apple.icns"];
 }
 
-- (BOOL)_reallyPullPasteboardChanges {
+- (NSArray<PasteboardItem *> *)pasteboardItemsForCurrentChange {
     NSUInteger currentChangeCount = [_pasteboard changeCount];
     if (currentChangeCount == _lastChangeCount) {
-        return NO;
+        return @[];
     }
 
     _lastChangeCount = currentChangeCount;
 
     if ([self shouldIgnoreCurrentPasteboardChange]) {
-        return NO;
+        return @[];
     }
 
     BOOL hasStrings = [_pasteboard hasStrings];
     BOOL hasImages = [_pasteboard hasImages];
     if (!hasStrings && !hasImages) {
-        return NO;
+        return @[];
     }
 
-    [_historyRepository ensureStorePrepared];
-    BOOL didSaveAnyItem = NO;
+    NSMutableArray<PasteboardItem *> *items = [[NSMutableArray alloc] init];
 
     if ([self saveText]) {
         // Don't pull strings if the pasteboard contains images.
@@ -258,9 +255,7 @@ NS_ASSUME_NONNULL_END
                         [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                               andContent:string
                                                           withImageNamed:nil];
-                    if ([self addPasteboardItem:item toHistoryWithKey:kKayokoHistoryKeyHistory]) {
-                        didSaveAnyItem = YES;
-                    }
+                    [items addObject:item];
                 }
             }
         }
@@ -292,14 +287,72 @@ NS_ASSUME_NONNULL_END
                     [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                           andContent:imageName
                                                       withImageNamed:imageName];
-                if ([self addPasteboardItem:item toHistoryWithKey:kKayokoHistoryKeyHistory]) {
-                    didSaveAnyItem = YES;
-                }
+                [items addObject:item];
             }
         }
     }
 
+    return items;
+}
+
+- (BOOL)_reallyPullPasteboardChanges {
+    NSArray<PasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    return [self savePasteboardItemsSynchronously:items toHistoryWithKey:kKayokoHistoryKeyHistory];
+}
+
+#pragma mark - History Access
+
+- (BOOL)savePasteboardItemsSynchronously:(NSArray<PasteboardItem *> *)items toHistoryWithKey:(NSString *)historyKey {
+    BOOL didSaveAnyItem = NO;
+    for (PasteboardItem *item in items) {
+        if ([self addPasteboardItem:item toHistoryWithKey:historyKey]) {
+            didSaveAnyItem = YES;
+        }
+    }
     return didSaveAnyItem;
+}
+
+- (void)savePasteboardItems:(NSArray<PasteboardItem *> *)items
+           toHistoryWithKey:(NSString *)historyKey
+                 completion:(void (^)(BOOL didSaveAnyItem))completion {
+    NSMutableArray<NSDictionary<NSString *, id> *> *dictionaries =
+        [[NSMutableArray alloc] initWithCapacity:[items count]];
+    for (PasteboardItem *item in items) {
+        if ([[item content] isEqualToString:@""]) {
+            continue;
+        }
+        [dictionaries addObject:[item dictionaryRepresentation]];
+    }
+
+    if ([dictionaries count] == 0) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    NSUInteger limit = [self limitForHistoryKey:historyKey];
+    __weak typeof(self) weakSelf = self;
+    [_historyRepository
+        addItemDictionaries:dictionaries
+               toHistoryKey:historyKey
+                 completion:^(NSArray<NSDictionary<NSString *, id> *> *savedDictionaries) {
+                   __strong typeof(weakSelf) strongSelf = weakSelf;
+                   if (!strongSelf) {
+                       return;
+                   }
+                   for (NSDictionary<NSString *, id> *dictionary in savedDictionaries) {
+                       [strongSelf
+                           postHistoryChangedNotificationForHistoryKey:historyKey
+                                                            changeType:
+                                                                kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
+                                                        itemDictionary:dictionary
+                                                                 limit:limit];
+                   }
+                   if (completion) {
+                       completion([savedDictionaries count] > 0);
+                   }
+                 }];
 }
 
 #pragma mark - History Mutations
@@ -403,12 +456,20 @@ NS_ASSUME_NONNULL_END
                                  historyItem:(PasteboardItem *)historyItem
                           fromHistoryWithKey:(NSString *)historyKey
                              shouldAutoPaste:(BOOL)shouldAutoPaste {
-    [self performPasteboardOperation:^{
-      [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
-                                            historyItem:historyItem
-                                     fromHistoryWithKey:historyKey
-                                        shouldAutoPaste:shouldAutoPaste];
-    }];
+    if (@available(iOS 16, *)) {
+        dispatch_async(_pasteboardQueue, ^{
+          [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
+                                                historyItem:historyItem
+                                         fromHistoryWithKey:historyKey
+                                            shouldAutoPaste:shouldAutoPaste];
+        });
+        return;
+    }
+
+    [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
+                                          historyItem:historyItem
+                                   fromHistoryWithKey:historyKey
+                                      shouldAutoPaste:shouldAutoPaste];
 }
 
 - (void)updatePasteboardWithItem:(PasteboardItem *)item
