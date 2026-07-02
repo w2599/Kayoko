@@ -16,6 +16,7 @@ CHDeclareClass(UIViewController);
 CHDeclareClass(SBCoverSheetPrimarySlidingViewController);
 CHDeclareClass(SBHIconManager);
 CHDeclareClass(SBSpotlightMultiplexingViewController);
+CHDeclareClass(SBHLibrarySearchController);
 CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
@@ -45,6 +46,16 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 @interface SBSpotlightMultiplexingViewController : UIViewController
+@end
+
+@interface SBHLibrarySearchController : NSObject
+- (void)_willDismissSearchAnimated:(BOOL)animated;
+- (void)_willPresentSearchAnimated:(BOOL)animated;
+- (void)_didDismissSearch;
+- (void)_didPresentSearch;
+- (void)beginEditingForSearchField;
+- (void)endEditingForSearchField;
+- (BOOL)isSearchFieldEditing;
 @end
 
 @interface SBMainDisplaySystemGestureManager : NSObject
@@ -103,6 +114,15 @@ CHOptimizedMethod1(self, void, SBCoverSheetPrimarySlidingViewController, _endTra
 
 CHOptimizedMethod1(self, void, SBSpotlightMultiplexingViewController, viewWillDisappear, BOOL, animated) {
     CHSuper1(SBSpotlightMultiplexingViewController, viewWillDisappear, animated);
+    if (animated) {
+        KayokoCoreHide();
+    } else {
+        KayokoCoreHideImmediately();
+    }
+}
+
+CHOptimizedMethod1(self, void, SBHLibrarySearchController, _willDismissSearchAnimated, BOOL, animated) {
+    CHSuper1(SBHLibrarySearchController, _willDismissSearchAnimated, animated);
     if (animated) {
         KayokoCoreHide();
     } else {
@@ -216,6 +236,15 @@ static void kayokoInstallSpotlightHooks(void) {
     }
 }
 
+static void kayokoInstallLibrarySearchHooks(void) {
+    Class librarySearchControllerClass = NSClassFromString(@"SBHLibrarySearchController");
+    CHLoadClass_(&SBHLibrarySearchController$, librarySearchControllerClass);
+    SEL willDismissSearchSelector = @selector(_willDismissSearchAnimated:);
+    if ([librarySearchControllerClass instancesRespondToSelector:willDismissSearchSelector]) {
+        CHHook1(SBHLibrarySearchController, _willDismissSearchAnimated);
+    }
+}
+
 static void kayokoInstallSystemGestureHooks(void) {
     Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
     CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
@@ -259,5 +288,6 @@ void KayokoInstallSpringBoardHooks(void) {
     kayokoInstallAppSwitcherHooks();
     kayokoInstallLockScreenTransitionHooks();
     kayokoInstallSpotlightHooks();
+    kayokoInstallLibrarySearchHooks();
     kayokoInstallSystemGestureHooks();
 }
