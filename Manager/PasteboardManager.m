@@ -596,6 +596,30 @@ NS_ASSUME_NONNULL_END
         stringWithFormat:@"%@|%.0fx%.0f|%.2f", imageName, ceil(targetSize.width), ceil(targetSize.height), scale];
 }
 
+- (NSUInteger)thumbnailMaximumPixelSizeForImageProperties:(NSDictionary<NSString *, id> *)properties
+                                               targetSize:(CGSize)targetSize
+                                                    scale:(CGFloat)scale {
+    CGFloat targetPixelWidth = MAX(ceil(targetSize.width * scale), 1);
+    CGFloat targetPixelHeight = MAX(ceil(targetSize.height * scale), 1);
+    CGFloat imagePixelWidth = [properties[(NSString *)kCGImagePropertyPixelWidth] doubleValue];
+    CGFloat imagePixelHeight = [properties[(NSString *)kCGImagePropertyPixelHeight] doubleValue];
+    NSUInteger orientation = [properties[(NSString *)kCGImagePropertyOrientation] unsignedIntegerValue];
+    if (orientation >= 5 && orientation <= 8) {
+        CGFloat swappedWidth = imagePixelHeight;
+        imagePixelHeight = imagePixelWidth;
+        imagePixelWidth = swappedWidth;
+    }
+
+    if (imagePixelWidth <= 0 || imagePixelHeight <= 0) {
+        return (NSUInteger)ceil(MAX(targetPixelWidth, targetPixelHeight));
+    }
+
+    CGFloat fillScale = MAX(targetPixelWidth / imagePixelWidth, targetPixelHeight / imagePixelHeight);
+    CGFloat thumbnailPixelWidth = imagePixelWidth * fillScale;
+    CGFloat thumbnailPixelHeight = imagePixelHeight * fillScale;
+    return (NSUInteger)ceil(MAX(thumbnailPixelWidth, thumbnailPixelHeight));
+}
+
 - (void)getThumbnailForItem:(PasteboardItem *)item
                  targetSize:(CGSize)targetSize
                  completion:(void (^)(UIImage *_Nullable image))completion {
@@ -617,7 +641,6 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    NSUInteger maximumPixelSize = (NSUInteger)ceil(MAX(MAX(targetSize.width, targetSize.height), 1) * scale);
     NSString *imagePath = [[PasteboardManager historyImagesPath] stringByAppendingPathComponent:imageName];
     NSURL *imageURL = [NSURL fileURLWithPath:imagePath];
 
@@ -625,6 +648,11 @@ NS_ASSUME_NONNULL_END
       CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);
       UIImage *thumbnailImage = nil;
       if (imageSource) {
+          NSDictionary<NSString *, id> *properties =
+              CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL));
+          NSUInteger maximumPixelSize = [self thumbnailMaximumPixelSizeForImageProperties:properties ?: @{}
+                                                                               targetSize:targetSize
+                                                                                    scale:scale];
           NSDictionary *options = @{
               (NSString *)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
               (NSString *)kCGImageSourceCreateThumbnailWithTransform : @YES,
