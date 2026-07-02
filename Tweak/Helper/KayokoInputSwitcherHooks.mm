@@ -16,16 +16,6 @@
 
 static NSString *const kKayokoInputSwitcherItemIdentifier = @"com.82flex.kayoko.globe";
 
-static BOOL kayokoShouldHandleActivationOrReject(void) {
-    KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
-    if ([runtime shouldHandleActivationForCurrentInput]) {
-        return YES;
-    }
-
-    [runtime playActivationRejectedFeedbackIfNeeded];
-    return NO;
-}
-
 CHDeclareClass(UIInputSwitcherView);
 
 @interface UIInputSwitcherView : UIView
@@ -67,9 +57,7 @@ CHOptimizedMethod1(self, void, UIInputSwitcherView, didSelectItemAtIndex, unsign
     NSArray *items = MSHookIvar<NSArray *>(self, "m_inputSwitcherItems");
     UIInputSwitcherItem *item = items[index];
     if ([item.identifier isEqualToString:kKayokoInputSwitcherItemIdentifier]) {
-        if (kayokoShouldHandleActivationOrReject()) {
-            [[KayokoHelperRuntime sharedRuntime] showKayokoAfterCapturingCurrentFocus];
-        }
+        [[KayokoHelperRuntime sharedRuntime] activateKayokoAfterCapturingCurrentFocus];
     }
     CHSuper1(UIInputSwitcherView, didSelectItemAtIndex, index);
 }

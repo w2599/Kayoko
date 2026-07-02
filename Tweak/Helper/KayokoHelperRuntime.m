@@ -127,6 +127,9 @@ NS_ASSUME_NONNULL_END
 
 - (void)postCoreShow;
 - (void)postCoreHide;
+- (void)showKayoko;
+- (void)showKayokoAfterCapturingCurrentFocus;
+- (void)showKayokoFromResponder:(UIResponder *)responder;
 
 #pragma mark - Application And Window State
 
@@ -148,6 +151,8 @@ NS_ASSUME_NONNULL_END
 - (BOOL)objectHasKayokoClassPrefix:(id)object;
 - (BOOL)viewHierarchyIsKayokoOwned:(UIView *)view;
 - (BOOL)responderIsKayokoOwned:(UIResponder *)responder;
+- (BOOL)shouldHandleActivationForCurrentInput;
+- (void)playActivationRejectedFeedbackIfNeeded;
 - (void)rememberKayokoKeyboardInput;
 - (void)clearLastKayokoKeyboardInput;
 - (BOOL)hasRecentKayokoKeyboardInput;
@@ -171,6 +176,7 @@ NS_ASSUME_NONNULL_END
 - (UIResponder *)capturedFocusResponderForPasteRequiringKeyboardDelegate:(BOOL *)requiresKeyboardDelegate;
 - (void)postPasteWillStart;
 - (BOOL)preparePasteboardForPaste;
+- (BOOL)pasteIntoKayokoInputResponder:(UIResponder *)responder;
 - (void)performPaste;
 - (BOOL)pendingPasteIsReady;
 - (void)attemptPendingPaste;
@@ -314,20 +320,6 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     });
 }
 
-- (BOOL)shouldHandleActivationForCurrentInput {
-    if (!self.isSpringBoardRuntime) {
-        return YES;
-    }
-
-    return ![self currentInputIsKayokoOwned];
-}
-
-- (void)playActivationRejectedFeedbackIfNeeded {
-    if (self.isHapticFeedbackEnabled) {
-        AudioServicesPlaySystemSound(1521);
-    }
-}
-
 - (void)captureCurrentFirstResponder {
     UIApplication *application = [UIApplication sharedApplication];
     UIWindow *keyWindow = [self activeKeyWindowForApplication:application];
@@ -373,24 +365,44 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     }
 }
 
-- (BOOL)pasteIntoCurrentKayokoInput {
-    UIResponder *responder = [self currentKayokoInputResponder];
-    if (!responder) {
+- (BOOL)activateKayoko {
+    if (![self shouldHandleActivationForCurrentInput]) {
+        [self playActivationRejectedFeedbackIfNeeded];
         return NO;
     }
 
-    UIApplication *activeApplication = [UIApplication sharedApplication];
-    if (!activeApplication || [activeApplication applicationState] != UIApplicationStateActive) {
-        return NO;
-    }
-
-    [self postPasteWillStart];
-    if (![self preparePasteboardForPaste]) {
-        return NO;
-    }
-
-    [activeApplication sendAction:@selector(paste:) to:responder from:nil forEvent:nil];
+    [self showKayoko];
     return YES;
+}
+
+- (BOOL)activateKayokoAfterCapturingCurrentFocus {
+    if (![self shouldHandleActivationForCurrentInput]) {
+        [self playActivationRejectedFeedbackIfNeeded];
+        return NO;
+    }
+
+    [self showKayokoAfterCapturingCurrentFocus];
+    return YES;
+}
+
+- (BOOL)activateKayokoFromResponder:(UIResponder *)responder {
+    if (![self shouldHandleActivationForCurrentInput]) {
+        [self playActivationRejectedFeedbackIfNeeded];
+        return NO;
+    }
+
+    [self showKayokoFromResponder:responder];
+    return YES;
+}
+
+- (void)pasteFromPredictionBar {
+    UIResponder *responder = [self currentKayokoInputResponder];
+    if (responder) {
+        [self pasteIntoKayokoInputResponder:responder];
+        return;
+    }
+
+    [self paste];
 }
 
 #pragma mark - Runtime Hook Events
@@ -648,6 +660,20 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return NO;
 }
 
+- (BOOL)shouldHandleActivationForCurrentInput {
+    if (!self.isSpringBoardRuntime) {
+        return YES;
+    }
+
+    return ![self currentInputIsKayokoOwned];
+}
+
+- (void)playActivationRejectedFeedbackIfNeeded {
+    if (self.isHapticFeedbackEnabled) {
+        AudioServicesPlaySystemSound(1521);
+    }
+}
+
 - (void)rememberKayokoKeyboardInput {
     self.lastKeyboardInputWasKayokoOwned = YES;
     self.lastKayokoKeyboardInputTime = [NSDate timeIntervalSinceReferenceDate];
@@ -885,6 +911,25 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         [pasteboard setString:[item content]];
     }
 
+    return YES;
+}
+
+- (BOOL)pasteIntoKayokoInputResponder:(UIResponder *)responder {
+    if (!responder) {
+        return NO;
+    }
+
+    UIApplication *activeApplication = [UIApplication sharedApplication];
+    if (!activeApplication || [activeApplication applicationState] != UIApplicationStateActive) {
+        return NO;
+    }
+
+    [self postPasteWillStart];
+    if (![self preparePasteboardForPaste]) {
+        return NO;
+    }
+
+    [activeApplication sendAction:@selector(paste:) to:responder from:nil forEvent:nil];
     return YES;
 }
 

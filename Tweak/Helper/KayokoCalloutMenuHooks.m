@@ -33,76 +33,27 @@ static NSString *const kKayokoMenuActionSelectorName = @"_Kayoko_OpenTools_ab2e3
 
 static SEL kayokoMenuActionSelector(void) { return NSSelectorFromString(kKayokoMenuActionSelectorName); }
 
-static const char *kayokoMenuActionTypeEncoding(void) { return "v@:"; }
-
-static BOOL kayokoShouldHandleActivationOrReject(void) {
-    KayokoHelperRuntime *runtime = [KayokoHelperRuntime sharedRuntime];
-    if ([runtime shouldHandleActivationForCurrentInput]) {
-        return YES;
-    }
-
-    [runtime playActivationRejectedFeedbackIfNeeded];
-    return NO;
-}
-
-static UIMenuItem *kayokoMenuItem(void) {
-    static UIMenuItem *menuItem = nil;
-    if (!menuItem) {
-        menuItem = [[UIMenuItem alloc] initWithTitle:kKayokoMenuName action:kayokoMenuActionSelector()];
-    }
-    return menuItem;
-}
-
-static UICommand *kayokoMenuItemUICommand(void) {
-    static UICommand *command = nil;
-    if (!command) {
-        command = [UICommand commandWithTitle:kKayokoMenuName
-                                        image:nil
-                                       action:kayokoMenuActionSelector()
-                                 propertyList:nil];
-    }
-    return command;
-}
-
-static BOOL kayokoMenuItemIsWritingTool(id input) {
-    if ([input isKindOfClass:[UIMenu class]]) {
-        UIMenu *menu = (UIMenu *)input;
-        if ([menu.title isEqualToString:kKayokoMenuName]) {
-            return YES;
-        }
-    }
-    if ([input isKindOfClass:[UIAction class]]) {
-        UIAction *action = (UIAction *)input;
-        if ([action.title isEqualToString:kKayokoMenuName]) {
-            return YES;
-        }
-    }
-    if ([input isKindOfClass:[UICommand class]]) {
-        UICommand *command = (UICommand *)input;
-        NSString *selectorName = NSStringFromSelector(command.action);
-        if ([selectorName isEqualToString:kKayokoMenuActionSelectorName]) {
-            return YES;
-        }
-    }
-    return NO;
-}
-
 static void kayokoOpenKayokoResponderAction(id self, SEL _cmd) {
-    if (!kayokoShouldHandleActivationOrReject()) {
-        return;
-    }
-
     if ([self isKindOfClass:[UIResponder class]]) {
-        [[KayokoHelperRuntime sharedRuntime] showKayokoFromResponder:self];
+        [[KayokoHelperRuntime sharedRuntime] activateKayokoFromResponder:self];
     } else {
-        [[KayokoHelperRuntime sharedRuntime] showKayoko];
+        [[KayokoHelperRuntime sharedRuntime] activateKayoko];
     }
 }
 
 CHOptimizedMethod2(self, void, _UIEditMenuPresentation, displayMenu, UIMenu *, menu, configuration, id, configuration) {
     NSMutableArray<UIMenuElement *> *build = [NSMutableArray new];
     for (id item in [menu children]) {
-        if (kayokoMenuItemIsWritingTool(item)) {
+        BOOL itemIsKayokoMenuItem = NO;
+        if ([item isKindOfClass:[UIMenu class]]) {
+            itemIsKayokoMenuItem = [[(UIMenu *)item title] isEqualToString:kKayokoMenuName];
+        } else if ([item isKindOfClass:[UIAction class]]) {
+            itemIsKayokoMenuItem = [[(UIAction *)item title] isEqualToString:kKayokoMenuName];
+        } else if ([item isKindOfClass:[UICommand class]]) {
+            NSString *selectorName = NSStringFromSelector([(UICommand *)item action]);
+            itemIsKayokoMenuItem = [selectorName isEqualToString:kKayokoMenuActionSelectorName];
+        }
+        if (itemIsKayokoMenuItem) {
             continue;
         }
         if (![item isKindOfClass:[UIMenu class]]) {
@@ -115,7 +66,14 @@ CHOptimizedMethod2(self, void, _UIEditMenuPresentation, displayMenu, UIMenu *, m
             continue;
         }
         NSMutableArray<UIMenuElement *> *rebuildAppleEditMenu = [submenu.children mutableCopy];
-        [rebuildAppleEditMenu addObject:kayokoMenuItemUICommand()];
+        static UICommand *kayokoMenuCommand = nil;
+        if (!kayokoMenuCommand) {
+            kayokoMenuCommand = [UICommand commandWithTitle:kKayokoMenuName
+                                                      image:nil
+                                                     action:kayokoMenuActionSelector()
+                                               propertyList:nil];
+        }
+        [rebuildAppleEditMenu addObject:kayokoMenuCommand];
         UIMenu *rebuildAppleMenu = [submenu menuByReplacingChildren:rebuildAppleEditMenu];
         [build addObject:rebuildAppleMenu];
     }
@@ -141,9 +99,8 @@ CHOptimizedMethod0(self, void, UICalloutBar, updateAvailableButtons) {
         return CHSuper0(UICalloutBar, updateAvailableButtons);
     }
 
-    UIMenuItem *kayokoNowItem = kayokoMenuItem();
     _UICalloutBarSystemButtonDescription *buttonDescription =
-        [cbsbdCls buttonDescriptionWithTitle:kayokoNowItem.title action:kayokoMenuActionSelector() type:1];
+        [cbsbdCls buttonDescriptionWithTitle:kKayokoMenuName action:kayokoMenuActionSelector() type:1];
 
     if (!buttonDescription) {
         return CHSuper0(UICalloutBar, updateAvailableButtons);
@@ -197,7 +154,7 @@ CHOptimizedMethod0(self, void, UICalloutBar, updateAvailableButtons) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       class_addMethod(NSClassFromString(@"UIResponder"), kayokoMenuActionSelector(),
-                      (IMP)kayokoOpenKayokoResponderAction, kayokoMenuActionTypeEncoding());
+                      (IMP)kayokoOpenKayokoResponderAction, "v@:");
 
       if (@available(iOS 16, *)) {
           Class targetCls = NSClassFromString(@"_UIEditMenuContentPresentation");

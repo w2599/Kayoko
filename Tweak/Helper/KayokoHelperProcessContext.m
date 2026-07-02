@@ -8,15 +8,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperProcessContext ()
-
 @property(nonatomic, assign, readwrite) KayokoHelperProcessKind kind;
-
-- (instancetype)initWithKind:(KayokoHelperProcessKind)kind;
-
-+ (BOOL)isSpringBoardProcess;
-+ (BOOL)isKeyboardExtensionProcess;
-+ (BOOL)isApplicationProcess;
-
 @end
 
 NS_ASSUME_NONNULL_END
