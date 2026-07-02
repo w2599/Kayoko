@@ -9,6 +9,10 @@
 
 #import "PreferenceKeys.h"
 
+static BOOL kayokoHelperIsSpringBoardProcess(void) {
+    return [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"];
+}
+
 static BOOL kayokoHelperIsApplicationProcess(void) {
     NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
     NSUInteger count = [args count];
@@ -78,6 +82,11 @@ __attribute((constructor)) static void initialize() {
         if (KayokoHelperActivationMethod() & kActivationMethodSwipeUp) {
             EnableKayokoActivationSwipeUpForKeyboardExtension();
         }
+        return;
+    }
+
+    if (kayokoHelperIsSpringBoardProcess()) {
+        KayokoHelperInstallSpringBoardRuntime();
         return;
     }
 

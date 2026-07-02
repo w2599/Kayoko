@@ -16,6 +16,7 @@ OBJC_EXTERN BOOL KayokoHelperIsKeyboardExtensionProcess(void);
 OBJC_EXTERN void KayokoHelperLoadPreferences(void);
 OBJC_EXTERN void KayokoHelperInstallRuntimeHooks(void);
 OBJC_EXTERN void KayokoHelperInstallRuntimeObservers(void);
+OBJC_EXTERN void KayokoHelperInstallSpringBoardRuntime(void);
 OBJC_EXTERN void KayokoHelperPostCoreShow(void);
 OBJC_EXTERN void KayokoHelperCaptureCurrentFirstResponder(void);
 OBJC_EXTERN void KayokoHelperRestoreCapturedFirstResponder(void);
