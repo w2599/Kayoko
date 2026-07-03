@@ -12,6 +12,7 @@
 #import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CFNotificationCenter.h>
 #import <Foundation/Foundation.h>
+#import <HBLog.h>
 #import <objc/runtime.h>
 
 CHDeclareClass(UIKeyboardLayoutStar);
@@ -20,7 +21,9 @@ CHDeclareClass(UIKeyboardImpl);
 CHDeclareClass(UISearchBar);
 CHDeclareClass(UITextField);
 
-static const NSTimeInterval kKayokoPendingPasteExpirationDelay = 2.8;
+static const NSTimeInterval kKayokoPendingPasteFocusExpirationDelay = 2.8;
+static const NSTimeInterval kKayokoPendingPasteboardVisibilityExpirationDelay = 0.5;
+static const NSTimeInterval kKayokoPendingPasteboardVisibilityRecheckDelay = 0.1;
 static const NSTimeInterval kKayokoKeyboardHideSuppressionInterval = 1.0;
 
 @interface UIKeyboardLayoutStar : UIView
@@ -38,6 +41,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperFocusSession : NSObject
 @property(nonatomic, assign, getter=hasCapturedFocusSession) BOOL capturedFocusSession;
+@property(nonatomic, assign, getter=hasCapturedPasteboardChangeCount) BOOL capturedPasteboardChangeCount;
+@property(nonatomic, assign) NSUInteger pasteboardChangeCount;
 @property(nonatomic, weak, nullable) UIResponder *firstResponder;
 @property(nonatomic, weak, nullable) UIResponder *keyboardInputDelegate;
 @property(nonatomic, weak, nullable) UIWindow *keyWindow;
@@ -52,6 +57,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)clear {
     self.capturedFocusSession = NO;
+    self.capturedPasteboardChangeCount = NO;
+    self.pasteboardChangeCount = 0;
     self.firstResponder = nil;
     self.keyboardInputDelegate = nil;
     self.keyWindow = nil;
@@ -68,29 +75,108 @@ NS_ASSUME_NONNULL_END
 
 @end
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoHelperPendingPasteSession : NSObject
 @property(nonatomic, assign, getter=hasPendingPaste) BOOL pendingPaste;
 @property(nonatomic, assign) BOOL canExecute;
 @property(nonatomic, assign) BOOL requiresKeyboardDelegate;
+@property(nonatomic, assign) BOOL requiresPasteboardChange;
+@property(nonatomic, assign, getter=isWaitingForPasteboardVisibility) BOOL waitingForPasteboardVisibility;
+@property(nonatomic, assign) NSUInteger pasteboardChangeCountBeforePaste;
 @property(nonatomic, assign) NSUInteger token;
+@property(nonatomic, copy, nullable) dispatch_block_t focusExpirationBlock;
+@property(nonatomic, copy, nullable) dispatch_block_t pasteboardVisibilityExpirationBlock;
+@property(nonatomic, copy, nullable) dispatch_block_t pasteboardVisibilityRecheckBlock;
 @property(nonatomic, weak, nullable) UIResponder *responder;
 @property(nonatomic, weak, nullable) UIWindow *keyWindow;
+- (void)scheduleFocusExpirationAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler;
+- (void)schedulePasteboardVisibilityExpirationAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler;
+- (void)schedulePasteboardVisibilityRecheckAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler;
+- (void)cancelFocusExpirationBlock;
+- (void)cancelPasteboardVisibilityExpirationBlock;
+- (void)cancelPasteboardVisibilityRecheckBlock;
+- (void)cancelPasteboardVisibilityWait;
 - (void)clear;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoHelperPendingPasteSession
 
 - (void)clear {
+    [self cancelFocusExpirationBlock];
+    [self cancelPasteboardVisibilityWait];
+    self.token++;
     self.pendingPaste = NO;
     self.canExecute = NO;
     self.requiresKeyboardDelegate = NO;
+    self.requiresPasteboardChange = NO;
+    self.waitingForPasteboardVisibility = NO;
+    self.pasteboardChangeCountBeforePaste = 0;
     self.responder = nil;
     self.keyWindow = nil;
+}
+
+- (void)scheduleFocusExpirationAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler {
+    [self cancelFocusExpirationBlock];
+    dispatch_block_t expirationBlock = dispatch_block_create(0, handler);
+    self.focusExpirationBlock = expirationBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(),
+                   expirationBlock);
+}
+
+- (void)schedulePasteboardVisibilityExpirationAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler {
+    [self cancelPasteboardVisibilityExpirationBlock];
+    dispatch_block_t expirationBlock = dispatch_block_create(0, handler);
+    self.pasteboardVisibilityExpirationBlock = expirationBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(),
+                   expirationBlock);
+}
+
+- (void)schedulePasteboardVisibilityRecheckAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler {
+    [self cancelPasteboardVisibilityRecheckBlock];
+    dispatch_block_t recheckBlock = dispatch_block_create(0, handler);
+    self.pasteboardVisibilityRecheckBlock = recheckBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(),
+                   recheckBlock);
+}
+
+- (void)cancelFocusExpirationBlock {
+    dispatch_block_t expirationBlock = self.focusExpirationBlock;
+    if (expirationBlock) {
+        dispatch_block_cancel(expirationBlock);
+        self.focusExpirationBlock = nil;
+    }
+}
+
+- (void)cancelPasteboardVisibilityExpirationBlock {
+    dispatch_block_t expirationBlock = self.pasteboardVisibilityExpirationBlock;
+    if (expirationBlock) {
+        dispatch_block_cancel(expirationBlock);
+        self.pasteboardVisibilityExpirationBlock = nil;
+    }
+}
+
+- (void)cancelPasteboardVisibilityRecheckBlock {
+    dispatch_block_t recheckBlock = self.pasteboardVisibilityRecheckBlock;
+    if (recheckBlock) {
+        dispatch_block_cancel(recheckBlock);
+        self.pasteboardVisibilityRecheckBlock = nil;
+    }
+}
+
+- (void)cancelPasteboardVisibilityWait {
+    [self cancelPasteboardVisibilityExpirationBlock];
+    [self cancelPasteboardVisibilityRecheckBlock];
+    self.waitingForPasteboardVisibility = NO;
 }
 
 @end
 
 @class KayokoKeyboardObserver;
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperRuntime ()
 
@@ -119,6 +205,7 @@ NS_ASSUME_NONNULL_END
 - (void)windowDidResignKeyWithNotification:(NSNotification *)notification;
 - (void)keyboardWillHideWithNotification:(NSNotification *)notification;
 - (void)keyboardDidShowWithNotification:(NSNotification *)notification;
+- (void)pasteboardDidChangeWithNotification:(NSNotification *)notification;
 
 #pragma mark - Darwin Notifications
 
@@ -174,10 +261,13 @@ NS_ASSUME_NONNULL_END
 - (void)postPasteWillStart;
 - (BOOL)preparePasteboardForPaste;
 - (BOOL)pasteIntoKayokoInputResponder:(UIResponder *)responder;
-- (void)performPaste;
+- (BOOL)performPaste;
 - (BOOL)pendingPasteIsReady;
+- (BOOL)pendingPasteboardChangeIsReady;
 - (void)attemptPendingPaste;
 - (void)schedulePendingPasteCheck;
+- (void)beginPendingPasteboardVisibilityWaitIfNeeded;
+- (void)schedulePendingPasteboardVisibilityRecheck;
 - (BOOL)beginPendingPaste;
 
 #pragma mark - Installation
@@ -188,15 +278,20 @@ NS_ASSUME_NONNULL_END
 
 @end
 
+NS_ASSUME_NONNULL_END
+
 @interface KayokoKeyboardObserver : NSObject
 - (instancetype)initWithRuntime:(KayokoHelperRuntime *)runtime;
 @end
 
 static CFStringRef kayokoHelperNotificationName(NSString *name) { return (__bridge CFStringRef)name; }
+static NSString *kayokoHelperDebugBoolString(BOOL value) { return value ? @"YES" : @"NO"; }
+static NSString *kayokoHelperDebugClassName(id object) { return object ? NSStringFromClass([object class]) : @"nil"; }
 
 static void kayokoHelperPasteNotificationCallback(CFNotificationCenterRef center, void *observer,
                                                   CFNotificationName name, const void *object,
                                                   CFDictionaryRef userInfo) {
+    HBLogDebug(@"Kayoko: helper paste notification received process=%@", [[NSProcessInfo processInfo] processName]);
     [[KayokoHelperRuntime sharedRuntime] paste];
 }
 
@@ -341,22 +436,36 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 - (void)paste {
     if (!self.applicationInForeground) {
+        HBLogDebug(@"Kayoko: helper paste ignored because application is not foreground process=%@",
+                   [[NSProcessInfo processInfo] processName]);
         return;
     }
 
     UIApplication *application = [UIApplication sharedApplication];
     if (![self applicationHasPasteContext:application]) {
+        HBLogDebug(@"Kayoko: helper paste ignored because application has no paste context process=%@ state=%ld",
+                   [[NSProcessInfo processInfo] processName], (long)[application applicationState]);
         return;
     }
 
     BOOL hasPendingPaste = [self beginPendingPaste];
+    HBLogDebug(@"Kayoko: helper paste started process=%@ hasPendingPaste=%@", [[NSProcessInfo processInfo] processName],
+               kayokoHelperDebugBoolString(hasPendingPaste));
     [self restoreCapturedFirstResponder];
+
+    if (!hasPendingPaste && self.isSpringBoardRuntime) {
+        HBLogDebug(@"Kayoko: helper paste skipped because SpringBoard has no pending paste target");
+        return;
+    }
 
     if (hasPendingPaste) {
         self.pendingPasteSession.canExecute = YES;
+        HBLogDebug(@"Kayoko: helper paste scheduled pending check token=%lu",
+                   (unsigned long)self.pendingPasteSession.token);
         [self schedulePendingPasteCheck];
     } else {
         dispatch_async(dispatch_get_main_queue(), ^{
+          HBLogDebug(@"Kayoko: helper paste scheduled immediate perform");
           [self performPaste];
         });
     }
@@ -468,6 +577,18 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     [self attemptPendingPaste];
 }
 
+- (void)pasteboardDidChangeWithNotification:(NSNotification *)notification {
+    (void)notification;
+    if (!self.pendingPasteSession.hasPendingPaste || !self.pendingPasteSession.canExecute) {
+        return;
+    }
+
+    HBLogDebug(@"Kayoko: pasteboard changed while pending paste token=%lu changeCount=%lu",
+               (unsigned long)self.pendingPasteSession.token,
+               (unsigned long)[[UIPasteboard generalPasteboard] changeCount]);
+    [self schedulePendingPasteCheck];
+}
+
 #pragma mark - Darwin Notifications
 
 - (void)postCoreShow {
@@ -552,22 +673,31 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         return NO;
     }
 
+    if (self.isSpringBoardRuntime) {
+        return [self capturedFocusKeyWindowForSpringBoard] != nil;
+    }
+
     if ([self applicationHasActiveKeyWindow:application]) {
         return YES;
     }
 
-    return [self capturedFocusKeyWindowForSpringBoard] != nil;
+    return NO;
 }
 
 - (BOOL)applicationCanPerformPaste:(UIApplication *)application {
+    if (self.isSpringBoardRuntime) {
+        if (![self capturedFocusKeyWindowForSpringBoard]) {
+            return NO;
+        }
+
+        return [self pendingPasteIsReady];
+    }
+
     if ([self applicationHasActiveKeyWindow:application]) {
         return YES;
     }
-    if (!self.isSpringBoardRuntime || ![self capturedFocusKeyWindowForSpringBoard]) {
-        return NO;
-    }
 
-    return [self pendingPasteIsReady];
+    return NO;
 }
 
 #pragma mark - Keyboard State
@@ -831,6 +961,11 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
     self.focusSession.keyWindow = keyWindow;
     self.focusSession.keyboardInputDelegate = [self restorableKeyboardInputDelegate];
+    self.focusSession.pasteboardChangeCount = [[UIPasteboard generalPasteboard] changeCount];
+    self.focusSession.capturedPasteboardChangeCount = YES;
+
+    HBLogDebug(@"Kayoko: captured focus pasteboard baseline changeCount=%lu keyWindow=%@",
+               (unsigned long)self.focusSession.pasteboardChangeCount, kayokoHelperDebugClassName(keyWindow));
 }
 
 - (void)captureFocusSessionFromResponder:(UIResponder *)responder keyWindow:(UIWindow *)keyWindow {
@@ -893,43 +1028,72 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 - (BOOL)preparePasteboardForPaste {
     UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-    return [pasteboard string] || [pasteboard image];
+    NSString *string = [pasteboard string];
+    UIImage *image = [pasteboard image];
+    BOOL canPaste = string || image;
+
+    HBLogDebug(@"Kayoko: helper pasteboard check canPaste=%@ changeCount=%lu stringLength=%lu hasImage=%@",
+               kayokoHelperDebugBoolString(canPaste), (unsigned long)[pasteboard changeCount],
+               (unsigned long)[string length], kayokoHelperDebugBoolString(image != nil));
+
+    return canPaste;
 }
 
 - (BOOL)pasteIntoKayokoInputResponder:(UIResponder *)responder {
     if (!responder) {
+        HBLogDebug(@"Kayoko: paste into Kayoko responder skipped because responder is nil");
         return NO;
     }
 
     UIApplication *activeApplication = [UIApplication sharedApplication];
     if (!activeApplication || [activeApplication applicationState] != UIApplicationStateActive) {
+        HBLogDebug(@"Kayoko: paste into Kayoko responder skipped because application is inactive state=%ld",
+                   (long)[activeApplication applicationState]);
         return NO;
     }
 
     [self postPasteWillStart];
     if (![self preparePasteboardForPaste]) {
+        HBLogDebug(@"Kayoko: paste into Kayoko responder skipped because pasteboard is empty responder=%@",
+                   kayokoHelperDebugClassName(responder));
         return NO;
     }
 
-    [activeApplication sendAction:@selector(paste:) to:responder from:nil forEvent:nil];
+    BOOL didSendAction = [activeApplication sendAction:@selector(paste:) to:responder from:nil forEvent:nil];
+    HBLogDebug(@"Kayoko: paste into Kayoko responder sent=%@ responder=%@", kayokoHelperDebugBoolString(didSendAction),
+               kayokoHelperDebugClassName(responder));
     return YES;
 }
 
-- (void)performPaste {
+- (BOOL)performPaste {
     UIApplication *activeApplication = [UIApplication sharedApplication];
-    if (!self.applicationInForeground || ![self applicationCanPerformPaste:activeApplication]) {
-        return;
+    BOOL canPerformPaste = [self applicationCanPerformPaste:activeApplication];
+    if (!self.applicationInForeground || !canPerformPaste) {
+        HBLogDebug(@"Kayoko: perform paste skipped foreground=%@ canPerformPaste=%@ process=%@ state=%ld",
+                   kayokoHelperDebugBoolString(self.applicationInForeground),
+                   kayokoHelperDebugBoolString(canPerformPaste), [[NSProcessInfo processInfo] processName],
+                   (long)[activeApplication applicationState]);
+        return NO;
     }
+
     if ([self currentInputIsKayokoOwned]) {
-        return;
+        HBLogDebug(@"Kayoko: perform paste skipped because current input is Kayoko-owned");
+        return NO;
+    }
+
+    if (![self preparePasteboardForPaste]) {
+        HBLogDebug(@"Kayoko: perform paste skipped because pasteboard is empty process=%@",
+                   [[NSProcessInfo processInfo] processName]);
+        return NO;
     }
 
     [self postPasteWillStart];
-    if (![self preparePasteboardForPaste]) {
-        return;
-    }
 
-    [activeApplication sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+    BOOL didSendAction = [activeApplication sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+    HBLogDebug(@"Kayoko: perform paste sent=%@ process=%@", kayokoHelperDebugBoolString(didSendAction),
+               [[NSProcessInfo processInfo] processName]);
+
+    return didSendAction;
 }
 
 - (BOOL)pendingPasteIsReady {
@@ -946,34 +1110,83 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     return !self.pendingPasteSession.requiresKeyboardDelegate && [pendingResponder isFirstResponder];
 }
 
+- (BOOL)pendingPasteboardChangeIsReady {
+    if (!self.pendingPasteSession.requiresPasteboardChange) {
+        return YES;
+    }
+
+    UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
+    NSUInteger currentChangeCount = [pasteboard changeCount];
+    NSUInteger baselineChangeCount = self.pendingPasteSession.pasteboardChangeCountBeforePaste;
+    if (currentChangeCount == baselineChangeCount) {
+        HBLogDebug(@"Kayoko: pending paste waiting for pasteboard change token=%lu baselineChangeCount=%lu "
+                   @"currentChangeCount=%lu",
+                   (unsigned long)self.pendingPasteSession.token, (unsigned long)baselineChangeCount,
+                   (unsigned long)currentChangeCount);
+        return NO;
+    }
+
+    return YES;
+}
+
 - (void)attemptPendingPaste {
     if (!self.pendingPasteSession.hasPendingPaste || !self.pendingPasteSession.canExecute) {
         return;
     }
+
     if ([self currentInputIsKayokoOwned]) {
+        HBLogDebug(@"Kayoko: pending paste waiting because current input is Kayoko-owned token=%lu",
+                   (unsigned long)self.pendingPasteSession.token);
         return;
     }
 
     UIApplication *application = [UIApplication sharedApplication];
     UIWindow *activeKeyWindow = [self activeKeyWindowForApplication:application];
     BOOL pendingPasteIsReady = [self pendingPasteIsReady];
+
     if (!self.applicationInForeground) {
+        HBLogDebug(@"Kayoko: pending paste cleared because application left foreground token=%lu",
+                   (unsigned long)self.pendingPasteSession.token);
         [self.pendingPasteSession clear];
         return;
     }
+
     if (!self.isSpringBoardRuntime && (!activeKeyWindow || activeKeyWindow != self.pendingPasteSession.keyWindow)) {
+        HBLogDebug(
+            @"Kayoko: pending paste cleared because key window changed token=%lu activeWindow=%@ pendingWindow=%@",
+            (unsigned long)self.pendingPasteSession.token, kayokoHelperDebugClassName(activeKeyWindow),
+            kayokoHelperDebugClassName(self.pendingPasteSession.keyWindow));
         [self.pendingPasteSession clear];
         return;
     }
+
     if (self.isSpringBoardRuntime && activeKeyWindow && activeKeyWindow != self.pendingPasteSession.keyWindow &&
         !pendingPasteIsReady) {
+        HBLogDebug(@"Kayoko: pending paste waiting for SpringBoard focus token=%lu activeWindow=%@ pendingWindow=%@",
+                   (unsigned long)self.pendingPasteSession.token, kayokoHelperDebugClassName(activeKeyWindow),
+                   kayokoHelperDebugClassName(self.pendingPasteSession.keyWindow));
         return;
     }
 
     if (!pendingPasteIsReady) {
+        HBLogDebug(@"Kayoko: pending paste not ready token=%lu responder=%@ requiresKeyboardDelegate=%@",
+                   (unsigned long)self.pendingPasteSession.token,
+                   kayokoHelperDebugClassName(self.pendingPasteSession.responder),
+                   kayokoHelperDebugBoolString(self.pendingPasteSession.requiresKeyboardDelegate));
         return;
     }
 
+    HBLogDebug(@"Kayoko: pending responder ready token=%lu responder=%@", (unsigned long)self.pendingPasteSession.token,
+               kayokoHelperDebugClassName(self.pendingPasteSession.responder));
+    [self.pendingPasteSession cancelFocusExpirationBlock];
+
+    if (!self.isSpringBoardRuntime && ![self pendingPasteboardChangeIsReady]) {
+        [self beginPendingPasteboardVisibilityWaitIfNeeded];
+        [self schedulePendingPasteboardVisibilityRecheck];
+        return;
+    }
+
+    [self.pendingPasteSession cancelPasteboardVisibilityWait];
     [self performPaste];
     [self.pendingPasteSession clear];
 }
@@ -984,31 +1197,114 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     });
 }
 
+- (void)beginPendingPasteboardVisibilityWaitIfNeeded {
+    if (self.pendingPasteSession.isWaitingForPasteboardVisibility) {
+        return;
+    }
+
+    self.pendingPasteSession.waitingForPasteboardVisibility = YES;
+    NSUInteger pendingPasteToken = self.pendingPasteSession.token;
+    NSUInteger baselineChangeCount = self.pendingPasteSession.pasteboardChangeCountBeforePaste;
+    HBLogDebug(@"Kayoko: pending pasteboard visibility wait began token=%lu baselineChangeCount=%lu",
+               (unsigned long)pendingPasteToken, (unsigned long)baselineChangeCount);
+
+    __weak typeof(self) weakSelf = self;
+    [self.pendingPasteSession
+        schedulePasteboardVisibilityExpirationAfterDelay:kKayokoPendingPasteboardVisibilityExpirationDelay
+                                                 handler:^{
+                                                   __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                   if (!strongSelf) {
+                                                       return;
+                                                   }
+                                                   if (!strongSelf.pendingPasteSession.hasPendingPaste ||
+                                                       strongSelf.pendingPasteSession.token != pendingPasteToken ||
+                                                       !strongSelf.pendingPasteSession
+                                                            .isWaitingForPasteboardVisibility) {
+                                                       return;
+                                                   }
+
+                                                   NSUInteger currentChangeCount =
+                                                       [[UIPasteboard generalPasteboard] changeCount];
+                                                   HBLogDebug(
+                                                       @"Kayoko: pending pasteboard visibility wait expired token=%lu "
+                                                       @"baselineChangeCount=%lu currentChangeCount=%lu",
+                                                       (unsigned long)pendingPasteToken,
+                                                       (unsigned long)baselineChangeCount,
+                                                       (unsigned long)currentChangeCount);
+                                                   [strongSelf.pendingPasteSession clear];
+                                                 }];
+}
+
+- (void)schedulePendingPasteboardVisibilityRecheck {
+    NSUInteger pendingPasteToken = self.pendingPasteSession.token;
+    HBLogDebug(@"Kayoko: scheduled pending pasteboard visibility recheck token=%lu", (unsigned long)pendingPasteToken);
+
+    __weak typeof(self) weakSelf = self;
+    [self.pendingPasteSession
+        schedulePasteboardVisibilityRecheckAfterDelay:kKayokoPendingPasteboardVisibilityRecheckDelay
+                                              handler:^{
+                                                __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                if (!strongSelf) {
+                                                    return;
+                                                }
+                                                if (!strongSelf.pendingPasteSession.hasPendingPaste ||
+                                                    strongSelf.pendingPasteSession.token != pendingPasteToken ||
+                                                    !strongSelf.pendingPasteSession.isWaitingForPasteboardVisibility) {
+                                                    return;
+                                                }
+                                                [strongSelf attemptPendingPaste];
+                                              }];
+}
+
 - (BOOL)beginPendingPaste {
     UIApplication *application = [UIApplication sharedApplication];
     UIWindow *activeKeyWindow = [self keyWindowForRestoringCapturedFocusInApplication:application];
     BOOL requiresKeyboardDelegate = NO;
     UIResponder *pendingResponder =
         [self capturedFocusResponderForPasteRequiringKeyboardDelegate:&requiresKeyboardDelegate];
+
     if (!activeKeyWindow || !pendingResponder) {
+        HBLogDebug(@"Kayoko: pending paste not created activeKeyWindow=%@ pendingResponder=%@",
+                   kayokoHelperDebugClassName(activeKeyWindow), kayokoHelperDebugClassName(pendingResponder));
         return NO;
     }
 
+    [self.pendingPasteSession cancelFocusExpirationBlock];
+    [self.pendingPasteSession cancelPasteboardVisibilityWait];
     self.pendingPasteSession.pendingPaste = YES;
     self.pendingPasteSession.canExecute = NO;
     self.pendingPasteSession.requiresKeyboardDelegate = requiresKeyboardDelegate;
+    self.pendingPasteSession.requiresPasteboardChange =
+        !self.isSpringBoardRuntime && self.focusSession.hasCapturedPasteboardChangeCount;
+    self.pendingPasteSession.waitingForPasteboardVisibility = NO;
+    self.pendingPasteSession.pasteboardChangeCountBeforePaste = self.focusSession.pasteboardChangeCount;
     self.pendingPasteSession.responder = pendingResponder;
     self.pendingPasteSession.keyWindow = activeKeyWindow;
     self.pendingPasteSession.token++;
 
     NSUInteger pendingPasteToken = self.pendingPasteSession.token;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kKayokoPendingPasteExpirationDelay * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-                     if (self.pendingPasteSession.hasPendingPaste &&
-                         self.pendingPasteSession.token == pendingPasteToken) {
-                         [self.pendingPasteSession clear];
-                     }
-                   });
+    HBLogDebug(@"Kayoko: pending paste created token=%lu responder=%@ keyWindow=%@ requiresKeyboardDelegate=%@ "
+               @"requiresPasteboardChange=%@ pasteboardBaseline=%lu",
+               (unsigned long)pendingPasteToken, kayokoHelperDebugClassName(pendingResponder),
+               kayokoHelperDebugClassName(activeKeyWindow), kayokoHelperDebugBoolString(requiresKeyboardDelegate),
+               kayokoHelperDebugBoolString(self.pendingPasteSession.requiresPasteboardChange),
+               (unsigned long)self.pendingPasteSession.pasteboardChangeCountBeforePaste);
+
+    __weak typeof(self) weakSelf = self;
+    [self.pendingPasteSession
+        scheduleFocusExpirationAfterDelay:kKayokoPendingPasteFocusExpirationDelay
+                                  handler:^{
+                                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                                    if (!strongSelf) {
+                                        return;
+                                    }
+                                    if (strongSelf.pendingPasteSession.hasPendingPaste &&
+                                        strongSelf.pendingPasteSession.token == pendingPasteToken) {
+                                        HBLogDebug(@"Kayoko: pending paste focus wait expired token=%lu",
+                                                   (unsigned long)pendingPasteToken);
+                                        [strongSelf.pendingPasteSession clear];
+                                    }
+                                  }];
 
     return YES;
 }
@@ -1051,6 +1347,13 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
                                         kayokoHelperPasteNotificationCallback,
                                         kayokoHelperNotificationName(kKayokoNotificationKeyHelperPaste), NULL,
                                         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDrop);
+
+        if (!self.isSpringBoardRuntime) {
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(pasteboardDidChangeWithNotification:)
+                                                         name:UIPasteboardChangedNotification
+                                                       object:[UIPasteboard generalPasteboard]];
+        }
     }
 
     CFNotificationCenterAddObserver(

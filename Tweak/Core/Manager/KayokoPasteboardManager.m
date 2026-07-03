@@ -12,10 +12,11 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoPreferenceKeys.h"
 
+#import <HBLog.h>
 #import <ImageIO/ImageIO.h>
 #import <roothide.h>
 
-NS_ASSUME_NONNULL_BEGIN
+static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
 
 @interface SBApplication : NSObject
 @property(nonatomic, copy, readonly) NSString *bundleIdentifier;
@@ -25,7 +26,71 @@ NS_ASSUME_NONNULL_BEGIN
 - (SBApplication *_Nullable)_accessibilityFrontMostApplication;
 @end
 
+NS_ASSUME_NONNULL_BEGIN
+
+@interface KayokoPasteboardPendingWrite : NSObject
+@property(nonatomic, assign, readonly, getter=isActive) BOOL active;
+@property(nonatomic, assign, readonly) BOOL shouldAutoPaste;
+@property(nonatomic, assign, readonly) NSUInteger token;
+@property(nonatomic, assign, readonly) NSUInteger previousChangeCount;
+@property(nonatomic, copy, nullable) dispatch_block_t expirationBlock;
+- (NSUInteger)beginAfterChangeCount:(NSUInteger)previousChangeCount shouldAutoPaste:(BOOL)shouldAutoPaste;
+- (void)scheduleExpirationOnQueue:(dispatch_queue_t)queue
+                       afterDelay:(NSTimeInterval)delay
+                          handler:(dispatch_block_t)handler;
+- (BOOL)matchesToken:(NSUInteger)token;
+- (BOOL)hasAdvancedToChangeCount:(NSUInteger)changeCount;
+- (void)cancelExpirationBlock;
+- (void)cancel;
+@end
+
 NS_ASSUME_NONNULL_END
+
+@implementation KayokoPasteboardPendingWrite
+
+- (NSUInteger)beginAfterChangeCount:(NSUInteger)previousChangeCount shouldAutoPaste:(BOOL)shouldAutoPaste {
+    [self cancelExpirationBlock];
+    _token++;
+    _active = YES;
+    _shouldAutoPaste = shouldAutoPaste;
+    _previousChangeCount = previousChangeCount;
+    return _token;
+}
+
+- (void)scheduleExpirationOnQueue:(dispatch_queue_t)queue
+                       afterDelay:(NSTimeInterval)delay
+                          handler:(dispatch_block_t)handler {
+    [self cancelExpirationBlock];
+    dispatch_block_t expirationBlock = dispatch_block_create(0, handler);
+    self.expirationBlock = expirationBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), queue, expirationBlock);
+}
+
+- (BOOL)matchesToken:(NSUInteger)token {
+    return _active && token == _token;
+}
+
+- (BOOL)hasAdvancedToChangeCount:(NSUInteger)changeCount {
+    return _active && changeCount != _previousChangeCount;
+}
+
+- (void)cancel {
+    [self cancelExpirationBlock];
+    _token++;
+    _active = NO;
+    _shouldAutoPaste = NO;
+    _previousChangeCount = 0;
+}
+
+- (void)cancelExpirationBlock {
+    dispatch_block_t expirationBlock = self.expirationBlock;
+    if (expirationBlock) {
+        dispatch_block_cancel(expirationBlock);
+        self.expirationBlock = nil;
+    }
+}
+
+@end
 
 @implementation KayokoPasteboardManager {
     UIPasteboard *_pasteboard;
@@ -37,6 +102,7 @@ NS_ASSUME_NONNULL_END
     NSCache<NSString *, UIImage *> *_thumbnailCache;
 
     BOOL _isPerformingDirectPaste;
+    KayokoPasteboardPendingWrite *_pendingPasteboardWrite;
 
     KayokoHistoryRepository *_historyRepository;
     KayokoHistoryChangeNotifier *_historyChangeNotifier;
@@ -117,6 +183,7 @@ NS_ASSUME_NONNULL_END
             dispatch_queue_create("com.82flex.kayoko.queue.thumbnail", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         _thumbnailCache = [[NSCache alloc] init];
         [_thumbnailCache setCountLimit:80];
+        _pendingPasteboardWrite = [[KayokoPasteboardPendingWrite alloc] init];
         __weak typeof(self) weakSelf = self;
         _historyRepository =
             [[KayokoHistoryRepository alloc] initWithDatabasePath:[KayokoPasteboardManager historyDatabasePath]
@@ -139,6 +206,10 @@ NS_ASSUME_NONNULL_END
 - (void)prepareGeneralPasteboard {
     _pasteboard = [UIPasteboard generalPasteboard];
     _lastChangeCount = [_pasteboard changeCount];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(generalPasteboardDidChange:)
+                                                 name:UIPasteboardChangedNotification
+                                               object:_pasteboard];
 }
 
 - (void)warmUpHistoryAccess {
@@ -210,6 +281,22 @@ NS_ASSUME_NONNULL_END
 
 - (BOOL)pasteboardContainsType:(NSString *)pasteboardType {
     return [_pasteboard containsPasteboardTypes:@[ pasteboardType ]];
+}
+
+- (void)generalPasteboardDidChange:(NSNotification *)notification {
+    (void)notification;
+    if ([_pendingPasteboardWrite isActive]) {
+        HBLogDebug(@"Kayoko: pending pasteboard write observed changed notification token=%lu changeCount=%lu",
+                   (unsigned long)[_pendingPasteboardWrite token], (unsigned long)[_pasteboard changeCount]);
+    }
+    if (@available(iOS 16, *)) {
+        dispatch_async(_pasteboardQueue, ^{
+          [self resolvePendingPasteboardWriteForToken:[_pendingPasteboardWrite token] didExpire:NO];
+        });
+        return;
+    }
+
+    [self resolvePendingPasteboardWriteForToken:[_pendingPasteboardWrite token] didExpire:NO];
 }
 
 - (BOOL)shouldIgnoreCurrentPasteboardChange {
@@ -296,6 +383,13 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)_reallyPullPasteboardChanges {
+    if ([_pendingPasteboardWrite isActive]) {
+        HBLogDebug(@"Kayoko: ignored pasteboard pull while local write is pending token=%lu changeCount=%lu",
+                   (unsigned long)[_pendingPasteboardWrite token], (unsigned long)[_pasteboard changeCount]);
+        [self resolvePendingPasteboardWriteForToken:[_pendingPasteboardWrite token] didExpire:NO];
+        return NO;
+    }
+
     NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
     return [self savePasteboardItemsSynchronously:items toHistoryWithKey:kKayokoHistoryKeyHistory];
 }
@@ -495,9 +589,18 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)_reallyCopyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
+    [self cancelPendingPasteboardWrite];
+    NSUInteger previousChangeCount = [_pasteboard changeCount];
+    HBLogDebug(@"Kayoko: copy write started previousChangeCount=%lu contentLength=%lu hasImage=%@",
+               (unsigned long)previousChangeCount, (unsigned long)[[item content] length],
+               ([[item imageName] length] > 0) ? @"YES" : @"NO");
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:item];
     if (didUpdatePasteboard) {
-        _lastChangeCount = [_pasteboard changeCount];
+        NSUInteger token = [self beginPendingPasteboardWriteAfterChangeCount:previousChangeCount shouldAutoPaste:NO];
+        [self resolvePendingPasteboardWriteForToken:token didExpire:NO];
+    } else {
+        HBLogDebug(@"Kayoko: copy write did not update pasteboard previousChangeCount=%lu",
+                   (unsigned long)previousChangeCount);
     }
     return didUpdatePasteboard;
 }
@@ -507,23 +610,95 @@ NS_ASSUME_NONNULL_END
                                  fromHistoryWithKey:(NSString *)historyKey
                                     shouldAutoPaste:(BOOL)shouldAutoPaste {
     if (_isPerformingDirectPaste) {
+        HBLogDebug(@"Kayoko: direct paste ignored because another direct paste is in progress");
         return;
     }
 
     _isPerformingDirectPaste = YES;
 
+    [self cancelPendingPasteboardWrite];
+    NSUInteger previousChangeCount = [_pasteboard changeCount];
+    HBLogDebug(@"Kayoko: direct paste write started previousChangeCount=%lu contentLength=%lu hasImage=%@ "
+               @"shouldAutoPaste=%@ automaticallyPaste=%@ historyKey=%@",
+               (unsigned long)previousChangeCount, (unsigned long)[[pasteboardItem content] length],
+               ([[pasteboardItem imageName] length] > 0) ? @"YES" : @"NO", shouldAutoPaste ? @"YES" : @"NO",
+               [self automaticallyPaste] ? @"YES" : @"NO", historyKey);
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:pasteboardItem];
     if (didUpdatePasteboard) {
-        _lastChangeCount = [_pasteboard changeCount];
         [self movePasteboardItemToTop:historyItem inHistoryWithKey:historyKey];
+
+        NSUInteger token =
+            [self beginPendingPasteboardWriteAfterChangeCount:previousChangeCount
+                                              shouldAutoPaste:([self automaticallyPaste] && shouldAutoPaste)];
+        [self resolvePendingPasteboardWriteForToken:token didExpire:NO];
+    } else {
+        HBLogDebug(@"Kayoko: direct paste write did not update pasteboard previousChangeCount=%lu",
+                   (unsigned long)previousChangeCount);
     }
 
-    if (didUpdatePasteboard && [self automaticallyPaste] && shouldAutoPaste) {
+    _isPerformingDirectPaste = NO;
+}
+
+- (NSUInteger)beginPendingPasteboardWriteAfterChangeCount:(NSUInteger)previousChangeCount
+                                          shouldAutoPaste:(BOOL)shouldAutoPaste {
+    NSUInteger token = [_pendingPasteboardWrite beginAfterChangeCount:previousChangeCount
+                                                      shouldAutoPaste:shouldAutoPaste];
+    HBLogDebug(@"Kayoko: pending pasteboard write began token=%lu previousChangeCount=%lu shouldAutoPaste=%@",
+               (unsigned long)token, (unsigned long)previousChangeCount, shouldAutoPaste ? @"YES" : @"NO");
+    dispatch_queue_t timeoutQueue = dispatch_get_main_queue();
+    if (@available(iOS 16, *)) {
+        timeoutQueue = _pasteboardQueue;
+    }
+    __weak typeof(self) weakSelf = self;
+    [_pendingPasteboardWrite scheduleExpirationOnQueue:timeoutQueue
+                                            afterDelay:kKayokoPasteboardWriteConfirmationTimeout
+                                               handler:^{
+                                                 __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                 [strongSelf resolvePendingPasteboardWriteForToken:token didExpire:YES];
+                                               }];
+
+    return token;
+}
+
+- (BOOL)resolvePendingPasteboardWriteForToken:(NSUInteger)token didExpire:(BOOL)didExpire {
+    if (![_pendingPasteboardWrite matchesToken:token]) {
+        if (didExpire) {
+            HBLogDebug(@"Kayoko: ignored stale pending pasteboard write timeout token=%lu activeToken=%lu active=%@",
+                       (unsigned long)token, (unsigned long)[_pendingPasteboardWrite token],
+                       ([_pendingPasteboardWrite isActive] ? @"YES" : @"NO"));
+        }
+        return NO;
+    }
+
+    NSUInteger currentChangeCount = [_pasteboard changeCount];
+    if (![_pendingPasteboardWrite hasAdvancedToChangeCount:currentChangeCount]) {
+        if (didExpire) {
+            HBLogDebug(
+                @"Kayoko: pending pasteboard write timed out token=%lu previousChangeCount=%lu currentChangeCount=%lu",
+                (unsigned long)token, (unsigned long)[_pendingPasteboardWrite previousChangeCount],
+                (unsigned long)currentChangeCount);
+            [self cancelPendingPasteboardWrite];
+        }
+        return NO;
+    }
+
+    BOOL shouldAutoPaste = [_pendingPasteboardWrite shouldAutoPaste];
+    _lastChangeCount = currentChangeCount;
+    [self cancelPendingPasteboardWrite];
+
+    HBLogDebug(@"Kayoko: pending pasteboard write confirmed token=%lu currentChangeCount=%lu shouldAutoPaste=%@",
+               (unsigned long)token, (unsigned long)currentChangeCount, shouldAutoPaste ? @"YES" : @"NO");
+    if (shouldAutoPaste) {
+        HBLogDebug(@"Kayoko: posting helper paste notification token=%lu", (unsigned long)token);
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                              (__bridge CFStringRef)kKayokoNotificationKeyHelperPaste, nil, nil, NO);
     }
 
-    _isPerformingDirectPaste = NO;
+    return YES;
+}
+
+- (void)cancelPendingPasteboardWrite {
+    [_pendingPasteboardWrite cancel];
 }
 
 - (BOOL)setPasteboardContentFromItem:(KayokoPasteboardItem *)item {
