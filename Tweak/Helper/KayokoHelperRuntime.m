@@ -1059,9 +1059,12 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         return NO;
     }
 
+#if DEBUG
     BOOL didSendAction = [activeApplication sendAction:@selector(paste:) to:responder from:nil forEvent:nil];
     HBLogDebug(@"Kayoko: paste into Kayoko responder sent=%@ responder=%@", kayokoHelperDebugBoolString(didSendAction),
                kayokoHelperDebugClassName(responder));
+#endif
+
     return YES;
 }
 
@@ -1204,9 +1207,12 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
     self.pendingPasteSession.waitingForPasteboardVisibility = YES;
     NSUInteger pendingPasteToken = self.pendingPasteSession.token;
+
+#if DEBUG
     NSUInteger baselineChangeCount = self.pendingPasteSession.pasteboardChangeCountBeforePaste;
     HBLogDebug(@"Kayoko: pending pasteboard visibility wait began token=%lu baselineChangeCount=%lu",
                (unsigned long)pendingPasteToken, (unsigned long)baselineChangeCount);
+#endif
 
     __weak typeof(self) weakSelf = self;
     [self.pendingPasteSession
@@ -1223,6 +1229,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
                                                        return;
                                                    }
 
+#if DEBUG
                                                    NSUInteger currentChangeCount =
                                                        [[UIPasteboard generalPasteboard] changeCount];
                                                    HBLogDebug(
@@ -1231,6 +1238,8 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
                                                        (unsigned long)pendingPasteToken,
                                                        (unsigned long)baselineChangeCount,
                                                        (unsigned long)currentChangeCount);
+#endif
+
                                                    [strongSelf.pendingPasteSession clear];
                                                  }];
 }
