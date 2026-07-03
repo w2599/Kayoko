@@ -483,6 +483,18 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
+    if (@available(iOS 16, *)) {
+        __block BOOL didUpdatePasteboard = NO;
+        dispatch_sync(_pasteboardQueue, ^{
+          didUpdatePasteboard = [self _reallyCopyPasteboardItemToPasteboard:item];
+        });
+        return didUpdatePasteboard;
+    }
+
+    return [self _reallyCopyPasteboardItemToPasteboard:item];
+}
+
+- (BOOL)_reallyCopyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:item];
     if (didUpdatePasteboard) {
         _lastChangeCount = [_pasteboard changeCount];
