@@ -159,7 +159,7 @@ NS_ASSUME_NONNULL_END
         }
     }
 
-    [[self delegate] wordSelectionViewControllerDidRequestHideContainer:self];
+    [[self delegate] wordSelectionViewController:self didRequestHideContainerAfterDirectPaste:automaticallyPaste];
     [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 

@@ -13,7 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol KayokoWordSelectionViewControllerDelegate <NSObject>
 
-- (void)wordSelectionViewControllerDidRequestHideContainer:(KayokoWordSelectionViewController *)controller;
+- (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
+    didRequestHideContainerAfterDirectPaste:(BOOL)directPaste;
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
      triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;
 

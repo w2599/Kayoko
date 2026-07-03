@@ -49,6 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable) UIView *activeSourceContentView;
 
 - (void)showContentForItem:(KayokoPasteboardItem *)item;
+- (void)hideAfterDirectPaste;
 - (void)hideWordSelection;
 - (void)restoreActiveSourceContentView;
 - (void)refreshSearchAfterEndingTransientContentIfNeeded;
@@ -294,6 +295,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
     [self hideRestoringFocus];
+}
+
+- (void)historyListViewControllerDidRequestHideAfterDirectPaste:(KayokoHistoryListViewController *)controller {
+    [self hideAfterDirectPaste];
 }
 
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
@@ -858,8 +863,13 @@ NS_ASSUME_NONNULL_END
               didFailClearingHistoryKey:(NSString *)historyKey {
 }
 
-- (void)wordSelectionViewControllerDidRequestHideContainer:(KayokoWordSelectionViewController *)controller {
-    [self hideRestoringFocus];
+- (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
+    didRequestHideContainerAfterDirectPaste:(BOOL)directPaste {
+    if (directPaste) {
+        [self hideAfterDirectPaste];
+    } else {
+        [self hideRestoringFocus];
+    }
 }
 
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
@@ -929,6 +939,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)hide {
     [self hideWithCompletion:nil];
+}
+
+- (void)hideAfterDirectPaste {
+    [self hide];
 }
 
 - (void)hideRestoringFocus {

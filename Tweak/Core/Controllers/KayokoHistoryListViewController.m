@@ -425,7 +425,12 @@ NS_ASSUME_NONNULL_END
                                           historyKey:[self historyKey]
                                           completion:^(BOOL success) {
                                             if (success) {
-                                                [[self delegate] historyListViewControllerDidRequestHide:self];
+                                                if ([self automaticallyPaste]) {
+                                                    [[self delegate]
+                                                        historyListViewControllerDidRequestHideAfterDirectPaste:self];
+                                                } else {
+                                                    [[self delegate] historyListViewControllerDidRequestHide:self];
+                                                }
                                             }
                                           }];
 }
