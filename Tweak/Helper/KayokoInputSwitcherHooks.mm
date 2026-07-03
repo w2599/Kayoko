@@ -6,9 +6,8 @@
 #define CHUseSubstrate
 
 #import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperLocalization.h"
 #import "KayokoHelperRuntime.h"
-
-#import "PasteboardManager.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
@@ -44,9 +43,7 @@ CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
     NSMutableArray *newItems = [NSMutableArray arrayWithArray:items];
     UIInputSwitcherItem *item =
         [[NSClassFromString(@"UIInputSwitcherItem") alloc] initWithIdentifier:kKayokoInputSwitcherItemIdentifier];
-    [item setLocalizedTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
-                                                                                    value:nil
-                                                                                    table:@"Tweak"]];
+    [item setLocalizedTitle:KayokoHelperLocalizedString(@"Kayoko")];
     if (item) {
         [newItems insertObject:item atIndex:newItems.count - 1];
     }

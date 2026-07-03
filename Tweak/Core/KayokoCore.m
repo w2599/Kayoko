@@ -7,8 +7,8 @@
 
 #import "KayokoCore.h"
 #import "KayokoCoreRuntime.h"
+#import "KayokoNotificationKeys.h"
 #import "KayokoSpringBoardHooks.h"
-#import "NotificationKeys.h"
 
 #import <CoreFoundation/CoreFoundation.h>
 

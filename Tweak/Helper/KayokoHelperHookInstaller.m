@@ -4,7 +4,7 @@
 //
 
 #import "KayokoHelperHookInstaller.h"
-#import "PreferenceKeys.h"
+#import "KayokoPreferenceKeys.h"
 
 @implementation KayokoHelperHookInstaller
 

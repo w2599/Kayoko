@@ -16,9 +16,9 @@
 #import <roothide.h>
 
 #import "Controllers/KayokoMainViewController.h"
-#import "NotificationKeys.h"
-#import "PasteboardManager.h"
-#import "PreferenceKeys.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPasteboardManager.h"
+#import "KayokoPreferenceKeys.h"
 
 static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
 
@@ -141,7 +141,7 @@ NS_ASSUME_NONNULL_END
 - (void)preloadInitialHistory {
     self.didRequestInitialHistoryPreload = YES;
 
-    PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+    KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
     [pasteboardManager warmUpHistoryAccess];
 
     if (self.mainViewController) {
@@ -240,7 +240,7 @@ NS_ASSUME_NONNULL_END
 
     [self readPasteTipPreferencesFromPreferences:self.preferences];
     self.activationMethod = [[self.preferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
-    self.maximumHistoryAmount = [PasteboardManager
+    self.maximumHistoryAmount = [KayokoPasteboardManager
         normalizedMaximumHistoryAmountForValue:[[self.preferences objectForKey:kKayokoPreferenceKeyMaximumHistoryAmount]
                                                    unsignedIntegerValue]];
     self.saveText = [[self.preferences objectForKey:kKayokoPreferenceKeySaveText] boolValue];
@@ -255,7 +255,7 @@ NS_ASSUME_NONNULL_END
     self.previewLineCount = [[self.preferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     self.heightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
 
-    PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+    KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
     if ([pasteboardManager maximumHistoryAmount] != self.maximumHistoryAmount) {
         [pasteboardManager setMaximumHistoryAmount:self.maximumHistoryAmount];
     }
@@ -420,7 +420,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)capturePasteboardChangeNow {
-    [[PasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
+    [[KayokoPasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
       if (self.isPasteInProgress) {
           dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             self.pasteInProgress = NO;

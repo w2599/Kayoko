@@ -7,7 +7,7 @@
 
 @class KayokoWordSelectionView;
 @class KayokoWordSelectionViewController;
-@class PasteboardItem;
+@class KayokoPasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -25,7 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, readonly) KayokoWordSelectionView *wordSelectionView;
 @property(nonatomic, copy, readonly) NSString *name;
 @property(nonatomic, copy, nullable, readonly) NSString *sourceHistoryKey;
-@property(nonatomic, strong, nullable, readonly) PasteboardItem *sourceItem;
+@property(nonatomic, strong, nullable, readonly) KayokoPasteboardItem *sourceItem;
 @property(nonatomic, copy, readonly) NSString *selectedText;
 @property(nonatomic, assign, readonly, getter=isShowingWordSelection) BOOL showingWordSelection;
 @property(nonatomic, assign, readonly) BOOL hasSelectedText;
@@ -41,7 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)init NS_UNAVAILABLE;
 
 - (BOOL)canShowText:(NSString *)text;
-- (void)showWordSelectionWithItem:(PasteboardItem *)item
+- (void)showWordSelectionWithItem:(KayokoPasteboardItem *)item
                  sourceHistoryKey:(NSString *)sourceHistoryKey
                automaticallyPaste:(BOOL)automaticallyPaste;
 - (void)prepareToHideWordSelection;

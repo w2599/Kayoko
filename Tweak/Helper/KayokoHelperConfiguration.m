@@ -4,7 +4,7 @@
 //
 
 #import "KayokoHelperConfiguration.h"
-#import "PreferenceKeys.h"
+#import "KayokoPreferenceKeys.h"
 
 #import <libSandy.h>
 

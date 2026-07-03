@@ -6,10 +6,9 @@
 #define CHUseSubstrate
 
 #import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperLocalization.h"
 #import "KayokoHelperRuntime.h"
-
-#import "NotificationKeys.h"
-#import "PasteboardManager.h"
+#import "KayokoNotificationKeys.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
@@ -72,9 +71,7 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList(void) {
     NSMutableArray<TIZephyrCandidate *> *candidates = [[NSMutableArray alloc] init];
     for (NSString *label in labels) {
         TIZephyrCandidate *candidate = [[objc_getClass("TIZephyrCandidate") alloc] init];
-        [candidate setLabel:[[PasteboardManager localizationBundle] localizedStringForKey:label
-                                                                                    value:nil
-                                                                                    table:@"Tweak"]];
+        [candidate setLabel:KayokoHelperLocalizedString(label)];
         [candidate setCandidate:[NSString stringWithFormat:@"{kayoko-%@}", label]];
         [candidate setFromBundleId:@"com.82flex.kayoko"];
         [candidates addObject:candidate];

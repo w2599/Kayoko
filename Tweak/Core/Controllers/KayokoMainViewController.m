@@ -14,12 +14,12 @@
 #import "KayokoHistoryListViewController.h"
 #import "KayokoMainView.h"
 #import "KayokoPanelPresentationController.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoPreviewView.h"
 #import "KayokoPreviewViewController.h"
 #import "KayokoSearchController.h"
 #import "KayokoWordSelectionViewController.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
 
 static NSString *kayokoMainPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
     return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
@@ -48,7 +48,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
 @property(nonatomic, weak, nullable) UIView *activeSourceContentView;
 
-- (void)showContentForItem:(PasteboardItem *)item;
+- (void)showContentForItem:(KayokoPasteboardItem *)item;
 - (void)hideWordSelection;
 - (void)restoreActiveSourceContentView;
 - (void)refreshSearchAfterEndingTransientContentIfNeeded;
@@ -81,9 +81,9 @@ NS_ASSUME_NONNULL_END
         _mainView = [[KayokoMainView alloc] initWithFrame:frame];
         [self setView:_mainView];
         _historyListViewController = [[KayokoHistoryListViewController alloc]
-            initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"History"
-                                                                                 value:nil
-                                                                                 table:@"Tweak"]
+            initWithName:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"History"
+                                                                                       value:nil
+                                                                                       table:@"Tweak"]
               historyKey:kKayokoHistoryKeyHistory];
         [_historyListViewController setDelegate:self];
         [self addChildViewController:_historyListViewController];
@@ -91,9 +91,9 @@ NS_ASSUME_NONNULL_END
         [_historyListViewController didMoveToParentViewController:self];
 
         _favoritesListViewController = [[KayokoHistoryListViewController alloc]
-            initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                 value:nil
-                                                                                 table:@"Tweak"]
+            initWithName:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                       value:nil
+                                                                                       table:@"Tweak"]
               historyKey:kKayokoHistoryKeyFavorites];
         [_favoritesListViewController setDelegate:self];
         [self addChildViewController:_favoritesListViewController];
@@ -148,9 +148,9 @@ NS_ASSUME_NONNULL_END
         [_previewViewController didMoveToParentViewController:self];
 
         _wordSelectionViewController = [[KayokoWordSelectionViewController alloc]
-               initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Preview"
-                                                                                    value:nil
-                                                                                    table:@"Tweak"]
+               initWithName:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Preview"
+                                                                                          value:nil
+                                                                                          table:@"Tweak"]
             favoritesButton:[_mainView favoritesButton]
                  backButton:[_mainView backButton]
                 clearButton:[_mainView clearButton]];
@@ -297,7 +297,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
-         didRequestPreviewForItem:(PasteboardItem *)item {
+         didRequestPreviewForItem:(KayokoPasteboardItem *)item {
     [self showContentForItem:item];
 }
 
@@ -762,7 +762,7 @@ NS_ASSUME_NONNULL_END
                                                 toHistoryKey:destinationHistoryKey];
 }
 
-- (void)showContentForItem:(PasteboardItem *)item {
+- (void)showContentForItem:(KayokoPasteboardItem *)item {
     [[self searchController] resignSearchFirstResponder];
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];

@@ -6,10 +6,7 @@
 #define CHUseSubstrate
 
 #import "KayokoHelperRuntime.h"
-
-#import "NotificationKeys.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
+#import "KayokoNotificationKeys.h"
 
 #import <AudioToolbox/AudioToolbox.h>
 #import <CaptainHook/CaptainHook.h>
@@ -896,22 +893,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 
 - (BOOL)preparePasteboardForPaste {
     UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-    if ([pasteboard string] || [pasteboard image]) {
-        return YES;
-    }
-
-    PasteboardItem *item = [[PasteboardManager sharedInstance] getLatestHistoryItem];
-    if (!item) {
-        return NO;
-    }
-
-    if (![[item imageName] isEqualToString:@""]) {
-        [pasteboard setImage:[[PasteboardManager sharedInstance] getImageForItem:item]];
-    } else {
-        [pasteboard setString:[item content]];
-    }
-
-    return YES;
+    return [pasteboard string] || [pasteboard image];
 }
 
 - (BOOL)pasteIntoKayokoInputResponder:(UIResponder *)responder {

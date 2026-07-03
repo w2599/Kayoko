@@ -7,7 +7,7 @@
 
 @class KayokoHistoryListViewController;
 @class KayokoHistoryListView;
-@class PasteboardItem;
+@class KayokoPasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
-         didRequestPreviewForItem:(PasteboardItem *)item;
+         didRequestPreviewForItem:(KayokoPasteboardItem *)item;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
     didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller

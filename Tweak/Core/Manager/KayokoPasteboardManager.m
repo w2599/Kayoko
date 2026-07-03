@@ -1,16 +1,16 @@
 //
-//  PasteboardManager.m
+//  KayokoPasteboardManager.m
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoHistoryChangeNotifier.h"
 #import "KayokoHistoryRepository.h"
-#import "NotificationKeys.h"
-#import "PasteboardItem.h"
-#import "PreferenceKeys.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPreferenceKeys.h"
 
 #import <ImageIO/ImageIO.h>
 #import <roothide.h>
@@ -27,7 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-@implementation PasteboardManager {
+@implementation KayokoPasteboardManager {
     UIPasteboard *_pasteboard;
     NSUInteger _lastChangeCount;
     NSFileManager *_fileManager;
@@ -45,10 +45,10 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Lifecycle
 
 + (instancetype)sharedInstance {
-    static PasteboardManager *sharedInstance;
+    static KayokoPasteboardManager *sharedInstance;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      sharedInstance = [[PasteboardManager alloc] init];
+      sharedInstance = [[KayokoPasteboardManager alloc] init];
     });
     return sharedInstance;
 }
@@ -119,8 +119,8 @@ NS_ASSUME_NONNULL_END
         [_thumbnailCache setCountLimit:80];
         __weak typeof(self) weakSelf = self;
         _historyRepository =
-            [[KayokoHistoryRepository alloc] initWithDatabasePath:[PasteboardManager historyDatabasePath]
-                                                       imagesPath:[PasteboardManager historyImagesPath]
+            [[KayokoHistoryRepository alloc] initWithDatabasePath:[KayokoPasteboardManager historyDatabasePath]
+                                                       imagesPath:[KayokoPasteboardManager historyImagesPath]
                                                     limitProvider:^NSUInteger(NSString *historyKey) {
                                                       return [weakSelf limitForHistoryKey:historyKey];
                                                     }];
@@ -200,7 +200,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    NSArray<PasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
     [self savePasteboardItems:items
              toHistoryWithKey:kKayokoHistoryKeyHistory
                    completion:^(BOOL didSaveAnyItem) {
@@ -220,7 +220,7 @@ NS_ASSUME_NONNULL_END
     return [self pasteboardContainsType:@"com.apple.icns"];
 }
 
-- (NSArray<PasteboardItem *> *)pasteboardItemsForCurrentChange {
+- (NSArray<KayokoPasteboardItem *> *)pasteboardItemsForCurrentChange {
     NSUInteger currentChangeCount = [_pasteboard changeCount];
     if (currentChangeCount == _lastChangeCount) {
         return @[];
@@ -238,7 +238,7 @@ NS_ASSUME_NONNULL_END
         return @[];
     }
 
-    NSMutableArray<PasteboardItem *> *items = [[NSMutableArray alloc] init];
+    NSMutableArray<KayokoPasteboardItem *> *items = [[NSMutableArray alloc] init];
 
     if ([self saveText]) {
         // Don't pull strings if the pasteboard contains images.
@@ -251,10 +251,10 @@ NS_ASSUME_NONNULL_END
                     // front-most-application.
                     SBApplication *frontMostApplication =
                         [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-                    PasteboardItem *item =
-                        [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
-                                                              andContent:string
-                                                          withImageNamed:nil];
+                    KayokoPasteboardItem *item =
+                        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                                                                    andContent:string
+                                                                withImageNamed:nil];
                     [items addObject:item];
                 }
             }
@@ -270,23 +270,23 @@ NS_ASSUME_NONNULL_END
                 if ([self imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
                     NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+                        [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], imageName];
                     [UIImagePNGRepresentation([self imageByApplyingOrientation:image]) writeToFile:filePath
                                                                                         atomically:YES];
                 } else {
                     imageName = [imageName stringByAppendingString:@".jpg"];
                     NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+                        [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], imageName];
                     [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
                 }
 
                 // See the above loop.
                 SBApplication *frontMostApplication =
                     [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-                PasteboardItem *item =
-                    [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
-                                                          andContent:imageName
-                                                      withImageNamed:imageName];
+                KayokoPasteboardItem *item =
+                    [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                                                                andContent:imageName
+                                                            withImageNamed:imageName];
                 [items addObject:item];
             }
         }
@@ -296,15 +296,16 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)_reallyPullPasteboardChanges {
-    NSArray<PasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
     return [self savePasteboardItemsSynchronously:items toHistoryWithKey:kKayokoHistoryKeyHistory];
 }
 
 #pragma mark - History Access
 
-- (BOOL)savePasteboardItemsSynchronously:(NSArray<PasteboardItem *> *)items toHistoryWithKey:(NSString *)historyKey {
+- (BOOL)savePasteboardItemsSynchronously:(NSArray<KayokoPasteboardItem *> *)items
+                        toHistoryWithKey:(NSString *)historyKey {
     BOOL didSaveAnyItem = NO;
-    for (PasteboardItem *item in items) {
+    for (KayokoPasteboardItem *item in items) {
         if ([self addPasteboardItem:item toHistoryWithKey:historyKey]) {
             didSaveAnyItem = YES;
         }
@@ -312,12 +313,12 @@ NS_ASSUME_NONNULL_END
     return didSaveAnyItem;
 }
 
-- (void)savePasteboardItems:(NSArray<PasteboardItem *> *)items
+- (void)savePasteboardItems:(NSArray<KayokoPasteboardItem *> *)items
            toHistoryWithKey:(NSString *)historyKey
                  completion:(void (^)(BOOL didSaveAnyItem))completion {
     NSMutableArray<NSDictionary<NSString *, id> *> *dictionaries =
         [[NSMutableArray alloc] initWithCapacity:[items count]];
-    for (PasteboardItem *item in items) {
+    for (KayokoPasteboardItem *item in items) {
         if ([[item content] isEqualToString:@""]) {
             continue;
         }
@@ -357,7 +358,7 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - History Mutations
 
-- (BOOL)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
+- (BOOL)addPasteboardItem:(KayokoPasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
     if ([[item content] isEqualToString:@""]) {
         return NO;
     }
@@ -378,7 +379,7 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
-- (void)removePasteboardItem:(PasteboardItem *)item
+- (void)removePasteboardItem:(KayokoPasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
     NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
@@ -398,7 +399,7 @@ NS_ASSUME_NONNULL_END
                                                 limit:[self limitForHistoryKey:historyKey]];
 }
 
-- (void)removePasteboardItem:(PasteboardItem *)item
+- (void)removePasteboardItem:(KayokoPasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                   completion:(void (^)(BOOL success))completion {
@@ -409,7 +410,7 @@ NS_ASSUME_NONNULL_END
                                   completion:completion];
 }
 
-- (void)movePasteboardItem:(PasteboardItem *)item
+- (void)movePasteboardItem:(KayokoPasteboardItem *)item
         fromHistoryWithKey:(NSString *)sourceHistoryKey
           toHistoryWithKey:(NSString *)destinationHistoryKey
                 completion:(void (^)(BOOL success))completion {
@@ -452,8 +453,8 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Direct Paste
 
-- (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
-                                 historyItem:(PasteboardItem *)historyItem
+- (void)performDirectPasteWithPasteboardItem:(KayokoPasteboardItem *)pasteboardItem
+                                 historyItem:(KayokoPasteboardItem *)historyItem
                           fromHistoryWithKey:(NSString *)historyKey
                              shouldAutoPaste:(BOOL)shouldAutoPaste {
     if (@available(iOS 16, *)) {
@@ -472,7 +473,7 @@ NS_ASSUME_NONNULL_END
                                       shouldAutoPaste:shouldAutoPaste];
 }
 
-- (void)updatePasteboardWithItem:(PasteboardItem *)item
+- (void)updatePasteboardWithItem:(KayokoPasteboardItem *)item
               fromHistoryWithKey:(NSString *)historyKey
                  shouldAutoPaste:(BOOL)shouldAutoPaste {
     [self performDirectPasteWithPasteboardItem:item
@@ -481,7 +482,7 @@ NS_ASSUME_NONNULL_END
                                shouldAutoPaste:shouldAutoPaste];
 }
 
-- (BOOL)copyPasteboardItemToPasteboard:(PasteboardItem *)item {
+- (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:item];
     if (didUpdatePasteboard) {
         _lastChangeCount = [_pasteboard changeCount];
@@ -489,8 +490,8 @@ NS_ASSUME_NONNULL_END
     return didUpdatePasteboard;
 }
 
-- (void)_reallyPerformDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
-                                        historyItem:(PasteboardItem *)historyItem
+- (void)_reallyPerformDirectPasteWithPasteboardItem:(KayokoPasteboardItem *)pasteboardItem
+                                        historyItem:(KayokoPasteboardItem *)historyItem
                                  fromHistoryWithKey:(NSString *)historyKey
                                     shouldAutoPaste:(BOOL)shouldAutoPaste {
     if (_isPerformingDirectPaste) {
@@ -513,14 +514,14 @@ NS_ASSUME_NONNULL_END
     _isPerformingDirectPaste = NO;
 }
 
-- (BOOL)setPasteboardContentFromItem:(PasteboardItem *)item {
+- (BOOL)setPasteboardContentFromItem:(KayokoPasteboardItem *)item {
     if (!item) {
         return NO;
     }
 
     if ([[item imageName] length] > 0) {
         NSString *filePath =
-            [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+            [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], [item imageName]];
         UIImage *image = [UIImage imageWithContentsOfFile:filePath];
         if (!image) {
             return NO;
@@ -538,7 +539,7 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
-- (void)movePasteboardItemToTop:(PasteboardItem *)item inHistoryWithKey:(NSString *)historyKey {
+- (void)movePasteboardItemToTop:(KayokoPasteboardItem *)item inHistoryWithKey:(NSString *)historyKey {
     if (!item || [[item content] length] == 0 || [[historyKey description] length] == 0) {
         return;
     }
@@ -575,19 +576,20 @@ NS_ASSUME_NONNULL_END
     [_historyRepository itemsForHistoryKey:historyKey completion:completion];
 }
 
-- (PasteboardItem *)getLatestHistoryItem {
+- (KayokoPasteboardItem *)getLatestHistoryItem {
     NSError *error = nil;
     NSDictionary<NSString *, id> *dictionary = [_historyRepository latestItemForHistoryKey:kKayokoHistoryKeyHistory
                                                                                      error:&error];
     if (error) {
         NSLog(@"Kayoko: Failed to load latest history item: %@", error);
     }
-    return [PasteboardItem itemFromDictionary:dictionary];
+    return [KayokoPasteboardItem itemFromDictionary:dictionary];
 }
 
-- (UIImage *)getImageForItem:(PasteboardItem *)item {
-    NSData *imageData = [_fileManager
-        contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
+- (UIImage *)getImageForItem:(KayokoPasteboardItem *)item {
+    NSData *imageData =
+        [_fileManager contentsAtPath:[NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath],
+                                                                [item imageName]]];
     return [UIImage imageWithData:imageData];
 }
 
@@ -620,7 +622,7 @@ NS_ASSUME_NONNULL_END
     return (NSUInteger)ceil(MAX(thumbnailPixelWidth, thumbnailPixelHeight));
 }
 
-- (void)getThumbnailForItem:(PasteboardItem *)item
+- (void)getThumbnailForItem:(KayokoPasteboardItem *)item
                  targetSize:(CGSize)targetSize
                  completion:(void (^)(UIImage *_Nullable image))completion {
     NSString *imageName = [[item imageName] copy];
@@ -641,7 +643,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    NSString *imagePath = [[PasteboardManager historyImagesPath] stringByAppendingPathComponent:imageName];
+    NSString *imagePath = [[KayokoPasteboardManager historyImagesPath] stringByAppendingPathComponent:imageName];
     NSURL *imageURL = [NSURL fileURLWithPath:imagePath];
 
     dispatch_async(_thumbnailQueue, ^{
