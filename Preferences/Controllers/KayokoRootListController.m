@@ -28,15 +28,21 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)launch;
 @end
 
+@interface KayokoRootListController () <UISearchResultsUpdating>
+@end
+
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoRootListController {
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
+    UISearchController *_testInputSearchController;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+
+    [self configureTestInputSearchController];
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSString *title = [bundle localizedStringForKey:@"Respring" value:nil table:@"Root"];
@@ -44,7 +50,29 @@ NS_ASSUME_NONNULL_END
                                                                        style:UIBarButtonItemStyleDone
                                                                       target:self
                                                                       action:@selector(respringPrompt)];
+    
+    [[self navigationItem] setLargeTitleDisplayMode:UINavigationItemLargeTitleDisplayModeNever];
     [[self navigationItem] setRightBarButtonItem:respringButton];
+}
+
+- (void)configureTestInputSearchController {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    _testInputSearchController = [[UISearchController alloc] initWithSearchResultsController:nil];
+    _testInputSearchController.searchResultsUpdater = self;
+    _testInputSearchController.obscuresBackgroundDuringPresentation = NO;
+    _testInputSearchController.hidesNavigationBarDuringPresentation = NO;
+    _testInputSearchController.searchBar.placeholder = [bundle localizedStringForKey:@"Wishing on a star…"
+                                                                               value:nil
+                                                                               table:@"Root"];
+
+    self.definesPresentationContext = YES;
+    self.navigationItem.searchController = _testInputSearchController;
+    self.navigationItem.hidesSearchBarWhenScrolling = YES;
+}
+
+- (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
+    (void)searchController;
 }
 
 - (NSArray<PSSpecifier *> *)specifiers {
@@ -268,6 +296,13 @@ NS_ASSUME_NONNULL_END
         }
     }
     return [super tableView:tableView cellForRowAtIndexPath:indexPath];
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    if (section == 0) {
+        return 20.0; // Height for the first section header
+    }
+    return [super tableView:tableView heightForHeaderInSection:section];
 }
 
 @end
