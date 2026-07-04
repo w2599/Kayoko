@@ -216,6 +216,10 @@ NS_ASSUME_NONNULL_END
     [_historyRepository prepareStore];
 }
 
+- (void)checkpointHistoryDatabase {
+    [_historyRepository checkpointWriteAheadLog];
+}
+
 #pragma mark - Image Storage Helpers
 
 - (NSString *)randomStringWithLength:(NSUInteger)length {
@@ -462,7 +466,7 @@ NS_ASSUME_NONNULL_END
     NSError *error = nil;
     BOOL success = [_historyRepository addItemDictionary:dictionary toHistoryKey:historyKey error:&error];
     if (!success) {
-        NSLog(@"Kayoko: Failed to add history item: %@", error);
+        HBLogDebug(@"Kayoko: Failed to add history item: %@", error);
         return NO;
     }
 
@@ -483,7 +487,7 @@ NS_ASSUME_NONNULL_END
                                           shouldRemoveImage:shouldRemoveImage
                                                       error:&error];
     if (!success) {
-        NSLog(@"Kayoko: Failed to remove history item: %@", error);
+        HBLogDebug(@"Kayoko: Failed to remove history item: %@", error);
         return;
     }
 
@@ -736,7 +740,7 @@ NS_ASSUME_NONNULL_END
     NSError *error = nil;
     BOOL success = [_historyRepository moveItemDictionaryToTop:dictionary inHistoryKey:historyKey error:&error];
     if (!success) {
-        NSLog(@"Kayoko: Failed to promote history item: %@", error);
+        HBLogDebug(@"Kayoko: Failed to promote history item: %@", error);
         return;
     }
 
@@ -753,7 +757,7 @@ NS_ASSUME_NONNULL_END
     NSMutableArray<NSDictionary<NSString *, id> *> *history = [_historyRepository itemsForHistoryKey:historyKey
                                                                                                error:&error];
     if (error) {
-        NSLog(@"Kayoko: Failed to load history items: %@", error);
+        HBLogDebug(@"Kayoko: Failed to load history items: %@", error);
     }
     return history ?: [[NSMutableArray alloc] init];
 }
@@ -768,7 +772,7 @@ NS_ASSUME_NONNULL_END
     NSDictionary<NSString *, id> *dictionary = [_historyRepository latestItemForHistoryKey:kKayokoHistoryKeyHistory
                                                                                      error:&error];
     if (error) {
-        NSLog(@"Kayoko: Failed to load latest history item: %@", error);
+        HBLogDebug(@"Kayoko: Failed to load latest history item: %@", error);
     }
     return [KayokoPasteboardItem itemFromDictionary:dictionary];
 }

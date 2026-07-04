@@ -515,4 +515,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)checkpointHistoryDatabase {
+    [[KayokoPasteboardManager sharedInstance] checkpointHistoryDatabase];
+}
+
 @end

@@ -41,6 +41,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 + (NSBundle *)localizationBundle;
 + (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value;
 
+- (void)checkpointHistoryDatabase;
 - (void)pullPasteboardChanges;
 - (void)pullPasteboardChangesWithCompletion:(nullable void (^)(BOOL didSaveAnyItem))completion;
 - (BOOL)addPasteboardItem:(KayokoPasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;

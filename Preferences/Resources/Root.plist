@@ -339,34 +339,30 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string></string>
+			<string>Supports</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSButtonCell</string>
+			<string>PSLinkCell</string>
 			<key>label</key>
-			<string>Respring</string>
-			<key>action</key>
-			<string>respringPrompt</string>
-			<key>isDestructive</key>
-			<true/>
+			<string>Advanced Options</string>
+			<key>detail</key>
+			<string>KayokoAdvancedOptionsListController</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSButtonCell</string>
+			<string>PSLinkCell</string>
 			<key>label</key>
-			<string>Reset Preferences</string>
-			<key>action</key>
-			<string>resetPrompt</string>
-			<key>isDestructive</key>
-			<true/>
+			<string>Acknowledgments &amp; Licenses</string>
+			<key>detail</key>
+			<string>KayokoCreditsListController</string>
 		</dict>
 
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Project &amp; Support</string>
+			<string></string>
 			<key>footerText</key>
 			<string>Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.
 
@@ -376,15 +372,7 @@ Made with ♥ by OwnGoal Studio</string>
 			<key>hideFooterTextAfterPreferenceDefaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>hideFooterTextAfterPreferenceKey</key>
-			<string>DidOpenPurchaseLink</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSLinkCell</string>
-			<key>label</key>
-			<string>Credits</string>
-			<key>detail</key>
-			<string>KayokoCreditsListController</string>
+			<string>DidOpenHavocLink</string>
 		</dict>
 		<dict>
 			<key>cellClass</key>
@@ -400,7 +388,7 @@ Made with ♥ by OwnGoal Studio</string>
 			<key>markOpenedDefaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>markOpenedKey</key>
-			<string>DidOpenPurchaseLink</string>
+			<string>DidOpenHavocLink</string>
 		</dict>
 
 	</array>

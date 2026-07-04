@@ -107,6 +107,16 @@ static void kayokoCoreReloadCallback(CFNotificationCenterRef center, void *obser
     [[KayokoCoreRuntime sharedRuntime] reloadHistory];
 }
 
+static void kayokoCoreCheckpointHistoryCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] checkpointHistoryDatabase];
+}
+
 static void kayokoCorePreferencesReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                                 const void *object, CFDictionaryRef userInfo) {
     (void)center;
@@ -169,6 +179,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
 + (void)installForSpringBoard {
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
     [runtime loadPreferences];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreCheckpointHistory
+                          callback:kayokoCoreCheckpointHistoryCallback];
     if (![runtime isEnabled]) {
         return;
     }

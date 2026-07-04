@@ -35,6 +35,18 @@ NS_ASSUME_NONNULL_END
     BOOL _hasActivationMethodSnapshot;
 }
 
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *title = [bundle localizedStringForKey:@"Respring" value:nil table:@"Root"];
+    UIBarButtonItem *respringButton = [[UIBarButtonItem alloc] initWithTitle:title
+                                                                       style:UIBarButtonItemStyleDone
+                                                                      target:self
+                                                                      action:@selector(respringPrompt)];
+    [[self navigationItem] setRightBarButtonItem:respringButton];
+}
+
 - (NSArray<PSSpecifier *> *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
@@ -175,47 +187,6 @@ NS_ASSUME_NONNULL_END
     [task setLaunchPath:jbroot(@"/usr/bin/killall")];
     [task setArguments:@[ @"backboardd" ]];
     [task launch];
-}
-
-- (void)resetPrompt {
-    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-
-    UIAlertController *resetAlert = [UIAlertController
-        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:@"Are you sure you want to reset your preferences?"
-                                                         value:nil
-                                                         table:@"Root"]
-                  preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction *resetAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Reset"
-                                                                                        value:nil
-                                                                                        table:@"Root"]
-                                                          style:UIAlertActionStyleDestructive
-                                                        handler:^(UIAlertAction *action) {
-                                                          [self resetPreferences];
-                                                        }];
-
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
-                                                                                         value:nil
-                                                                                         table:@"Root"]
-                                                           style:UIAlertActionStyleCancel
-                                                         handler:nil];
-
-    [resetAlert addAction:resetAction];
-    [resetAlert addAction:cancelAction];
-
-    [self presentViewController:resetAlert animated:YES completion:nil];
-}
-
-- (void)resetPreferences {
-    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
-    for (NSString *key in [userDefaults dictionaryRepresentation]) {
-        [userDefaults removeObjectForKey:key];
-    }
-
-    [self reloadSpecifiers];
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kKayokoNotificationKeyPreferencesReload, nil, nil, YES);
 }
 
 - (UISlider *_Nullable)findSliderInView:(UIView *)view {

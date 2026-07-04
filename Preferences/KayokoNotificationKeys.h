@@ -12,6 +12,7 @@ static NSString *const kKayokoLegacyNotificationKeyCoreShow = @"dev.traurige.kay
 static NSString *const kKayokoNotificationKeyCoreHide = @"com.82flex.kayoko.core.hide";
 static NSString *const kKayokoLegacyNotificationKeyCoreHide = @"dev.traurige.kayoko.core.hide";
 static NSString *const kKayokoNotificationKeyCoreReload = @"com.82flex.kayoko.core.reload";
+static NSString *const kKayokoNotificationKeyCoreCheckpointHistory = @"com.82flex.kayoko.core.checkpoint-history";
 static NSString *const kKayokoNotificationKeyHelperPaste = @"com.82flex.kayoko.helper.paste";
 static NSString *const kKayokoNotificationKeyHelperRestoreFocus = @"com.82flex.kayoko.helper.restore-focus";
 static NSString *const kKayokoNotificationKeyPreferencesReload = @"com.82flex.kayoko.preferences.reload";
