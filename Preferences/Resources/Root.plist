@@ -12,7 +12,7 @@
 			<key>headerSubtitle</key>
 			<string>Feature-rich clipboard manager for iOS.</string>
 			<key>detail</key>
-			<string>v4.0.4</string>
+			<string>v4.0.5</string>
 			<key>height</key>
 			<integer>92</integer>
 		</dict>
@@ -365,17 +365,33 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Project &amp; Support</string>
 			<key>footerText</key>
-			<string>Thanks to you and everyone who has helped in any way.</string>
+			<string>Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.
+
+Made with ♥ by OwnGoal Studio</string>
 		</dict>
 		<dict>
- 			<key>cell</key>
- 			<string>PSLinkCell</string>
- 			<key>label</key>
- 			<string>Credits</string>
- 			<key>detail</key>
- 			<string>KayokoCreditsListController</string>
- 		</dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>label</key>
+			<string>Credits</string>
+			<key>detail</key>
+			<string>KayokoCreditsListController</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>KayokoLinkCell</string>
+			<key>label</key>
+			<string>Purchase Kayoko</string>
+			<key>subtitle</key>
+			<string>Purchase Kayoko on Havoc Marketplace and support future maintenance.</string>
+			<key>url</key>
+			<string>https://havoc.app/package/kayoko</string>
+			<key>height</key>
+			<integer>54</integer>
+		</dict>
 
 	</array>
 	<key>title</key>

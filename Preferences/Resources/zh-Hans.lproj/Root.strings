@@ -35,8 +35,11 @@
 "Tools" = "工具";
 "Respring" = "妙手回春";
 "Reset Preferences" = "还原设置";
-"Thanks to you and everyone who has helped in any way." = "感谢你和所有以任何方式提供帮助的人。";
 "Credits" = "致谢";
+"Project & Support" = "项目与支持";
+"Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko 的持续维护，来自每一位用户的购买支持。原版 GPLv3 许可允许有偿发布，本版本也延续同一份开源承诺，不加防盗版限制（DRM）。若 Kayoko 让你的日常输入更顺手，欢迎通过 Havoc 支持后续维护。\n\n「乌龙工作室」倾情献制";
+"Purchase Kayoko" = "购买 Kayoko";
+"Purchase Kayoko on Havoc Marketplace and support future maintenance." = "在浩劫商店购买 Kayoko，支持后续维护。";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "此选项需要重新启动 SpringBoard 才能生效。你现在要重新启动吗？";
 "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost." = "这会重新启动 SpringBoard，并关闭所有 App。未保存的内容可能会丢失。";
 "Are you sure you want to reset your preferences?" = "你确定要还原设置吗？";
