@@ -38,9 +38,32 @@ NS_ASSUME_NONNULL_END
 - (NSArray<PSSpecifier *> *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
+        [self configureConditionalFootersInSpecifiers:_specifiers];
     }
 
     return _specifiers;
+}
+
+- (void)configureConditionalFootersInSpecifiers:(NSArray<PSSpecifier *> *)specifiers {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    for (PSSpecifier *specifier in specifiers) {
+        NSString *preferenceKey = [specifier propertyForKey:@"hideFooterTextAfterPreferenceKey"];
+        NSString *condensedFooterText = [specifier propertyForKey:@"condensedFooterText"];
+        if (![preferenceKey isKindOfClass:[NSString class]] || [preferenceKey length] == 0 ||
+            ![condensedFooterText isKindOfClass:[NSString class]] || [condensedFooterText length] == 0) {
+            continue;
+        }
+
+        NSString *defaultsIdentifier = [specifier propertyForKey:@"hideFooterTextAfterPreferenceDefaults"];
+        NSUserDefaults *userDefaults = [defaultsIdentifier length] > 0
+                                           ? [[NSUserDefaults alloc] initWithSuiteName:defaultsIdentifier]
+                                           : [NSUserDefaults standardUserDefaults];
+        if ([userDefaults boolForKey:preferenceKey]) {
+            NSString *localizedFooterText = [bundle localizedStringForKey:condensedFooterText value:nil table:@"Root"];
+            [specifier setProperty:localizedFooterText forKey:@"footerText"];
+        }
+    }
 }
 
 - (void)viewWillAppear:(BOOL)animated {

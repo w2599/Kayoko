@@ -371,6 +371,12 @@
 			<string>Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.
 
 Made with ♥ by OwnGoal Studio</string>
+			<key>condensedFooterText</key>
+			<string>Made with ♥ by OwnGoal Studio</string>
+			<key>hideFooterTextAfterPreferenceDefaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>hideFooterTextAfterPreferenceKey</key>
+			<string>DidOpenPurchaseLink</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -391,6 +397,10 @@ Made with ♥ by OwnGoal Studio</string>
 			<string>https://havoc.app/package/kayoko</string>
 			<key>height</key>
 			<integer>54</integer>
+			<key>markOpenedDefaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>markOpenedKey</key>
+			<string>DidOpenPurchaseLink</string>
 		</dict>
 
 	</array>

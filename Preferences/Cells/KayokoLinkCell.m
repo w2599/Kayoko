@@ -25,6 +25,8 @@
                                                   value:nil
                                                   table:localizationTable]];
         [self setUrl:[specifier propertyForKey:@"url"]];
+        [self setMarkOpenedDefaults:[specifier propertyForKey:@"markOpenedDefaults"]];
+        [self setMarkOpenedKey:[specifier propertyForKey:@"markOpenedKey"]];
         UILayoutGuide *margins = [self layoutMarginsGuide];
 
         [self setIndicatorImageView:[[UIImageView alloc] init]];
@@ -88,6 +90,14 @@
 }
 
 - (void)openUrl {
+    if ([[self markOpenedKey] length] > 0) {
+        NSUserDefaults *defaults = [[self markOpenedDefaults] length] > 0
+                                       ? [[NSUserDefaults alloc] initWithSuiteName:[self markOpenedDefaults]]
+                                       : [NSUserDefaults standardUserDefaults];
+        [defaults setBool:YES forKey:[self markOpenedKey]];
+        [defaults synchronize];
+    }
+
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[self url]] options:@{} completionHandler:nil];
 }
 
