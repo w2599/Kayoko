@@ -20,6 +20,10 @@
 "Touch Outside to Dismiss" = "Touch Outside to Dismiss";
 "Disable Paste Tips" = "Disable Paste Tips";
 "Ignore Remote Copy" = "Ignore Remote Copy";
+"Automatic Paste Mode" = "Automatic Paste Mode";
+"If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste." = "If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste.";
+"Classic" = "Classic";
+"Simulated" = "Simulated";
 "Feedbacks" = "Feedbacks";
 "Play Sound Effects" = "Play Sound Effects";
 "Play Haptic Feedback" = "Play Haptic Feedback";

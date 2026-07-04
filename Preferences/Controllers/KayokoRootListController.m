@@ -50,7 +50,7 @@ NS_ASSUME_NONNULL_END
                                                                        style:UIBarButtonItemStyleDone
                                                                       target:self
                                                                       action:@selector(respringPrompt)];
-    
+
     [[self navigationItem] setLargeTitleDisplayMode:UINavigationItemLargeTitleDisplayModeNever];
     [[self navigationItem] setRightBarButtonItem:respringButton];
 }

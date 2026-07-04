@@ -147,6 +147,16 @@ static void kayokoCoreHelperPasteCallback(CFNotificationCenterRef center, void *
     [[KayokoCoreRuntime sharedRuntime] playPasteFeedback];
 }
 
+static void kayokoCorePasteFeedbackCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                            const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] playPasteFeedback];
+}
+
 static void kayokoCorePasteWillStartCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                              const void *object, CFDictionaryRef userInfo) {
     (void)center;
@@ -207,6 +217,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
                           callback:kayokoCoreHeightPreferenceReloadCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyHelperPaste
                           callback:kayokoCoreHelperPasteCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPasteFeedback
+                          callback:kayokoCorePasteFeedbackCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPasteWillStart
                           callback:kayokoCorePasteWillStartCallback];
 }

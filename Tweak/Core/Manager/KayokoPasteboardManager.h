@@ -29,6 +29,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) NSUInteger automaticPasteMode;
 @property(nonatomic, assign) BOOL ignoreRemoteReplication;
 
 + (instancetype)sharedInstance;

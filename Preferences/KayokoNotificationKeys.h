@@ -18,3 +18,4 @@ static NSString *const kKayokoNotificationKeyHelperRestoreFocus = @"com.82flex.k
 static NSString *const kKayokoNotificationKeyPreferencesReload = @"com.82flex.kayoko.preferences.reload";
 static NSString *const kKayokoNotificationKeyPreferencesHeightReload = @"com.82flex.kayoko.preferences.height.reload";
 static NSString *const kKayokoNotificationKeyPasteWillStart = @"com.82flex.kayoko.paste.willstart";
+static NSString *const kKayokoNotificationKeyPasteFeedback = @"com.82flex.kayoko.paste.feedback";
