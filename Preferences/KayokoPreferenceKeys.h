@@ -12,7 +12,8 @@ typedef NS_OPTIONS(NSUInteger, ActivationMethod) {
     kActivationMethodDictationKey = 1 << 1,
     kActivationMethodInputSwitcher = 1 << 2,
     kActivationMethodCalloutBar = 1 << 3,
-    kActivationMethodSwipeUp = 1 << 4
+    kActivationMethodSwipeUp = 1 << 4,
+    kActivationMethodExternalKeyboard = 1 << 5
 };
 
 typedef NS_ENUM(NSUInteger, KayokoAutomaticPasteMode) {
@@ -45,7 +46,7 @@ static BOOL const kKayokoPreferenceKeySaveTextDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeySaveImagesDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeySwipeToSelectWordsDefaultValue = YES;
 static ActivationMethod const kKayokoPreferenceKeyActivationMethodDefaultValue =
-    kActivationMethodDictationKey | kActivationMethodInputSwitcher;
+    kActivationMethodDictationKey | kActivationMethodInputSwitcher | kActivationMethodExternalKeyboard;
 static BOOL const kKayokoPreferenceKeyAutomaticallyPasteDefaultValue = YES;
 static KayokoAutomaticPasteMode const kKayokoPreferenceKeyAutomaticPasteModeDefaultValue =
     kKayokoAutomaticPasteModeClassic;

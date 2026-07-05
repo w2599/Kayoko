@@ -50,7 +50,7 @@
 			<key>cell</key>
 			<string>PSLinkListCell</string>
 			<key>default</key>
-			<integer>6</integer>
+			<integer>38</integer>
 			<key>detail</key>
 			<string>KayokoListItemsController</string>
 			<key>defaults</key>
@@ -66,6 +66,7 @@
 				<integer>4</integer>
 				<integer>8</integer>
 				<integer>16</integer>
+				<integer>32</integer>
 			</array>
 			<key>validTitles</key>
 			<array>
@@ -74,6 +75,7 @@
 				<string>Input Switcher</string>
 				<string>Edit Menu</string>
 				<string>One-Finger Swipe Up</string>
+				<string>⌘⇧V External Keyboard</string>
 			</array>
 		</dict>
 
