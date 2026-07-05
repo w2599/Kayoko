@@ -10,17 +10,21 @@
 #import <roothide.h>
 #import <sqlite3.h>
 #import <string.h>
+#import <limits.h>
 
 static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.history-store";
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
 static NSString *const kKayokoHistoryStoreSearchIndexSchemaVersionKey = @"search_index_schema_version";
 static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 1;
+static NSInteger const kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds = 3000;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryStore ()
 @property(nonatomic, copy, readwrite) NSString *databasePath;
 @property(nonatomic, copy, readwrite) NSString *imagesPath;
+@property(nonatomic, assign, readwrite) KayokoHistoryStoreLockingMode lockingMode;
+@property(nonatomic, assign, readwrite) NSInteger busyTimeoutMilliseconds;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -34,10 +38,22 @@ NS_ASSUME_NONNULL_END
 }
 
 - (instancetype)initWithDatabasePath:(NSString *)databasePath imagesPath:(NSString *)imagesPath {
+    return [self initWithDatabasePath:databasePath
+                           imagesPath:imagesPath
+                          lockingMode:KayokoHistoryStoreLockingModeNormal
+               busyTimeoutMilliseconds:kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds];
+}
+
+- (instancetype)initWithDatabasePath:(NSString *)databasePath
+                          imagesPath:(NSString *)imagesPath
+                         lockingMode:(KayokoHistoryStoreLockingMode)lockingMode
+              busyTimeoutMilliseconds:(NSInteger)busyTimeoutMilliseconds {
     self = [super init];
     if (self) {
         _databasePath = [databasePath copy];
         _imagesPath = [imagesPath copy];
+        _lockingMode = lockingMode;
+        _busyTimeoutMilliseconds = MAX(busyTimeoutMilliseconds, 0);
     }
     return self;
 }
@@ -47,24 +63,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)prepareStoreWithError:(NSError **)error {
-    NSString *directoryPath = [[self databasePath] stringByDeletingLastPathComponent];
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    if (![fileManager fileExistsAtPath:directoryPath]) {
-        if (![fileManager createDirectoryAtPath:directoryPath
-                    withIntermediateDirectories:YES
-                                     attributes:nil
-                                          error:error]) {
-            return NO;
-        }
-    }
-
-    if (![fileManager fileExistsAtPath:[self imagesPath]]) {
-        if (![fileManager createDirectoryAtPath:[self imagesPath]
-                    withIntermediateDirectories:YES
-                                     attributes:nil
-                                          error:error]) {
-            return NO;
-        }
+    if (![self prepareStorageDirectoriesWithError:error]) {
+        return NO;
     }
 
     if (![self openDatabaseWithError:error]) {
@@ -130,11 +130,56 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+- (BOOL)prepareStorageDirectoriesWithError:(NSError **)error {
+    NSString *directoryPath = [[self databasePath] stringByDeletingLastPathComponent];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:directoryPath]) {
+        if (![fileManager createDirectoryAtPath:directoryPath
+                    withIntermediateDirectories:YES
+                                     attributes:nil
+                                          error:error]) {
+            return NO;
+        }
+    }
+
+    if (![fileManager fileExistsAtPath:[self imagesPath]]) {
+        if (![fileManager createDirectoryAtPath:[self imagesPath]
+                    withIntermediateDirectories:YES
+                                     attributes:nil
+                                          error:error]) {
+            return NO;
+        }
+    }
+
+    return YES;
+}
+
 - (void)closeDatabase {
     if (_database) {
         sqlite3_close(_database);
         _database = NULL;
     }
+}
+
+- (BOOL)verifyExclusiveAccessWithError:(NSError **)error {
+    if (![self prepareStorageDirectoriesWithError:error]) {
+        return NO;
+    }
+    if (![self openDatabaseWithError:error]) {
+        return NO;
+    }
+    if ([self lockingMode] != KayokoHistoryStoreLockingModeExclusiveWhileOpen) {
+        return YES;
+    }
+    if (![self executeStatement:@"BEGIN EXCLUSIVE TRANSACTION" error:error]) {
+        return NO;
+    }
+
+    BOOL committed = [self commitTransactionWithError:error];
+    if (!committed) {
+        [self rollbackTransaction];
+    }
+    return committed;
 }
 
 - (BOOL)checkpointWriteAheadLogWithError:(NSError **)error {
@@ -627,7 +672,8 @@ NS_ASSUME_NONNULL_END
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
       NSTextCheckingTypes types =
-          NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber | NSTextCheckingTypeDate | NSTextCheckingTypeAddress;
+          NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber | NSTextCheckingTypeDate | NSTextCheckingTypeAddress |
+          NSTextCheckingTypeTransitInformation;
       detector = [NSDataDetector dataDetectorWithTypes:types error:nil];
     });
 
@@ -647,6 +693,9 @@ NS_ASSUME_NONNULL_END
             break;
         case NSTextCheckingTypeAddress:
             [values addObject:kKayokoSearchCategoryAddress];
+            break;
+        case NSTextCheckingTypeTransitInformation:
+            [values addObject:kKayokoSearchCategoryFlight];
             break;
         default:
             break;
@@ -693,11 +742,25 @@ NS_ASSUME_NONNULL_END
                                  SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
     if (result != SQLITE_OK) {
         [self populateError:error code:result message:@"Unable to open history database"];
+        [self closeDatabase];
         return NO;
     }
 
-    sqlite3_busy_timeout(_database, 3000);
+    int busyTimeoutMilliseconds = (int)MIN([self busyTimeoutMilliseconds], (NSInteger)INT_MAX);
+    sqlite3_busy_timeout(_database, busyTimeoutMilliseconds);
+    if (![self configureDatabaseLockingModeWithError:error]) {
+        [self closeDatabase];
+        return NO;
+    }
     return YES;
+}
+
+- (BOOL)configureDatabaseLockingModeWithError:(NSError **)error {
+    if ([self lockingMode] != KayokoHistoryStoreLockingModeExclusiveWhileOpen) {
+        return YES;
+    }
+
+    return [self executeStatement:@"PRAGMA locking_mode=EXCLUSIVE" error:error];
 }
 
 - (BOOL)upsertItemDictionary:(NSDictionary<NSString *, id> *)dictionary

@@ -15,6 +15,7 @@ extern NSString *const kKayokoSearchCategoryLink;
 extern NSString *const kKayokoSearchCategoryPhone;
 extern NSString *const kKayokoSearchCategoryDate;
 extern NSString *const kKayokoSearchCategoryAddress;
+extern NSString *const kKayokoSearchCategoryFlight;
 extern NSString *const kKayokoSearchCategoryImage;
 
 @interface KayokoSearchToken : NSObject <NSCopying>

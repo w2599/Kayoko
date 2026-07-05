@@ -163,6 +163,8 @@ NS_ASSUME_NONNULL_END
         },
         kKayokoSearchCategoryDate :
             @{@"title" : [bundle localizedStringForKey:@"Dates" value:nil table:@"Tweak"], @"image" : @"calendar"},
+        kKayokoSearchCategoryFlight :
+            @{@"title" : [bundle localizedStringForKey:@"Flights" value:nil table:@"Tweak"], @"image" : @"airplane"},
         kKayokoSearchCategoryAddress : @{
             @"title" : [bundle localizedStringForKey:@"Addresses" value:nil table:@"Tweak"],
             @"image" : @"mappin.and.ellipse"

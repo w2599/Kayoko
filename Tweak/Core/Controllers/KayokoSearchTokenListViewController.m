@@ -166,6 +166,10 @@ NS_ASSUME_NONNULL_END
                                    title:[bundle localizedStringForKey:@"Dates" value:nil table:@"Tweak"]
                                imageName:@"calendar"],
         [KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeCategory
+                                   value:kKayokoSearchCategoryFlight
+                                   title:[bundle localizedStringForKey:@"Flights" value:nil table:@"Tweak"]
+                               imageName:@"airplane"],
+        [KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeCategory
                                    value:kKayokoSearchCategoryAddress
                                    title:[bundle localizedStringForKey:@"Addresses" value:nil table:@"Tweak"]
                                imageName:@"mappin.and.ellipse"],

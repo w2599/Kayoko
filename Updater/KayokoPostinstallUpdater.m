@@ -10,10 +10,13 @@
 
 #import <CoreFoundation/CoreFoundation.h>
 #import <roothide.h>
+#import <unistd.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
 static NSUInteger const kKayokoMobileUserID = 501;
 static NSUInteger const kKayokoMobileGroupID = 501;
+static useconds_t const kKayokoCoreMaintenanceGracePeriodMicroseconds = 300000;
+static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000;
 
 @implementation KayokoPostinstallUpdater
 
@@ -21,6 +24,14 @@ static NSUInteger const kKayokoMobileGroupID = 501;
     [self notifyCoreToPrepareForMaintenance];
 
     KayokoHistoryStore *store = [self historyStore];
+    NSError *lockError = nil;
+    if (![store verifyExclusiveAccessWithError:&lockError]) {
+        if (error) {
+            *error = lockError;
+        }
+        return NO;
+    }
+
     KayokoHistoryMigrator *migrator =
         [[KayokoHistoryMigrator alloc] initWithHistoryStore:store
                                            migrationSources:[KayokoHistoryMigrator defaultMigrationSources]];
@@ -87,11 +98,14 @@ static NSUInteger const kKayokoMobileGroupID = 501;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (__bridge CFStringRef)kKayokoNotificationKeyCorePrepareMaintenance, nil, nil,
                                          YES);
+    usleep(kKayokoCoreMaintenanceGracePeriodMicroseconds);
 }
 
 - (KayokoHistoryStore *)historyStore {
     return [[KayokoHistoryStore alloc] initWithDatabasePath:[KayokoHistoryStore defaultDatabasePath]
-                                                 imagesPath:[self currentImagesPath]];
+                                                 imagesPath:[self currentImagesPath]
+                                                lockingMode:KayokoHistoryStoreLockingModeExclusiveWhileOpen
+                                     busyTimeoutMilliseconds:kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds];
 }
 
 - (NSString *)currentImagesPath {

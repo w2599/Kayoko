@@ -10,6 +10,7 @@
 #import <HBLog.h>
 
 static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
+static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
 
 @implementation KayokoHistoryRepository {
     NSString *_databasePath;
@@ -367,7 +368,11 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 
 - (KayokoHistoryStore *)historyStoreOnQueue {
     if (!_historyStore) {
-        _historyStore = [[KayokoHistoryStore alloc] initWithDatabasePath:_databasePath imagesPath:_imagesPath];
+        _historyStore =
+            [[KayokoHistoryStore alloc] initWithDatabasePath:_databasePath
+                                                  imagesPath:_imagesPath
+                                                 lockingMode:KayokoHistoryStoreLockingModeExclusiveWhileOpen
+                                      busyTimeoutMilliseconds:kKayokoCoreHistoryStoreBusyTimeoutMilliseconds];
     }
     return _historyStore;
 }

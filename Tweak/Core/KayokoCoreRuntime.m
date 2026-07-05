@@ -573,8 +573,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)prepareForPackageMaintenance {
     [self setPackageMaintenanceMode:YES];
-    [self hideImmediately];
     [[KayokoPasteboardManager sharedInstance] enterMaintenanceModeUntilProcessExit];
+    [self hideImmediately];
 }
 
 - (void)clearFavorites {

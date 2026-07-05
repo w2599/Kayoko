@@ -9,19 +9,31 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
+    KayokoHistoryStoreLockingModeNormal = 0,
+    KayokoHistoryStoreLockingModeExclusiveWhileOpen,
+};
+
 @interface KayokoHistoryStore : NSObject
 
 @property(nonatomic, copy, readonly) NSString *databasePath;
 @property(nonatomic, copy, readonly) NSString *imagesPath;
+@property(nonatomic, assign, readonly) KayokoHistoryStoreLockingMode lockingMode;
+@property(nonatomic, assign, readonly) NSInteger busyTimeoutMilliseconds;
 
 + (NSString *)defaultDatabasePath;
 
 - (instancetype)initWithDatabasePath:(NSString *)databasePath
-                          imagesPath:(NSString *)imagesPath NS_DESIGNATED_INITIALIZER;
+                          imagesPath:(NSString *)imagesPath;
+- (instancetype)initWithDatabasePath:(NSString *)databasePath
+                          imagesPath:(NSString *)imagesPath
+                         lockingMode:(KayokoHistoryStoreLockingMode)lockingMode
+              busyTimeoutMilliseconds:(NSInteger)busyTimeoutMilliseconds NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 
 - (BOOL)prepareStoreWithError:(NSError **)error;
 - (void)closeDatabase;
+- (BOOL)verifyExclusiveAccessWithError:(NSError **)error;
 - (BOOL)checkpointWriteAheadLogWithError:(NSError **)error;
 - (BOOL)upgradeSearchIndexWithError:(NSError **)error;
 - (BOOL)validateSearchIndexWithError:(NSError *_Nullable *_Nullable)error;

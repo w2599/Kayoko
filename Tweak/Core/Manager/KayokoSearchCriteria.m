@@ -13,6 +13,7 @@ NSString *const kKayokoSearchCategoryLink = @"link";
 NSString *const kKayokoSearchCategoryPhone = @"phone";
 NSString *const kKayokoSearchCategoryDate = @"date";
 NSString *const kKayokoSearchCategoryAddress = @"address";
+NSString *const kKayokoSearchCategoryFlight = @"flight";
 NSString *const kKayokoSearchCategoryImage = @"image";
 
 @implementation KayokoSearchToken
