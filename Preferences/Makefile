@@ -11,6 +11,7 @@ KayokoPreferences_CFLAGS += -I../Utils
 
 KayokoPreferences_FRAMEWORKS += UIKit
 KayokoPreferences_PRIVATE_FRAMEWORKS += Preferences
+KayokoPreferences_LIBRARIES += sqlite3
 KayokoPreferences_INSTALL_PATH := /Library/PreferenceBundles
 
 include $(THEOS)/makefiles/common.mk

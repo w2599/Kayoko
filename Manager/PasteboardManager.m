@@ -14,6 +14,7 @@
 #import "StringUtil.h"
 
 #import <roothide.h>
+#import <sqlite3.h>
 
 static int kKayokoImageCacheLimit = 20;
 
@@ -21,6 +22,7 @@ static int kKayokoImageCacheLimit = 20;
     dispatch_queue_t _queue;
     BOOL _didEnsureResourcesExist;
     NSMutableDictionary *_historyImageCache;
+    sqlite3 *_database;
 }
 
 /**
@@ -35,22 +37,13 @@ static int kKayokoImageCacheLimit = 20;
     return sharedInstance;
 }
 
-+ (NSString *)historyPath {
-    static NSString *kHistoryPath = nil;
++ (NSString *)databasePath {
+    static NSString *kDatabasePath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-            kHistoryPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.plist");
+      kDatabasePath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/kayoko.sqlite3");
     });
-    return kHistoryPath;
-}
-
-+ (NSString *)favoritesPath {
-        static NSString *kFavoritesPath = nil;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            kFavoritesPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/favorites.plist");
-        });
-        return kFavoritesPath;
+    return kDatabasePath;
 }
 
 + (NSString *)historyImagesPath {
@@ -98,6 +91,7 @@ static int kKayokoImageCacheLimit = 20;
         _fileManager = [NSFileManager defaultManager];
         _didEnsureResourcesExist = NO;
         _historyImageCache = [[NSMutableDictionary alloc] init];
+        [self preparePasteboardQueue];
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
         } else {
@@ -207,27 +201,24 @@ static int kKayokoImageCacheLimit = 20;
         return NO;
     }
 
+    [self ensureResourcesExist];
+
     // Remove duplicates.
-    [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:NO];
+    [self deleteItemsWithContent:content fromListKey:historyKey];
 
-    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
-
-    [history insertObject:@{
-        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
-        kItemKeyContent : [item content] ?: @"",
-        kItemKeyImageName : [item imageName] ?: @"",
-        kItemKeyRemark : [item remark] ?: @"",
-        kItemKeyHasLink : @([item hasLink]),
-        kItemKeyRecordedAt : @([item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970])
-    }
-                  atIndex:0];
+    NSTimeInterval recordedAt = [item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970];
+    [self insertItemAtFrontWithBundleIdentifier:[item bundleIdentifier] ?: @"com.apple.springboard"
+                                        content:content
+                                      imageName:imageName
+                                         remark:[item remark] ?: @""
+                                        hasLink:[item hasLink]
+                                     recordedAt:recordedAt
+                                    intoListKey:historyKey];
 
     // Truncate the history corresponding the set limit.
-    while ([history count] > [self maximumHistoryAmount]) {
-        [history removeLastObject];
-    }
+    [self truncateListKey:historyKey toMaximumCount:[self maximumHistoryAmount]];
 
-    [self setItems:history forHistoryWithKey:historyKey];
+    [self notifyReload];
 
     return YES;
 }
@@ -242,55 +233,46 @@ static int kKayokoImageCacheLimit = 20;
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
-    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
+    [self ensureResourcesExist];
 
-    for (NSDictionary *dictionary in history) {
-        @autoreleasepool {
-            PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
+    NSString *content = [item content] ?: @"";
+    BOOL didDelete = [self deleteItemsWithContent:content fromListKey:historyKey];
 
-            if ([[historyItem content] isEqualToString:[item content]]) {
-                [history removeObject:dictionary];
+    if (didDelete && shouldRemoveImage && ![[item imageName] isEqualToString:@""]) {
+        NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
 
-                if (![[item imageName] isEqualToString:@""] && shouldRemoveImage) {
-                    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
-
-                    [_historyImageCache removeObjectForKey:[item imageName]];
-                    [_fileManager removeItemAtPath:filePath error:nil];
-                }
-
-                break;
-            }
-        }
+        [_historyImageCache removeObjectForKey:[item imageName]];
+        [_fileManager removeItemAtPath:filePath error:nil];
     }
 
-    [self setItems:history forHistoryWithKey:historyKey];
+    [self notifyReload];
 }
 
 - (void)updateRemark:(NSString *)remark
              forItem:(PasteboardItem *)item
       inHistoryWithKey:(NSString *)historyKey {
-        NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
-
-    if (!history || !item) {
+    if (!item) {
         return;
     }
 
+    [self ensureResourcesExist];
+
     NSString *safeRemark = remark ?: @"";
+    NSString *content = [item content] ?: @"";
 
-    for (NSUInteger index = 0; index < [history count]; index++) {
-        NSDictionary *dictionary = history[index];
-        PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
-
-        if ([[historyItem content] isEqualToString:[item content]]) {
-            NSMutableDictionary *updatedDictionary = [dictionary mutableCopy];
-            updatedDictionary[kItemKeyRemark] = safeRemark;
-            history[index] = updatedDictionary;
-            [item setRemark:safeRemark];
-            break;
-        }
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "UPDATE items SET remark = ? WHERE list_key = ? AND content = ?;";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [safeRemark UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 2, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 3, [content UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_step(statement);
     }
+    sqlite3_finalize(statement);
 
-    [self setItems:history forHistoryWithKey:historyKey];
+    [item setRemark:safeRemark];
+
+    [self notifyReload];
 }
 
 - (void)updatePasteboardWithItem:(PasteboardItem *)item
@@ -327,8 +309,6 @@ static int kKayokoImageCacheLimit = 20;
     NSUInteger newChangeCount = [_pasteboard changeCount];
     _lastChangeCount = newChangeCount;
 
-    // 立即触发粘贴操作，以免被下方的历史记录管理逻辑所延迟，
-    // 因为该逻辑可能涉及读写体积较大的历史记录文件。
     if ([self automaticallyPaste] && shouldAutoPaste) {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                              (CFStringRef)kNotificationKeyHelperPaste, nil, nil, YES);
@@ -351,35 +331,23 @@ static int kKayokoImageCacheLimit = 20;
     * @param historyKey 要更新的历史记录的键。
  */
 - (void)moveItemToFront:(PasteboardItem *)item inHistoryWithKey:(NSString *)historyKey {
-    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
+    [self ensureResourcesExist];
 
-    for (NSUInteger index = 0; index < [history count]; index++) {
-        @autoreleasepool {
-            NSDictionary *dictionary = history[index];
-            PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
+    NSString *content = [item content] ?: @"";
+    [self deleteItemsWithContent:content fromListKey:historyKey];
 
-            if ([[historyItem content] isEqualToString:[item content]]) {
-                [history removeObjectAtIndex:index];
-                break;
-            }
-        }
-    }
+    NSTimeInterval recordedAt = [item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970];
+    [self insertItemAtFrontWithBundleIdentifier:[item bundleIdentifier] ?: @"com.apple.springboard"
+                                        content:content
+                                      imageName:[item imageName] ?: @""
+                                         remark:[item remark] ?: @""
+                                        hasLink:[item hasLink]
+                                     recordedAt:recordedAt
+                                    intoListKey:historyKey];
 
-    [history insertObject:@{
-        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
-        kItemKeyContent : [item content] ?: @"",
-        kItemKeyImageName : [item imageName] ?: @"",
-        kItemKeyRemark : [item remark] ?: @"",
-        kItemKeyHasLink : @([item hasLink]),
-        kItemKeyRecordedAt : @([item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970])
-    }
-                  atIndex:0];
+    [self truncateListKey:historyKey toMaximumCount:[self maximumHistoryAmount]];
 
-    while ([history count] > [self maximumHistoryAmount]) {
-        [history removeLastObject];
-    }
-
-    [self setItems:history forHistoryWithKey:historyKey];
+    [self notifyReload];
 }
 
 /**
@@ -392,36 +360,187 @@ static int kKayokoImageCacheLimit = 20;
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
     [self ensureResourcesExist];
 
-    NSPropertyListFormat format = NSPropertyListBinaryFormat_v1_0;
-    NSData *plistData = [NSData dataWithContentsOfFile:[self pathForHistoryWithKey:historyKey]];
-    NSMutableArray *items = [NSPropertyListSerialization propertyListWithData:plistData
-                                                                      options:NSPropertyListMutableContainers
-                                                                       format:&format
-                                                                        error:nil];
-    if (![items isKindOfClass:[NSMutableArray class]]) {
-        items = [[NSMutableArray alloc] init];
+    NSMutableArray *items = [[NSMutableArray alloc] init];
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT bundle_identifier, content, image_name, remark, has_link, recorded_at "
+                       "FROM items WHERE list_key = ? ORDER BY position ASC;";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+        while (sqlite3_step(statement) == SQLITE_ROW) {
+            [items addObject:[self dictionaryFromRowStatement:statement]];
+        }
     }
+    sqlite3_finalize(statement);
 
     return items;
-}
-
-- (NSString *)pathForHistoryWithKey:(NSString *)historyKey {
-    if ([historyKey isEqualToString:kHistoryKeyFavorites]) {
-        return [PasteboardManager favoritesPath];
-    }
-
-    return [PasteboardManager historyPath];
 }
 
 - (void)setItems:(NSArray *)items forHistoryWithKey:(NSString *)historyKey {
     NSArray *safeItems = items ?: @[];
 
-    NSData *plistData = [NSPropertyListSerialization dataWithPropertyList:safeItems
-                                                                    format:NSPropertyListBinaryFormat_v1_0
-                                                                   options:0
-                                                                     error:nil];
-    [plistData writeToFile:[self pathForHistoryWithKey:historyKey] atomically:YES];
+    [self ensureResourcesExist];
 
+    sqlite3_exec(_database, "BEGIN IMMEDIATE TRANSACTION;", NULL, NULL, NULL);
+
+    sqlite3_stmt *deleteStatement = NULL;
+    if (sqlite3_prepare_v2(_database, "DELETE FROM items WHERE list_key = ?;", -1, &deleteStatement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(deleteStatement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_step(deleteStatement);
+    }
+    sqlite3_finalize(deleteStatement);
+
+    sqlite3_stmt *insertStatement = NULL;
+    const char *insertSQL = "INSERT INTO items (list_key, position, bundle_identifier, content, image_name, remark, has_link, recorded_at) "
+                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+    if (sqlite3_prepare_v2(_database, insertSQL, -1, &insertStatement, NULL) == SQLITE_OK) {
+        sqlite3_int64 position = 0;
+        for (NSDictionary *dictionary in safeItems) {
+            @autoreleasepool {
+                NSString *bundleIdentifier = dictionary[kItemKeyBundleIdentifier] ?: @"com.apple.springboard";
+                NSString *content = dictionary[kItemKeyContent] ?: @"";
+                NSString *imageName = dictionary[kItemKeyImageName] ?: @"";
+                NSString *remark = dictionary[kItemKeyRemark] ?: @"";
+                BOOL hasLink = [dictionary[kItemKeyHasLink] boolValue];
+                NSTimeInterval recordedAt = [dictionary[kItemKeyRecordedAt] doubleValue];
+                if (recordedAt <= 0) {
+                    recordedAt = [[NSDate date] timeIntervalSince1970];
+                }
+
+                sqlite3_bind_text(insertStatement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+                sqlite3_bind_int64(insertStatement, 2, position);
+                sqlite3_bind_text(insertStatement, 3, [bundleIdentifier UTF8String], -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(insertStatement, 4, [content UTF8String], -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(insertStatement, 5, [imageName UTF8String], -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(insertStatement, 6, [remark UTF8String], -1, SQLITE_TRANSIENT);
+                sqlite3_bind_int(insertStatement, 7, hasLink ? 1 : 0);
+                sqlite3_bind_double(insertStatement, 8, recordedAt);
+
+                sqlite3_step(insertStatement);
+                sqlite3_reset(insertStatement);
+                position++;
+            }
+        }
+    }
+    sqlite3_finalize(insertStatement);
+
+    sqlite3_exec(_database, "COMMIT TRANSACTION;", NULL, NULL, NULL);
+
+    [self notifyReload];
+}
+
+/**
+ * Inserts a new row for the given list at the very front (i.e. before every existing row).
+ */
+- (void)insertItemAtFrontWithBundleIdentifier:(NSString *)bundleIdentifier
+                                       content:(NSString *)content
+                                     imageName:(NSString *)imageName
+                                        remark:(NSString *)remark
+                                       hasLink:(BOOL)hasLink
+                                    recordedAt:(NSTimeInterval)recordedAt
+                                   intoListKey:(NSString *)listKey {
+    sqlite3_int64 nextPosition = (sqlite3_int64)[self minimumPositionForListKey:listKey] - 1;
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "INSERT INTO items (list_key, position, bundle_identifier, content, image_name, remark, has_link, recorded_at) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int64(statement, 2, nextPosition);
+        sqlite3_bind_text(statement, 3, [bundleIdentifier UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 4, [content UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 5, [imageName UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 6, [remark UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(statement, 7, hasLink ? 1 : 0);
+        sqlite3_bind_double(statement, 8, recordedAt);
+        sqlite3_step(statement);
+    }
+    sqlite3_finalize(statement);
+}
+
+- (NSInteger)minimumPositionForListKey:(NSString *)listKey {
+    NSInteger minimumPosition = 0;
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT MIN(position) FROM items WHERE list_key = ?;";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(statement) == SQLITE_ROW && sqlite3_column_type(statement, 0) != SQLITE_NULL) {
+            minimumPosition = (NSInteger)sqlite3_column_int64(statement, 0);
+        }
+    }
+    sqlite3_finalize(statement);
+
+    return minimumPosition;
+}
+
+/**
+ * Deletes every row matching the given content within a list.
+ *
+ * @return Whether any row was actually deleted.
+ */
+- (BOOL)deleteItemsWithContent:(NSString *)content fromListKey:(NSString *)listKey {
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "DELETE FROM items WHERE list_key = ? AND content = ?;";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_step(statement);
+    }
+    sqlite3_finalize(statement);
+
+    return sqlite3_changes(_database) > 0;
+}
+
+/**
+ * Removes overflow rows so at most maximumCount rows remain for the given list, oldest first.
+ */
+- (void)truncateListKey:(NSString *)listKey toMaximumCount:(NSUInteger)maximumCount {
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "DELETE FROM items WHERE list_key = ? AND id NOT IN "
+                       "(SELECT id FROM items WHERE list_key = ? ORDER BY position ASC LIMIT ?);";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 2, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int64(statement, 3, (sqlite3_int64)maximumCount);
+        sqlite3_step(statement);
+    }
+    sqlite3_finalize(statement);
+}
+
+- (BOOL)hasItemsForListKey:(NSString *)listKey {
+    BOOL hasItems = NO;
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT 1 FROM items WHERE list_key = ? LIMIT 1;";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        hasItems = sqlite3_step(statement) == SQLITE_ROW;
+    }
+    sqlite3_finalize(statement);
+
+    return hasItems;
+}
+
+- (NSDictionary *)dictionaryFromRowStatement:(sqlite3_stmt *)statement {
+    const char *bundleIdentifierText = (const char *)sqlite3_column_text(statement, 0);
+    const char *contentText = (const char *)sqlite3_column_text(statement, 1);
+    const char *imageNameText = (const char *)sqlite3_column_text(statement, 2);
+    const char *remarkText = (const char *)sqlite3_column_text(statement, 3);
+    BOOL hasLink = sqlite3_column_int(statement, 4) != 0;
+    double recordedAt = sqlite3_column_double(statement, 5);
+
+    return @{
+        kItemKeyBundleIdentifier : bundleIdentifierText ? [NSString stringWithUTF8String:bundleIdentifierText] : @"",
+        kItemKeyContent : contentText ? [NSString stringWithUTF8String:contentText] : @"",
+        kItemKeyImageName : imageNameText ? [NSString stringWithUTF8String:imageNameText] : @"",
+        kItemKeyRemark : remarkText ? [NSString stringWithUTF8String:remarkText] : @"",
+        kItemKeyHasLink : @(hasLink),
+        kItemKeyRecordedAt : @(recordedAt)
+    };
+}
+
+- (void)notifyReload {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
 }
@@ -501,7 +620,7 @@ static int kKayokoImageCacheLimit = 20;
     return thumbnail;
 }
 /**
- * Creates the plists for the histories and path for the images.
+ * Creates the database and image directory, and migrates legacy plist data if present.
  */
 - (void)ensureResourcesExist {
     if (_didEnsureResourcesExist) {
@@ -516,85 +635,86 @@ static int kKayokoImageCacheLimit = 20;
                                       error:nil];
     }
 
-    NSString *historyPath = [PasteboardManager historyPath];
-    NSString *favoritesPath = [PasteboardManager favoritesPath];
-    NSString *legacyHistoryJsonPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
-    NSString *legacyFavoritesJsonPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/favorites.json");
-
-    BOOL historyExists = [_fileManager fileExistsAtPath:historyPath];
-    BOOL favoritesExists = [_fileManager fileExistsAtPath:favoritesPath];
-
-    // Migrate legacy JSON formats:
-    // 1) history.json: { "history": [...], "favorites": [...] }
-    // 2) history.json: [...] and favorites.json: [...]
-    if (!historyExists || !favoritesExists) {
-        NSArray *legacyHistory = nil;
-        NSArray *legacyFavorites = nil;
-
-        if ([_fileManager fileExistsAtPath:legacyHistoryJsonPath]) {
-            NSData *legacyHistoryData = [NSData dataWithContentsOfFile:legacyHistoryJsonPath];
-            id legacyHistoryJson = [NSJSONSerialization JSONObjectWithData:legacyHistoryData options:0 error:nil];
-
-            if ([legacyHistoryJson isKindOfClass:[NSDictionary class]]) {
-                NSDictionary *legacyDictionary = (NSDictionary *)legacyHistoryJson;
-                id historyObject = legacyDictionary[kHistoryKeyHistory];
-                id favoritesObject = legacyDictionary[kHistoryKeyFavorites];
-
-                if ([historyObject isKindOfClass:[NSArray class]]) {
-                    legacyHistory = historyObject;
-                }
-                if ([favoritesObject isKindOfClass:[NSArray class]]) {
-                    legacyFavorites = favoritesObject;
-                }
-            } else if ([legacyHistoryJson isKindOfClass:[NSArray class]]) {
-                legacyHistory = legacyHistoryJson;
-            }
-        }
-
-        if ([_fileManager fileExistsAtPath:legacyFavoritesJsonPath]) {
-            NSData *legacyFavoritesData = [NSData dataWithContentsOfFile:legacyFavoritesJsonPath];
-            id legacyFavoritesJson = [NSJSONSerialization JSONObjectWithData:legacyFavoritesData options:0 error:nil];
-            if ([legacyFavoritesJson isKindOfClass:[NSArray class]]) {
-                legacyFavorites = legacyFavoritesJson;
-            }
-        }
-
-        if (!historyExists && legacyHistory) {
-            NSData *historyPlistData = [NSPropertyListSerialization dataWithPropertyList:legacyHistory
-                                                                                   format:NSPropertyListBinaryFormat_v1_0
-                                                                                  options:0
-                                                                                    error:nil];
-            [historyPlistData writeToFile:historyPath options:NSDataWritingAtomic error:nil];
-            historyExists = YES;
-        }
-
-        if (!favoritesExists && legacyFavorites) {
-            NSData *favoritesPlistData = [NSPropertyListSerialization dataWithPropertyList:legacyFavorites
-                                                                                     format:NSPropertyListBinaryFormat_v1_0
-                                                                                    options:0
-                                                                                      error:nil];
-            [favoritesPlistData writeToFile:favoritesPath options:NSDataWritingAtomic error:nil];
-            favoritesExists = YES;
-        }
-    }
-
-    if (!historyExists) {
-        NSData *historyPlistData = [NSPropertyListSerialization dataWithPropertyList:@[]
-                                                                               format:NSPropertyListBinaryFormat_v1_0
-                                                                              options:0
-                                                                                error:nil];
-        [historyPlistData writeToFile:historyPath options:NSDataWritingAtomic error:nil];
-    }
-
-    if (!favoritesExists) {
-        NSData *favoritesPlistData = [NSPropertyListSerialization dataWithPropertyList:@[]
-                                                                                 format:NSPropertyListBinaryFormat_v1_0
-                                                                                options:0
-                                                                                  error:nil];
-        [favoritesPlistData writeToFile:favoritesPath options:NSDataWritingAtomic error:nil];
-    }
+    [self openDatabaseIfNeeded];
+    dispatch_async(_queue, ^{
+      [self migrateLegacyPlistDataIfNeeded];
+    });
 
     _didEnsureResourcesExist = YES;
 }
 
+/**
+ * Opens (and lazily creates) the SQLite database used to store history and favorites.
+ */
+- (void)openDatabaseIfNeeded {
+    if (_database) {
+        return;
+    }
+
+    NSString *databasePath = [PasteboardManager databasePath];
+    if (sqlite3_open_v2([databasePath UTF8String], &_database,
+                         SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL) != SQLITE_OK) {
+        NSLog(@"[Kayoko] Failed to open database at %@: %s", databasePath, sqlite3_errmsg(_database));
+        return;
+    }
+
+    sqlite3_exec(_database, "PRAGMA journal_mode=WAL;", NULL, NULL, NULL);
+    sqlite3_exec(_database,
+                 "CREATE TABLE IF NOT EXISTS items ("
+                 "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                 "list_key TEXT NOT NULL,"
+                 "position INTEGER NOT NULL,"
+                 "bundle_identifier TEXT,"
+                 "content TEXT,"
+                 "image_name TEXT,"
+                 "remark TEXT,"
+                 "has_link INTEGER,"
+                 "recorded_at REAL);",
+                 NULL, NULL, NULL);
+    sqlite3_exec(_database, "CREATE INDEX IF NOT EXISTS idx_items_list_position ON items(list_key, position);", NULL, NULL, NULL);
+    sqlite3_exec(_database, "CREATE INDEX IF NOT EXISTS idx_items_list_content ON items(list_key, content);", NULL, NULL, NULL);
+}
+
+/**
+ * Migrates any pre-existing history.plist/favorites.plist data into the SQLite database,
+ * then removes the legacy plist files.
+ */
+- (void)migrateLegacyPlistDataIfNeeded {
+    if ([self hasItemsForListKey:kHistoryKeyHistory] || [self hasItemsForListKey:kHistoryKeyFavorites]) {
+        return;
+    }
+    NSString *legacyHistoryPlistPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.plist");
+    NSString *legacyFavoritesPlistPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/favorites.plist");
+
+    [self migrateLegacyPlistAtPath:legacyHistoryPlistPath intoListKey:kHistoryKeyHistory];
+    [self migrateLegacyPlistAtPath:legacyFavoritesPlistPath intoListKey:kHistoryKeyFavorites];
+}
+
+- (void)migrateLegacyPlistAtPath:(NSString *)legacyPlistPath intoListKey:(NSString *)listKey {
+    if (![_fileManager fileExistsAtPath:legacyPlistPath]) {
+        return;
+    }
+
+    if (![self hasItemsForListKey:listKey]) {
+        NSData *plistData = [NSData dataWithContentsOfFile:legacyPlistPath];
+        NSArray *legacyItems = [NSPropertyListSerialization propertyListWithData:plistData
+                                                                          options:0
+                                                                           format:NULL
+                                                                            error:nil];
+        if ([legacyItems isKindOfClass:[NSArray class]] && [legacyItems count] > 0) {
+            [self setItems:legacyItems forHistoryWithKey:listKey];
+        }
+    }
+
+    // [_fileManager removeItemAtPath:legacyPlistPath error:nil];
+}
+
+- (void)dealloc {
+    if (_database) {
+        sqlite3_close(_database);
+        _database = NULL;
+    }
+}
+
 @end
+

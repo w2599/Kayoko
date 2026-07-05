@@ -24,10 +24,8 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 
 + (instancetype)sharedInstance;
 - (instancetype)init NS_UNAVAILABLE;
-- (void)preparePasteboardQueue;
 
-+ (NSString *)historyPath;
-+ (NSString *)favoritesPath;
++ (NSString *)databasePath;
 + (NSString *)historyImagesPath;
 + (NSBundle *)localizationBundle;
 

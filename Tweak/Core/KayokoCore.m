@@ -637,7 +637,6 @@ static void load_preferences() {
     kayokoPrefsPlayHapticFeedback = [effectivePreferences[kPreferenceKeyPlayHapticFeedback] boolValue];
     kayokoPrefsHeightInPoints = [effectivePreferences[kPreferenceKeyHeightInPoints] doubleValue];
 
-    [[PasteboardManager sharedInstance] preparePasteboardQueue];
     [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
     [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
     [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];

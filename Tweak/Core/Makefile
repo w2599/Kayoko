@@ -11,7 +11,7 @@ KayokoCore_CFLAGS += -I../../Preferences
 KayokoCore_CFLAGS += -I../../Utils
 
 KayokoCore_FRAMEWORKS += UIKit AudioToolbox AVFoundation
-KayokoCore_LIBRARIES += sandy
+KayokoCore_LIBRARIES += sandy sqlite3
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk
