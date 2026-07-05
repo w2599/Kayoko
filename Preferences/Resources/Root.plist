@@ -173,6 +173,45 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Height (Points)</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>KayokoSliderCell</string>
+			<key>default</key>
+			<real>420</real>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>HeightInPoints</string>
+			<key>min</key>
+			<real>200</real>
+			<key>max</key>
+			<real>600</real>
+			<key>showValue</key>
+			<true/>
+			<key>isContinuous</key>
+			<true/>
+			<key>isSegmented</key>
+			<false/>
+			<key>valueLabelWidth</key>
+			<integer>44</integer>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.height.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Show Kayoko</string>
+			<key>action</key>
+			<string>showKayoko</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Behaviors</string>
 		</dict>
 		<dict>
@@ -331,37 +370,6 @@
 			</array>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Height (Points)</string>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>KayokoSliderCell</string>
-			<key>default</key>
-			<real>420</real>
-			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
-			<key>key</key>
-			<string>HeightInPoints</string>
-			<key>min</key>
-			<real>200</real>
-			<key>max</key>
-			<real>600</real>
-			<key>showValue</key>
-			<true/>
-			<key>isContinuous</key>
-			<true/>
-			<key>isSegmented</key>
-			<false/>
-			<key>valueLabelWidth</key>
-			<integer>44</integer>
-			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.height.reload</string>
 		</dict>
 
 		<dict>

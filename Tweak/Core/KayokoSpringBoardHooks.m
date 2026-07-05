@@ -71,8 +71,11 @@ static void kayokoHandleExternalKeyboardShortcut(id self, SEL _cmd, UIKeyCommand
     (void)self;
     (void)_cmd;
     (void)command;
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
+    NSString *notificationName =
+        [runtime panelVisible] ? kKayokoNotificationKeyCoreHide : kKayokoNotificationKeyCoreShow;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (__bridge CFStringRef)kKayokoNotificationKeyCoreShow, nil, nil, YES);
+                                         (__bridge CFStringRef)notificationName, nil, nil, YES);
 }
 
 NS_ASSUME_NONNULL_BEGIN

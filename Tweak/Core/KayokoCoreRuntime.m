@@ -531,4 +531,16 @@ NS_ASSUME_NONNULL_END
     [[KayokoPasteboardManager sharedInstance] checkpointHistoryDatabase];
 }
 
+- (void)clearFavorites {
+    [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyFavorites
+                                                                      shouldRemoveImages:YES
+                                                                              completion:nil];
+}
+
+- (void)clearHistory {
+    [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyHistory
+                                                                      shouldRemoveImages:YES
+                                                                              completion:nil];
+}
+
 @end

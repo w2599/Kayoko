@@ -221,6 +221,11 @@ NS_ASSUME_NONNULL_END
     [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
+- (void)showKayoko {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kKayokoNotificationKeyCoreShow, nil, nil, YES);
+}
+
 - (BOOL)sendRelaunchActionWithOptions:(SBSRelaunchActionOptions)options actionName:(NSString *)actionName {
     Class actionClass = NSClassFromString(@"SBSRelaunchAction");
     Class serviceClass = NSClassFromString(@"FBSSystemService");

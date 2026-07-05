@@ -2,6 +2,10 @@
 "Reset Preferences" = "Reset Preferences";
 "Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Reset" = "Reset";
+"Clear Favorites" = "Clear Favorites";
+"Are you sure you want to clear all favorite items? This action cannot be undone." = "Are you sure you want to clear all favorite items? This action cannot be undone.";
+"Clear History" = "Clear History";
+"Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
 "Cancel" = "Cancel";
 "Check Data Directory" = "Check Data Directory";
 "Unable to Open Filza" = "Unable to Open Filza";
