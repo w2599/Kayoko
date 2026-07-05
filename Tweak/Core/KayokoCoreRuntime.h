@@ -1,11 +1,14 @@
 #import <UIKit/UIKit.h>
 
+#import "KayokoPreferenceKeys.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoCoreRuntime : NSObject
 
 @property(nonatomic, assign, readonly, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readonly) NSUInteger activationMethod;
+@property(nonatomic, assign, readonly) KayokoGestureRecognizerMode gestureRecognizerMode;
 @property(nonatomic, assign, readonly) BOOL pasteTipsDisabled;
 @property(nonatomic, assign, readonly) BOOL panelVisible;
 @property(nonatomic, assign, readonly) BOOL fullscreenSearchActive;

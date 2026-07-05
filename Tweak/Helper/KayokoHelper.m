@@ -17,17 +17,21 @@ __attribute((constructor)) static void initialize() {
     }
 
     KayokoHelperProcessContext *context = [KayokoHelperProcessContext currentContext];
+    NSUInteger helperActivationMethod = configuration.activationMethod;
+    if (configuration.gestureRecognizerMode == kKayokoGestureRecognizerModeSystem) {
+        helperActivationMethod &= ~kActivationMethodSwipeUp;
+    }
+
     switch (context.kind) {
     case KayokoHelperProcessKindKeyboardExtension:
-        [KayokoHelperHookInstaller installKeyboardExtensionHooksWithActivationMethod:configuration.activationMethod];
+        [KayokoHelperHookInstaller installKeyboardExtensionHooksWithActivationMethod:helperActivationMethod];
         return;
     case KayokoHelperProcessKindSpringBoard:
         [[KayokoHelperRuntime sharedRuntime] installSpringBoardRuntimeWithConfiguration:configuration];
-        [KayokoHelperHookInstaller
-            installSpringBoardActivationHooksWithActivationMethod:configuration.activationMethod];
+        [KayokoHelperHookInstaller installSpringBoardActivationHooksWithActivationMethod:helperActivationMethod];
         return;
     case KayokoHelperProcessKindApplication:
-        [KayokoHelperHookInstaller installApplicationHooksWithActivationMethod:configuration.activationMethod];
+        [KayokoHelperHookInstaller installApplicationHooksWithActivationMethod:helperActivationMethod];
         [[KayokoHelperRuntime sharedRuntime] installApplicationRuntimeWithConfiguration:configuration];
         return;
     case KayokoHelperProcessKindUnsupported:

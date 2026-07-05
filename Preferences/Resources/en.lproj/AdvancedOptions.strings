@@ -1,4 +1,9 @@
 "Advanced Options" = "Advanced Options";
+"Gesture Recognizer" = "Gesture Recognizer";
+"“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable.";
+"Classic" = "Classic";
+"System" = "System";
+"Dangerous Zone" = "Dangerous Zone";
 "Reset Preferences" = "Reset Preferences";
 "Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Reset" = "Reset";
@@ -7,6 +12,7 @@
 "Clear History" = "Clear History";
 "Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
 "Cancel" = "Cancel";
+"Maintenance" = "Maintenance";
 "Check Data Directory" = "Check Data Directory";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Copy Path" = "Copy Path";

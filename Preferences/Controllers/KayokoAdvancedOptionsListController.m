@@ -6,8 +6,10 @@
 #import "KayokoAdvancedOptionsListController.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoRespringControllerSupport.h"
 
 #import <Preferences/PSSpecifier.h>
+#import <UIKit/UIKit.h>
 #import <roothide.h>
 
 static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82flex.kayoko";
@@ -20,6 +22,14 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     }
 
     return _specifiers;
+}
+
+- (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
+    [super setPreferenceValue:value specifier:specifier];
+
+    if ([[specifier propertyForKey:@"key"] isEqualToString:kKayokoPreferenceKeyGestureRecognizerMode]) {
+        [self promptToRespring];
+    }
 }
 
 - (void)resetPrompt {

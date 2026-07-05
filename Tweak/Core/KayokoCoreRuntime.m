@@ -51,6 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, readwrite, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readwrite) NSUInteger activationMethod;
+@property(nonatomic, assign, readwrite) KayokoGestureRecognizerMode gestureRecognizerMode;
 @property(nonatomic, assign, readwrite) BOOL pasteTipsDisabled;
 
 @property(nonatomic, strong, nullable) KayokoMainViewController *mainViewController;
@@ -229,6 +230,7 @@ NS_ASSUME_NONNULL_END
     [self.preferences registerDefaults:@{
         kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
         kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
+        kKayokoPreferenceKeyGestureRecognizerMode : @(kKayokoPreferenceKeyGestureRecognizerModeDefaultValue),
         kKayokoPreferenceKeyMaximumHistoryAmount : @(kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue),
         kKayokoPreferenceKeySaveText : @(kKayokoPreferenceKeySaveTextDefaultValue),
         kKayokoPreferenceKeySaveImages : @(kKayokoPreferenceKeySaveImagesDefaultValue),
@@ -247,6 +249,12 @@ NS_ASSUME_NONNULL_END
 
     [self readPasteTipPreferencesFromPreferences:self.preferences];
     self.activationMethod = [[self.preferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
+    self.gestureRecognizerMode =
+        [[self.preferences objectForKey:kKayokoPreferenceKeyGestureRecognizerMode] unsignedIntegerValue];
+    if (self.gestureRecognizerMode != kKayokoGestureRecognizerModeClassic &&
+        self.gestureRecognizerMode != kKayokoGestureRecognizerModeSystem) {
+        self.gestureRecognizerMode = kKayokoPreferenceKeyGestureRecognizerModeDefaultValue;
+    }
     self.maximumHistoryAmount = [KayokoPasteboardManager
         normalizedMaximumHistoryAmountForValue:[[self.preferences objectForKey:kKayokoPreferenceKeyMaximumHistoryAmount]
                                                    unsignedIntegerValue]];

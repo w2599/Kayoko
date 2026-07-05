@@ -22,6 +22,11 @@ typedef NS_ENUM(NSUInteger, KayokoAutomaticPasteMode) {
     kKayokoAutomaticPasteModeAutomatic = 2
 };
 
+typedef NS_ENUM(NSUInteger, KayokoGestureRecognizerMode) {
+    kKayokoGestureRecognizerModeClassic = 0,
+    kKayokoGestureRecognizerModeSystem = 1
+};
+
 typedef NS_ENUM(NSUInteger, KayokoInitialViewMode) {
     kKayokoInitialViewModeHistory = 0,
     kKayokoInitialViewModeFavorites = 1,
@@ -36,6 +41,7 @@ static NSString *const kKayokoPreferenceKeySaveText = @"SaveText";
 static NSString *const kKayokoPreferenceKeySaveImages = @"SaveImages";
 static NSString *const kKayokoPreferenceKeySwipeToSelectWords = @"SwipeToSelectWords";
 static NSString *const kKayokoPreferenceKeyActivationMethod = @"ActivationMethod";
+static NSString *const kKayokoPreferenceKeyGestureRecognizerMode = @"GestureRecognizerMode";
 static NSString *const kKayokoPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
 static NSString *const kKayokoPreferenceKeyAutomaticPasteMode = @"AutomaticPasteMode";
 static NSString *const kKayokoPreferenceKeyInitialViewMode = @"InitialViewMode";
@@ -54,6 +60,8 @@ static BOOL const kKayokoPreferenceKeySaveImagesDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeySwipeToSelectWordsDefaultValue = YES;
 static ActivationMethod const kKayokoPreferenceKeyActivationMethodDefaultValue =
     kActivationMethodDictationKey | kActivationMethodInputSwitcher | kActivationMethodExternalKeyboard;
+static KayokoGestureRecognizerMode const kKayokoPreferenceKeyGestureRecognizerModeDefaultValue =
+    kKayokoGestureRecognizerModeClassic;
 static BOOL const kKayokoPreferenceKeyAutomaticallyPasteDefaultValue = YES;
 static KayokoAutomaticPasteMode const kKayokoPreferenceKeyAutomaticPasteModeDefaultValue =
     kKayokoAutomaticPasteModeClassic;
