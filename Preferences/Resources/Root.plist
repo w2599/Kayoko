@@ -148,23 +148,36 @@
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
+
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Default View</string>
 			<key>footerText</key>
-			<string>When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection.</string>
+			<string>Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSSwitchCell</string>
+			<string>PSSegmentCell</string>
 			<key>default</key>
-			<true/>
+			<integer>2</integer>
 			<key>defaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
-			<string>SwipeToSelectWords</string>
-			<key>label</key>
-			<string>Swipe to Select Words</string>
+			<string>InitialViewMode</string>
+			<key>validValues</key>
+			<array>
+				<integer>1</integer>
+				<integer>0</integer>
+				<integer>2</integer>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Favorites</string>
+				<string>History</string>
+				<string>Previous</string>
+			</array>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
@@ -289,83 +302,24 @@
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection.</string>
+		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
-			<false/>
+			<true/>
 			<key>defaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
-			<string>IgnoreRemoteReplication</string>
+			<string>SwipeToSelectWords</string>
 			<key>label</key>
-			<string>Ignore Remote Copy</string>
-			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Automatic Paste Mode</string>
-			<key>footerText</key>
-			<string>“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSegmentCell</string>
-			<key>default</key>
-			<integer>0</integer>
-			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
-			<key>key</key>
-			<string>AutomaticPasteMode</string>
-			<key>validValues</key>
-			<array>
-				<integer>2</integer>
-				<integer>0</integer>
-				<integer>1</integer>
-			</array>
-			<key>validTitles</key>
-			<array>
-				<string>Auto</string>
-				<string>Classic</string>
-				<string>Simulated</string>
-			</array>
-			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Default View</string>
-			<key>footerText</key>
-			<string>Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSegmentCell</string>
-			<key>default</key>
-			<integer>2</integer>
-			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
-			<key>key</key>
-			<string>InitialViewMode</string>
-			<key>validValues</key>
-			<array>
-				<integer>1</integer>
-				<integer>0</integer>
-				<integer>2</integer>
-			</array>
-			<key>validTitles</key>
-			<array>
-				<string>Favorites</string>
-				<string>History</string>
-				<string>Previous</string>
-			</array>
+			<string>Swipe to Select Words</string>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>

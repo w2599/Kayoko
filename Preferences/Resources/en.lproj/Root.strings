@@ -20,12 +20,6 @@
 "Automatically Paste" = "Automatically Paste";
 "Touch Outside to Dismiss" = "Touch Outside to Dismiss";
 "Disable Paste Tips" = "Disable Paste Tips";
-"Ignore Remote Copy" = "Ignore Remote Copy";
-"Automatic Paste Mode" = "Automatic Paste Mode";
-"“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.";
-"Auto" = "Auto";
-"Classic" = "Classic";
-"Simulated" = "Simulated";
 "Default View" = "Default View";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.";
 "Favorites" = "Favorites";
