@@ -52,8 +52,8 @@
 			<string>Maximum Amount</string>
 		</dict>
 		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
+			<key>cellClass</key>
+			<string>KayokoSliderCell</string>
 			<key>default</key>
 			<real>200</real>
 			<key>key</key>
@@ -62,12 +62,8 @@
 			<real>100</real>
 			<key>max</key>
 			<real>2000</real>
-			<key>showValue</key>
-			<true/>
-			<key>isSegmented</key>
-			<true/>
 			<key>segmentCount</key>
-			<real>19</real>
+			<real>20</real>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -235,22 +231,18 @@
 			<string>Height (Points)</string>
 		</dict>
 		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
+			<key>cellClass</key>
+			<string>KayokoSliderCell</string>
 			<key>default</key>
-			<real>420</real>
+			<real>468</real>
 			<key>key</key>
 			<string>HeightInPoints</string>
 			<key>min</key>
 			<real>200</real>
 			<key>max</key>
 			<real>600</real>
-			<key>showValue</key>
-			<true/>
 			<key>isContinuous</key>
 			<true/>
-			<key>isSegmented</key>
-			<false/>
 		</dict>
 
 		<dict>

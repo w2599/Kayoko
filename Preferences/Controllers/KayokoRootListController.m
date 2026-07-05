@@ -152,19 +152,6 @@
                                          (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
 }
 
-- (UISlider *_Nullable)findSliderInView:(UIView *)view {
-    if ([view isKindOfClass:[UISlider class]]) {
-        return (UISlider *)view;
-    }
-    for (UIView *subview in view.subviews) {
-        UISlider *slider = [self findSliderInView:subview];
-        if (slider) {
-            return slider;
-        }
-    }
-    return nil;
-}
-
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
     NSString *key = [specifier propertyForKey:@"cell"];
@@ -174,16 +161,6 @@
         BOOL isDestructive = [isDestructiveValue boolValue];
         cell.textLabel.textColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
         cell.textLabel.highlightedTextColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
-        return cell;
-    }
-    if ([key isEqualToString:@"PSSliderCell"]) {
-        UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-        NSNumber *isContinuousValue = [specifier propertyForKey:@"isContinuous"];
-        BOOL isContinuous = [isContinuousValue boolValue];
-        UISlider *slider = [self findSliderInView:cell];
-        if (slider) {
-            slider.continuous = isContinuous;
-        }
         return cell;
     }
     if ([key isEqualToString:@"PSLinkListCell"]) {
