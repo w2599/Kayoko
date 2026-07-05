@@ -37,6 +37,9 @@
 "Tools" = "工具";
 "Respring" = "妙手回春";
 "Reset Preferences" = "还原设置";
+"Add 2000 Random History Items" = "新增 2000 条随机历史记录";
+"Do you want to add 2000 random items to your clipboard history? This is meant for testing." = "是否要向剪贴板历史记录新增 2000 条随机内容？会覆盖现有内容，此功能仅用于测试。";
+"Added 2000 random items to your clipboard history." = "已新增 2000 条随机历史记录。";
 "Thanks to you and everyone who has helped in any way." = "感谢你和所有以任何方式提供帮助的人。";
 "Credits" = "致谢";
 "My Tweaks" = "我的插件";
@@ -49,6 +52,7 @@
 "Are you sure you want to reset your preferences?" = "你确定要还原设置吗？";
 "Yes" = "是";
 "No" = "否";
+"OK" = "好的";
 "Maintainer" = "维护者";
 "Latest maintainer of Kayoko." = "Kayoko 的最新维护者。";
 "Made with ♥ by OwnGoal Studio" = "「乌龙工作室」倾情献制";

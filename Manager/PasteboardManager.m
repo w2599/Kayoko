@@ -545,6 +545,20 @@ static int kKayokoImageCacheLimit = 20;
                                          (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
 }
 
+/**
+ * Immediately shrinks the history down to a new maximum amount, instead of waiting for the next
+ * pasteboard change to trigger the truncation lazily.
+ *
+ * @param maximumAmount The new maximum amount of history items to keep.
+ */
+- (void)truncateHistoryToMaximumAmount:(NSUInteger)maximumAmount {
+    [self setMaximumHistoryAmount:maximumAmount];
+
+    [self ensureResourcesExist];
+    [self truncateListKey:kHistoryKeyHistory toMaximumCount:maximumAmount];
+    [self notifyReload];
+}
+
 
 /**
  * Returns the image for an item.

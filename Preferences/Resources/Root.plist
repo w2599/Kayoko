@@ -284,6 +284,14 @@
 			<key>isDestructive</key>
 			<true/>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Add 2000 Random History Items</string>
+			<key>action</key>
+			<string>addRandomHistoryItemsPrompt</string>
+		</dict>
 
 		<dict>
 			<key>cell</key>

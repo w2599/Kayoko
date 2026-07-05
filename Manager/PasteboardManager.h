@@ -41,6 +41,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)updateRemark:(NSString *)remark
          forItem:(PasteboardItem *)item
     inHistoryWithKey:(NSString *)historyKey;
+- (void)truncateHistoryToMaximumAmount:(NSUInteger)maximumAmount;
 
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)setItems:(NSArray *)items forHistoryWithKey:(NSString *)historyKey;
