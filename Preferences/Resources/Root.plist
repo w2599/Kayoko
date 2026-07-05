@@ -173,6 +173,39 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Preview</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSegmentCell</string>
+			<key>default</key>
+			<integer>1</integer>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>PreviewLineCount</string>
+			<key>label</key>
+			<string>Preview Lines</string>
+			<key>validValues</key>
+			<array>
+				<integer>1</integer>
+				<integer>2</integer>
+				<integer>3</integer>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Single Line</string>
+				<string>Double Line</string>
+				<string>Triple Line</string>
+			</array>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Height (Points)</string>
 		</dict>
 		<dict>
@@ -308,6 +341,39 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Default View</string>
+			<key>footerText</key>
+			<string>Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSegmentCell</string>
+			<key>default</key>
+			<integer>2</integer>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>InitialViewMode</string>
+			<key>validValues</key>
+			<array>
+				<integer>1</integer>
+				<integer>0</integer>
+				<integer>2</integer>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Favorites</string>
+				<string>History</string>
+				<string>Previous</string>
+			</array>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Feedbacks</string>
 		</dict>
 		<dict>
@@ -335,39 +401,6 @@
 			<string>PlayHapticFeedback</string>
 			<key>label</key>
 			<string>Play Haptic Feedback</string>
-			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Preview</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSegmentCell</string>
-			<key>default</key>
-			<integer>1</integer>
-			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
-			<key>key</key>
-			<string>PreviewLineCount</string>
-			<key>label</key>
-			<string>Preview Lines</string>
-			<key>validValues</key>
-			<array>
-				<integer>1</integer>
-				<integer>2</integer>
-				<integer>3</integer>
-			</array>
-			<key>validTitles</key>
-			<array>
-				<string>Single Line</string>
-				<string>Double Line</string>
-				<string>Triple Line</string>
-			</array>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>

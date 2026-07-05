@@ -54,13 +54,15 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 }
 
 - (void)clearFavoritesPrompt {
-    [self presentClearConfirmationWithMessageKey:@"Are you sure you want to clear all favorite items? This action cannot be undone."
+    [self presentClearConfirmationWithMessageKey:
+              @"Are you sure you want to clear all favorite items? This action cannot be undone."
                                   actionTitleKey:@"Clear Favorites"
                                 notificationName:kKayokoNotificationKeyCoreClearFavorites];
 }
 
 - (void)clearHistoryPrompt {
-    [self presentClearConfirmationWithMessageKey:@"Are you sure you want to clear all history items? This action cannot be undone."
+    [self presentClearConfirmationWithMessageKey:
+              @"Are you sure you want to clear all history items? This action cannot be undone."
                                   actionTitleKey:@"Clear History"
                                 notificationName:kKayokoNotificationKeyCoreClearHistory];
 }
@@ -70,22 +72,18 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
                               notificationName:(NSString *)notificationName {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
-    UIAlertController *clearAlert =
-        [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                                            message:[bundle localizedStringForKey:messageKey
-                                                                            value:nil
-                                                                            table:@"AdvancedOptions"]
-                                     preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *clearAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:messageKey value:nil table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *clearAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:actionTitleKey
-                                                                                        value:nil
-                                                                                        table:@"AdvancedOptions"]
-                                                          style:UIAlertActionStyleDestructive
-                                                        handler:^(UIAlertAction *action) {
-                                                          CFNotificationCenterPostNotification(
-                                                              CFNotificationCenterGetDarwinNotifyCenter(),
-                                                              (CFStringRef)notificationName, nil, nil, YES);
-                                                        }];
+    UIAlertAction *clearAction =
+        [UIAlertAction actionWithTitle:[bundle localizedStringForKey:actionTitleKey value:nil table:@"AdvancedOptions"]
+                                 style:UIAlertActionStyleDestructive
+                               handler:^(UIAlertAction *action) {
+                                 CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                                      (CFStringRef)notificationName, nil, nil, YES);
+                               }];
 
     UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
                                                                                          value:nil

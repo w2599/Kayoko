@@ -64,6 +64,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
+@property(nonatomic, assign) KayokoInitialViewMode initialViewMode;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
@@ -190,6 +191,9 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController previewLineCount] != self.previewLineCount) {
         [self.mainViewController setPreviewLineCount:self.previewLineCount];
     }
+    if ([self.mainViewController initialViewMode] != self.initialViewMode) {
+        [self.mainViewController setInitialViewMode:self.initialViewMode];
+    }
     if ([self.mainViewController shouldPlayFeedback] != self.playHapticFeedback) {
         [self.mainViewController setShouldPlayFeedback:self.playHapticFeedback];
     }
@@ -231,6 +235,7 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
         kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
+        kKayokoPreferenceKeyInitialViewMode : @(kKayokoPreferenceKeyInitialViewModeDefaultValue),
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
         kKayokoPreferenceKeyIgnoreRemoteReplication : @(kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue),
@@ -255,6 +260,12 @@ NS_ASSUME_NONNULL_END
         self.automaticPasteMode != kKayokoAutomaticPasteModeSimulated &&
         self.automaticPasteMode != kKayokoAutomaticPasteModeAutomatic) {
         self.automaticPasteMode = kKayokoPreferenceKeyAutomaticPasteModeDefaultValue;
+    }
+    self.initialViewMode = [[self.preferences objectForKey:kKayokoPreferenceKeyInitialViewMode] unsignedIntegerValue];
+    if (self.initialViewMode != kKayokoInitialViewModeHistory &&
+        self.initialViewMode != kKayokoInitialViewModeFavorites &&
+        self.initialViewMode != kKayokoInitialViewModePreviousSelection) {
+        self.initialViewMode = kKayokoPreferenceKeyInitialViewModeDefaultValue;
     }
     self.dismissOnOutsideTouch = [[self.preferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
     BOOL ignoreRemoteReplication =

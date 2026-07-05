@@ -26,6 +26,11 @@
 "Auto" = "Auto";
 "Classic" = "Classic";
 "Simulated" = "Simulated";
+"Default View" = "Default View";
+"Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.";
+"Favorites" = "Favorites";
+"History" = "History";
+"Previous" = "Previous";
 "Feedbacks" = "Feedbacks";
 "Play Sound Effects" = "Play Sound Effects";
 "Play Haptic Feedback" = "Play Haptic Feedback";
