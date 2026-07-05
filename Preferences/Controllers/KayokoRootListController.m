@@ -11,9 +11,13 @@
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
-#import <roothide.h>
 
-NS_ASSUME_NONNULL_BEGIN
+typedef NS_OPTIONS(NSUInteger, SBSRelaunchActionOptions) {
+    SBSRelaunchActionOptionsNone,
+    SBSRelaunchActionOptionsRestartRenderServer = 1 << 0,
+    SBSRelaunchActionOptionsSnapshotTransition = 1 << 1,
+    SBSRelaunchActionOptionsFadeToBlackTransition = 1 << 2
+};
 
 @interface NSConcreteNotification : NSNotification
 @end
@@ -22,11 +26,18 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification;
 @end
 
-@interface NSTask : NSObject
-@property(nonatomic, copy) NSArray<NSString *> *arguments;
-@property(nonatomic, copy) NSString *launchPath;
-- (void)launch;
+@interface SBSRelaunchAction : NSObject
++ (instancetype)actionWithReason:(NSString *)reason
+                         options:(SBSRelaunchActionOptions)options
+                       targetURL:(nullable NSURL *)targetURL;
 @end
+
+@interface FBSSystemService : NSObject
++ (instancetype)sharedService;
+- (void)sendActions:(NSSet *)actions withResult:(nullable void (^)(NSError *error))result;
+@end
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoRootListController () <UISearchResultsUpdating>
 @end
@@ -210,11 +221,36 @@ NS_ASSUME_NONNULL_END
     [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
+- (BOOL)sendRelaunchActionWithOptions:(SBSRelaunchActionOptions)options actionName:(NSString *)actionName {
+    Class actionClass = NSClassFromString(@"SBSRelaunchAction");
+    Class serviceClass = NSClassFromString(@"FBSSystemService");
+    if (![actionClass respondsToSelector:@selector(actionWithReason:options:targetURL:)] ||
+        ![serviceClass respondsToSelector:@selector(sharedService)]) {
+        NSLog(@"Kayoko: Unable to perform %@ because FrontBoard relaunch SPI is unavailable",
+              actionName ?: @"relaunch");
+        return NO;
+    }
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      SBSRelaunchAction *action = [(id)actionClass actionWithReason:@"Kayoko" options:options targetURL:nil];
+      FBSSystemService *service = [(id)serviceClass sharedService];
+      if (!action || ![service respondsToSelector:@selector(sendActions:withResult:)]) {
+          NSLog(@"Kayoko: FBSSystemService cannot perform %@", actionName ?: @"relaunch");
+          return;
+      }
+
+      [service sendActions:[NSSet setWithObject:action]
+                withResult:^(NSError *error) {
+                  if (error) {
+                      NSLog(@"Kayoko: %@ failed: %@", actionName ?: @"Relaunch", error);
+                  }
+                }];
+    });
+    return YES;
+}
+
 - (void)respring {
-    NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:jbroot(@"/usr/bin/killall")];
-    [task setArguments:@[ @"backboardd" ]];
-    [task launch];
+    [self sendRelaunchActionWithOptions:SBSRelaunchActionOptionsRestartRenderServer actionName:@"Hard respring"];
 }
 
 - (UISlider *_Nullable)findSliderInView:(UIView *)view {
