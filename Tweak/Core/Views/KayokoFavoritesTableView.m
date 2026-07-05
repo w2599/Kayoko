@@ -220,16 +220,15 @@
  * For favorites, updating the pasteboard should not create a new history entry.
  */
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-  KayokoTableViewCell *cell = (KayokoTableViewCell *)[tableView cellForRowAtIndexPath:indexPath];
-  [cell setSelected:NO animated:YES];
+    [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
 
-  NSDictionary *dictionary = [self items][[indexPath row]];
-  PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-  [[PasteboardManager sharedInstance] updatePasteboardWithItem:item
-                        fromHistoryWithKey:kHistoryKeyFavorites
-                         shouldAutoPaste:YES];
+    NSDictionary *dictionary = [self items][[indexPath row]];
+    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+    [[PasteboardManager sharedInstance] updatePasteboardWithItem:item
+                                              fromHistoryWithKey:kHistoryKeyFavorites
+                                                 shouldAutoPaste:YES];
 
-  [[self superview] performSelector:@selector(hide)];
+    [[self superview] performSelector:@selector(hide)];
 }
 
 /**

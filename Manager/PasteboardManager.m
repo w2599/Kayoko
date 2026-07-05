@@ -62,15 +62,6 @@ static int kKayokoImageCacheLimit = 20;
     return kHistoryImagesPath;
 }
 
-+ (NSString *)pendingAutoPasteItemPath {
-        static NSString *kPendingAutoPasteItemPath = nil;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            kPendingAutoPasteItemPath = jbroot(@"/var/mobile/Library/codes.aurora.kayoko/pending-auto-paste-item.plist");
-        });
-        return kPendingAutoPasteItemPath;
-}
-
 + (NSBundle *)localizationBundle {
     static NSBundle *kLocalizationBundle = nil;
     static dispatch_once_t onceToken;
@@ -336,12 +327,6 @@ static int kKayokoImageCacheLimit = 20;
     NSUInteger newChangeCount = [_pasteboard changeCount];
     _lastChangeCount = newChangeCount;
 
-    if (shouldAutoPaste) {
-        [self setPendingAutoPasteItem:item];
-    } else {
-        [self clearPendingAutoPasteItem];
-    }
-
     // 立即触发粘贴操作，以免被下方的历史记录管理逻辑所延迟，
     // 因为该逻辑可能涉及读写体积较大的历史记录文件。
     if ([self automaticallyPaste] && shouldAutoPaste) {
@@ -441,51 +426,6 @@ static int kKayokoImageCacheLimit = 20;
                                          (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
 }
 
-/**
- * Returns the latest item from the default history.
- *
- * @return The item.
- */
-- (PasteboardItem *)getLatestHistoryItem {
-    NSArray *history = [self getItemsFromHistoryWithKey:kHistoryKeyHistory];
-    return [PasteboardItem itemFromDictionary:[history firstObject] ?: nil];
-}
-
-- (PasteboardItem *)getPendingAutoPasteItem {
-    [self ensureResourcesExist];
-
-    NSDictionary *dictionary = [NSDictionary dictionaryWithContentsOfFile:[PasteboardManager pendingAutoPasteItemPath]];
-    if (![dictionary isKindOfClass:[NSDictionary class]]) {
-        return nil;
-    }
-
-    return [PasteboardItem itemFromDictionary:dictionary];
-}
-
-- (void)setPendingAutoPasteItem:(PasteboardItem *)item {
-    [self ensureResourcesExist];
-
-    if (!item) {
-        [self clearPendingAutoPasteItem];
-        return;
-    }
-
-    NSDictionary *dictionary = @{
-        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
-        kItemKeyContent : [item content] ?: @"",
-        kItemKeyImageName : [item imageName] ?: @"",
-        kItemKeyRemark : [item remark] ?: @"",
-        kItemKeyHasLink : @([item hasLink]),
-        kItemKeyRecordedAt : @([item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970])
-    };
-
-    [dictionary writeToFile:[PasteboardManager pendingAutoPasteItemPath] atomically:YES];
-}
-
-- (void)clearPendingAutoPasteItem {
-    [self ensureResourcesExist];
-    [_fileManager removeItemAtPath:[PasteboardManager pendingAutoPasteItemPath] error:nil];
-}
 
 /**
  * Returns the image for an item.

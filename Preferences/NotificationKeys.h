@@ -12,7 +12,6 @@ static NSString *const kNotificationKeyCoreReload = @"codes.aurora.kayoko.core.r
 static NSString *const kNotificationKeyHelperPaste = @"codes.aurora.kayoko.helper.paste";
 static NSString *const kNotificationKeyHelperRestoreFirstResponder = @"codes.aurora.kayoko.helper.restoreFirstResponder";
 static NSString *const kNotificationKeyPreferencesReload = @"codes.aurora.kayoko.preferences.reload";
-static NSString *const kNotificationKeyPasteWillStart = @"codes.aurora.kayoko.paste.willstart";
 
 static NSString *const kNotificationKeyCopyVaultHistoryShow = @"com.squidforce.copyvault/history/show";
 static NSString *const kNotificationKeyCopyVaultFavouriteShow = @"com.squidforce.copyvault/favourite/show";

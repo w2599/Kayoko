@@ -11,6 +11,7 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
+#import "KayokoKeyboardShortcutSender.h"
 
 #import <CoreFoundation/CFNotificationCenter.h>
 #import <Foundation/Foundation.h>
@@ -28,7 +29,7 @@ NSString *const kayokoSelectorName = @"_Kayoko_OpenTools_ab2e39c7";
 NSString *const kayokoSelectorSignature = @"v@:";
 
 static BOOL shouldShowCustomSuggestions = NO;
-static BOOL applicationIsInForeground = NO;
+static BOOL isSpringBoard = NO;
 
 static __weak UIResponder *kayokoLastTextInputResponder = nil;
 
@@ -43,7 +44,6 @@ static BOOL override_UIResponder_becomeFirstResponder(UIResponder *self, SEL _cm
         if ([self conformsToProtocol:@protocol(UITextInput)] && ![self isKindOfClass:[UISearchBar class]]) {
             // NSLogDebug(@"[----] UIResponder is text input responder");
             kayokoLastTextInputResponder = self;
-            applicationIsInForeground = YES;
         }
     }
 
@@ -258,11 +258,6 @@ static BOOL override_UIKeyboardImpl_shouldShowDictationKey(UIKeyboardImpl *self,
 static void (*orig_UIKeyboardImpl_applicationDidBecomeActive)(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive);
 static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive) {
     orig_UIKeyboardImpl_applicationDidBecomeActive(self, _cmd, didBecomeActive);
-    // 延时1秒再给YES
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        applicationIsInForeground = YES;
-        // NSLogDebug(@"[----] YES UIKeyboardImpl");
-    });
 }
 
 /**
@@ -273,10 +268,6 @@ static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *s
 static void (*orig_UIKeyboardImpl_applicationWillResignActive)(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive);
 static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive) {
     orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-      applicationIsInForeground = NO;
-    //   NSLogDebug(@"[----] NO UIKeyboardImpl");
-    });
 }
 
 #pragma mark - UISystemKeyboardDockController class hooks
@@ -413,10 +404,6 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
  * Pastes the last copied item from the history.
  */
 static void kayokoPaste() {
-    // NSLogDebug(@"[----] kayokoPaste called, applicationIsInForeground: %d", applicationIsInForeground);
-    if (!applicationIsInForeground) {
-        return;
-    }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
       // 先把焦点还给 App 的输入框（覆盖：用户点 Kayoko 搜索结果时键盘未消失的情况）。
@@ -424,46 +411,18 @@ static void kayokoPaste() {
       if (responder && ![responder isFirstResponder] && [responder respondsToSelector:@selector(becomeFirstResponder)]) {
           [responder becomeFirstResponder];
       }
-
-      // 再执行原本的粘贴逻辑。
-      CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                           (CFStringRef)kNotificationKeyPasteWillStart, nil, nil, YES);
-
-      UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-
-      // Get the latest copied item if the pasteboard cleared itself.
-      // The pasteboard clears itself after inactivity.
-      if (![pasteboard string] && ![pasteboard image]) {
-          PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
-          PasteboardItem *item = [pasteboardManager getPendingAutoPasteItem];
-          if (!item) {
-              item = [pasteboardManager getLatestHistoryItem];
-          }
-          if (!item) {
-              return;
-          }
-
-          if (![[item imageName] isEqualToString:@""]) {
-              [pasteboard setImage:[pasteboardManager getImageForItem:item]];
-          } else {
-              [pasteboard setString:[item content]];
-          }
-
-          [pasteboardManager clearPendingAutoPasteItem];
-      }
-
+    
       // 给一次 runloop，让 becomeFirstResponder 的切换更稳。
+      if (!isSpringBoard) return;
       dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+        // [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+        [[KayokoKeyboardShortcutSender sharedSender] sendCommandV];
       });
     });
 }
 
 static void kayokoRestoreFirstResponder(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                        const void *object, CFDictionaryRef userInfo) {
-    if (!applicationIsInForeground) {
-        return;
-    }
 
     dispatch_async(dispatch_get_main_queue(), ^{
       UIResponder *responder = kayokoLastTextInputResponder;
@@ -542,7 +501,7 @@ __attribute((constructor)) static void initialize() {
     }
 
     NSString *processName = [[NSProcessInfo processInfo] processName];
-    BOOL isSpringBoard = [@"SpringBoard" isEqualToString:processName];
+    isSpringBoard = [@"SpringBoard" isEqualToString:processName];
 
     BOOL shouldLoad = NO;
     NSArray *args = [[objc_getClass("NSProcessInfo") processInfo] arguments];

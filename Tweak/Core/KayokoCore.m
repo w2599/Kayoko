@@ -45,7 +45,6 @@ BOOL kayokoPrefsPlayHapticFeedback = NO;
 
 CGFloat kayokoPrefsHeightInPoints = 420;
 
-static BOOL isInPasteProgress = NO;
 
 static NSTimeInterval lastPasteFeedbackOccurred = 0;
 static NSTimeInterval lastCopyFeedbackOccurred = 0;
@@ -419,8 +418,6 @@ static void override_UIStatusBarWindow_setFrame(UIStatusBarWindow *self, SEL _cm
 
 #pragma mark - Notification callbacks
 
-static void kayokoPasteWillStart() { isInPasteProgress = YES; }
-
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
@@ -428,12 +425,6 @@ static void _kayokoCopy() {
     NSLogDebug(@"[----] [Kayoko] Copying ...");
     [[PasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
         NSLogDebug(@"[----] [Kayoko] didSaveAnyItem: %d", didSaveAnyItem);
-        if (isInPasteProgress) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-              isInPasteProgress = NO;
-            });
-            return;
-        }
         if (!didSaveAnyItem) {
             return;
         }
@@ -776,10 +767,6 @@ __attribute((constructor)) static void initialize() {
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPaste,
             (CFStringRef)kNotificationKeyHelperPaste, NULL,
-            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
-        CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPasteWillStart,
-            (CFStringRef)kNotificationKeyPasteWillStart, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 
         return;

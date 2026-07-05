@@ -3,6 +3,7 @@ TWEAK_NAME := KayokoHelper
 KayokoHelper_FILES += KayokoHelper.m
 KayokoHelper_FILES += KeyokoHelperLogos.xm
 KayokoHelper_FILES += KayokoMenu.m
+KayokoHelper_FILES += KayokoKeyboardShortcutSender.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 
 
@@ -12,7 +13,7 @@ KayokoHelper_CFLAGS += -I../../Preferences
 KayokoHelper_CFLAGS += -I../../Manager
 KayokoHelper_CFLAGS += -I../../Utils
 
-KayokoHelper_FRAMEWORKS += UIKit
+KayokoHelper_FRAMEWORKS += UIKit IOKit
 KayokoHelper_LIBRARIES += sandy
 
 include $(THEOS)/makefiles/common.mk
