@@ -5,6 +5,7 @@
 
 #import "KayokoHistoryStore.h"
 #import "KayokoPasteboardItem.h"
+#import "KayokoSearchCriteria.h"
 
 #import <roothide.h>
 #import <sqlite3.h>
@@ -12,6 +13,8 @@
 
 static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.history-store";
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
+static NSString *const kKayokoHistoryStoreSearchIndexSchemaVersionKey = @"search_index_schema_version";
+static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 1;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -40,10 +43,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)dealloc {
-    if (_database) {
-        sqlite3_close(_database);
-        _database = NULL;
-    }
+    [self closeDatabase];
 }
 
 - (BOOL)prepareStoreWithError:(NSError **)error {
@@ -80,17 +80,38 @@ NS_ASSUME_NONNULL_END
                                              "has_link INTEGER NOT NULL DEFAULT 0,"
                                              "created_at REAL NOT NULL,"
                                              "updated_at REAL NOT NULL,"
-                                             "sequence INTEGER NOT NULL"
+                                             "sequence INTEGER NOT NULL,"
+                                             "search_index_version INTEGER NOT NULL DEFAULT 0"
+                                             ")";
+    NSString *createSearchTokensStatement = @"CREATE TABLE IF NOT EXISTS history_item_search_tokens ("
+                                             "item_id INTEGER NOT NULL,"
+                                             "history_key TEXT NOT NULL,"
+                                             "token_type TEXT NOT NULL,"
+                                             "token_value TEXT NOT NULL"
                                              ")";
     NSString *createUniqueIndexStatement = @"CREATE UNIQUE INDEX IF NOT EXISTS history_items_unique_content "
                                             "ON history_items(history_key, content)";
     NSString *createOrderedIndexStatement = @"CREATE INDEX IF NOT EXISTS history_items_ordered "
                                              "ON history_items(history_key, sequence DESC)";
+    NSString *createSearchTokenLookupIndexStatement =
+        @"CREATE INDEX IF NOT EXISTS history_item_search_tokens_lookup "
+         "ON history_item_search_tokens(history_key, token_type, token_value, item_id)";
+    NSString *createSearchTokenUniqueIndexStatement =
+        @"CREATE UNIQUE INDEX IF NOT EXISTS history_item_search_tokens_unique "
+         "ON history_item_search_tokens(item_id, token_type, token_value)";
+    NSString *createSearchTokenDeleteTriggerStatement =
+        @"CREATE TRIGGER IF NOT EXISTS history_items_delete_search_tokens "
+         "AFTER DELETE ON history_items "
+         "BEGIN "
+         "DELETE FROM history_item_search_tokens WHERE item_id = OLD.id; "
+         "END";
 
     NSArray<NSString *> *statements = @[
         @"PRAGMA journal_mode=WAL", @"PRAGMA synchronous=NORMAL",
         @"CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)",
-        createHistoryItemsStatement, createUniqueIndexStatement, createOrderedIndexStatement
+        createHistoryItemsStatement, createSearchTokensStatement, createUniqueIndexStatement,
+        createOrderedIndexStatement, createSearchTokenLookupIndexStatement, createSearchTokenUniqueIndexStatement,
+        createSearchTokenDeleteTriggerStatement
     ];
 
     for (NSString *statement in statements) {
@@ -99,7 +120,21 @@ NS_ASSUME_NONNULL_END
         }
     }
 
+    if (![self ensureColumnNamed:@"search_index_version"
+                         inTable:@"history_items"
+             usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN search_index_version INTEGER NOT NULL DEFAULT 0"
+                           error:error]) {
+        return NO;
+    }
+
     return YES;
+}
+
+- (void)closeDatabase {
+    if (_database) {
+        sqlite3_close(_database);
+        _database = NULL;
+    }
 }
 
 - (BOOL)checkpointWriteAheadLogWithError:(NSError **)error {
@@ -110,6 +145,58 @@ NS_ASSUME_NONNULL_END
     int result = sqlite3_wal_checkpoint_v2(_database, NULL, SQLITE_CHECKPOINT_TRUNCATE, NULL, NULL);
     if (result != SQLITE_OK) {
         [self populateError:error code:result message:@"Unable to checkpoint history database"];
+        return NO;
+    }
+
+    return YES;
+}
+
+- (BOOL)upgradeSearchIndexWithError:(NSError **)error {
+    if (![self prepareStoreWithError:error]) {
+        return NO;
+    }
+
+    NSString *schemaVersion = [self metadataValueForKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey error:nil];
+    NSInteger staleItemCount = [self staleSearchIndexItemCountWithError:error];
+    if (staleItemCount == NSIntegerMax) {
+        return NO;
+    }
+    if ([schemaVersion integerValue] == kKayokoHistoryStoreSearchIndexVersion && staleItemCount == 0) {
+        return YES;
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    BOOL success = [self rebuildStaleSearchIndexesWithError:error];
+    if (success) {
+        success = [self setMetadataValue:[@(kKayokoHistoryStoreSearchIndexVersion) stringValue]
+                                  forKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey
+                                   error:error];
+    }
+
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
+- (BOOL)validateSearchIndexWithError:(NSError **)error {
+    NSString *schemaVersion = [self metadataValueForKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey error:error];
+    if ([schemaVersion integerValue] != kKayokoHistoryStoreSearchIndexVersion) {
+        [self populateError:error code:SQLITE_SCHEMA message:@"Kayoko history search index is not ready"];
+        return NO;
+    }
+
+    NSInteger staleItemCount = [self staleSearchIndexItemCountWithError:error];
+    if (staleItemCount == NSIntegerMax) {
+        return NO;
+    }
+    if (staleItemCount > 0) {
+        [self populateError:error code:SQLITE_SCHEMA message:@"Kayoko history search index contains unprocessed items"];
         return NO;
     }
 
@@ -259,18 +346,61 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
+    return [self itemsForHistoryKey:historyKey searchCriteria:nil error:error];
+}
+
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey
+                                                        searchCriteria:(KayokoSearchCriteria *)searchCriteria
+                                                                 error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
-    const char *sql = "SELECT bundle_identifier, content, image_name, has_link "
-                      "FROM history_items WHERE history_key = ? ORDER BY sequence DESC";
+    NSMutableString *sql = [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link "
+                                                              "FROM history_items WHERE history_key = ?"];
+    NSMutableArray<id> *bindings = [NSMutableArray arrayWithObject:historyKey ?: @""];
 
-    if (![self prepareStatement:sql statement:&statement error:error]) {
+    if ([searchCriteria hasSearchText]) {
+        if ([[searchCriteria categoryValue] isEqualToString:kKayokoSearchCategoryImage]) {
+            [sql appendString:@" AND 0"];
+        } else {
+            [sql appendString:@" AND image_name = '' AND content LIKE ? ESCAPE '\\'"];
+            [bindings addObject:[self likePatternForSearchText:[searchCriteria searchText]]];
+        }
+    }
+    if ([searchCriteria hasCategoryToken]) {
+        [sql appendString:@" AND EXISTS ("
+                           "SELECT 1 FROM history_item_search_tokens token "
+                           "WHERE token.item_id = history_items.id "
+                           "AND token.history_key = history_items.history_key "
+                           "AND token.token_type = ? "
+                           "AND token.token_value = ?"
+                           ")"];
+        [bindings addObject:kKayokoSearchTokenTypeCategory];
+        [bindings addObject:[searchCriteria categoryValue] ?: @""];
+    }
+    if ([searchCriteria hasAppToken]) {
+        [sql appendString:@" AND EXISTS ("
+                           "SELECT 1 FROM history_item_search_tokens token "
+                           "WHERE token.item_id = history_items.id "
+                           "AND token.history_key = history_items.history_key "
+                           "AND token.token_type = ? "
+                           "AND token.token_value = ?"
+                           ")"];
+        [bindings addObject:kKayokoSearchTokenTypeApp];
+        [bindings addObject:[searchCriteria appBundleIdentifier] ?: @""];
+    }
+    [sql appendString:@" ORDER BY sequence DESC"];
+
+    if (![self prepareStatement:[sql UTF8String] statement:&statement error:error]) {
         return items;
     }
 
-    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
-    while (sqlite3_step(statement) == SQLITE_ROW) {
+    [self bindObjects:bindings toStatement:statement];
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
         [items addObject:[self dictionaryFromCurrentRowInStatement:statement]];
+    }
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:sql];
     }
 
     sqlite3_finalize(statement);
@@ -294,6 +424,30 @@ NS_ASSUME_NONNULL_END
 
     sqlite3_finalize(statement);
     return dictionary;
+}
+
+- (NSArray<NSString *> *)availableSearchAppBundleIdentifiersWithError:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT DISTINCT bundle_identifier FROM history_items "
+                      "WHERE bundle_identifier <> '' ORDER BY bundle_identifier COLLATE NOCASE";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return @[];
+    }
+
+    NSMutableArray<NSString *> *bundleIdentifiers = [[NSMutableArray alloc] init];
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        NSString *bundleIdentifier = [self stringFromColumn:statement index:0];
+        if ([bundleIdentifier length] > 0) {
+            [bundleIdentifiers addObject:bundleIdentifier];
+        }
+    }
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+    }
+
+    sqlite3_finalize(statement);
+    return bundleIdentifiers;
 }
 
 - (BOOL)importItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
@@ -324,6 +478,211 @@ NS_ASSUME_NONNULL_END
 }
 
 #pragma mark - Private
+
+- (BOOL)ensureColumnNamed:(NSString *)columnName
+                  inTable:(NSString *)tableName
+      usingAlterStatement:(NSString *)alterStatement
+                    error:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    NSString *sql = [NSString stringWithFormat:@"PRAGMA table_info(%@)", tableName];
+    if (![self prepareStatement:[sql UTF8String] statement:&statement error:error]) {
+        return NO;
+    }
+
+    BOOL foundColumn = NO;
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        NSString *existingColumnName = [self stringFromColumn:statement index:1];
+        if ([existingColumnName isEqualToString:columnName]) {
+            foundColumn = YES;
+            break;
+        }
+    }
+    if (stepResult != SQLITE_DONE && stepResult != SQLITE_ROW) {
+        [self populateError:error code:stepResult message:sql];
+        sqlite3_finalize(statement);
+        return NO;
+    }
+    sqlite3_finalize(statement);
+
+    if (foundColumn) {
+        return YES;
+    }
+    return [self executeStatement:alterStatement error:error];
+}
+
+- (NSInteger)staleSearchIndexItemCountWithError:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    if (![self prepareStatement:"SELECT COUNT(*) FROM history_items WHERE search_index_version <> ?"
+                      statement:&statement
+                          error:error]) {
+        return NSIntegerMax;
+    }
+
+    sqlite3_bind_int64(statement, 1, kKayokoHistoryStoreSearchIndexVersion);
+    NSInteger count = NSIntegerMax;
+    int stepResult = sqlite3_step(statement);
+    if (stepResult == SQLITE_ROW) {
+        count = (NSInteger)sqlite3_column_int64(statement, 0);
+    } else {
+        [self populateError:error
+                       code:stepResult
+                    message:@"SELECT COUNT(*) FROM history_items WHERE search_index_version <> ?"];
+    }
+    sqlite3_finalize(statement);
+    return count;
+}
+
+- (BOOL)rebuildStaleSearchIndexesWithError:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT id, history_key, bundle_identifier, content, image_name "
+                      "FROM history_items WHERE search_index_version <> ?";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return NO;
+    }
+
+    sqlite3_bind_int64(statement, 1, kKayokoHistoryStoreSearchIndexVersion);
+    NSMutableArray<NSDictionary<NSString *, id> *> *rows = [[NSMutableArray alloc] init];
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        [rows addObject:@{
+            @"id" : @(sqlite3_column_int64(statement, 0)),
+            @"history_key" : [self stringFromColumn:statement index:1] ?: @"",
+            @"bundle_identifier" : [self stringFromColumn:statement index:2] ?: @"com.apple.springboard",
+            @"content" : [self stringFromColumn:statement index:3] ?: @"",
+            @"image_name" : [self stringFromColumn:statement index:4] ?: @""
+        }];
+    }
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+        sqlite3_finalize(statement);
+        return NO;
+    }
+    sqlite3_finalize(statement);
+
+    for (NSDictionary<NSString *, id> *row in rows) {
+        if (![self rebuildSearchIndexForItemID:[row[@"id"] longLongValue]
+                                    historyKey:row[@"history_key"]
+                              bundleIdentifier:row[@"bundle_identifier"]
+                                       content:row[@"content"]
+                                     imageName:row[@"image_name"]
+                                         error:error]) {
+            return NO;
+        }
+    }
+
+    return YES;
+}
+
+- (BOOL)rebuildSearchIndexForItemID:(sqlite3_int64)itemID
+                         historyKey:(NSString *)historyKey
+                   bundleIdentifier:(NSString *)bundleIdentifier
+                            content:(NSString *)content
+                          imageName:(NSString *)imageName
+                              error:(NSError **)error {
+    if (![self executeStatement:@"DELETE FROM history_item_search_tokens WHERE item_id = ?"
+                       bindings:@[ @(itemID) ]
+                          error:error]) {
+        return NO;
+    }
+
+    NSMutableSet<NSString *> *categoryValues = [self categorySearchValuesForContent:content imageName:imageName];
+    for (NSString *categoryValue in categoryValues) {
+        if (![self insertSearchTokenForItemID:itemID
+                                   historyKey:historyKey
+                                    tokenType:kKayokoSearchTokenTypeCategory
+                                   tokenValue:categoryValue
+                                        error:error]) {
+            return NO;
+        }
+    }
+
+    NSString *appValue = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.springboard";
+    if (![self insertSearchTokenForItemID:itemID
+                               historyKey:historyKey
+                                tokenType:kKayokoSearchTokenTypeApp
+                               tokenValue:appValue
+                                    error:error]) {
+        return NO;
+    }
+
+    return [self executeStatement:@"UPDATE history_items SET search_index_version = ? WHERE id = ?"
+                         bindings:@[ @(kKayokoHistoryStoreSearchIndexVersion), @(itemID) ]
+                            error:error];
+}
+
+- (NSMutableSet<NSString *> *)categorySearchValuesForContent:(NSString *)content imageName:(NSString *)imageName {
+    NSMutableSet<NSString *> *values = [[NSMutableSet alloc] init];
+    if ([imageName length] > 0) {
+        [values addObject:kKayokoSearchCategoryImage];
+        return values;
+    }
+
+    [values addObject:kKayokoSearchCategoryText];
+    if ([content length] == 0) {
+        return values;
+    }
+
+    static NSDataDetector *detector = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      NSTextCheckingTypes types =
+          NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber | NSTextCheckingTypeDate | NSTextCheckingTypeAddress;
+      detector = [NSDataDetector dataDetectorWithTypes:types error:nil];
+    });
+
+    NSArray<NSTextCheckingResult *> *matches = [detector matchesInString:content
+                                                                 options:0
+                                                                   range:NSMakeRange(0, [content length])];
+    for (NSTextCheckingResult *match in matches) {
+        switch ([match resultType]) {
+        case NSTextCheckingTypeLink:
+            [values addObject:kKayokoSearchCategoryLink];
+            break;
+        case NSTextCheckingTypePhoneNumber:
+            [values addObject:kKayokoSearchCategoryPhone];
+            break;
+        case NSTextCheckingTypeDate:
+            [values addObject:kKayokoSearchCategoryDate];
+            break;
+        case NSTextCheckingTypeAddress:
+            [values addObject:kKayokoSearchCategoryAddress];
+            break;
+        default:
+            break;
+        }
+    }
+
+    return values;
+}
+
+- (BOOL)insertSearchTokenForItemID:(sqlite3_int64)itemID
+                        historyKey:(NSString *)historyKey
+                         tokenType:(NSString *)tokenType
+                        tokenValue:(NSString *)tokenValue
+                             error:(NSError **)error {
+    if ([historyKey length] == 0 || [tokenType length] == 0 || [tokenValue length] == 0) {
+        return YES;
+    }
+
+    return [self executeStatement:@"INSERT OR IGNORE INTO history_item_search_tokens "
+                                   "(item_id, history_key, token_type, token_value) VALUES (?, ?, ?, ?)"
+                         bindings:@[ @(itemID), historyKey, tokenType, tokenValue ]
+                            error:error];
+}
+
+- (NSString *)likePatternForSearchText:(NSString *)searchText {
+    NSMutableString *pattern = [[NSMutableString alloc] initWithString:@"%"];
+    for (NSUInteger index = 0; index < [searchText length]; index++) {
+        unichar character = [searchText characterAtIndex:index];
+        if (character == '%' || character == '_' || character == '\\') {
+            [pattern appendString:@"\\"];
+        }
+        [pattern appendFormat:@"%C", character];
+    }
+    [pattern appendString:@"%"];
+    return pattern;
+}
 
 - (BOOL)openDatabaseWithError:(NSError **)error {
     if (_database) {
@@ -384,13 +743,23 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    return
-        [self executeStatement:
-                  @"INSERT INTO history_items "
-                   "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence) "
-                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-                      bindings:@[ historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence ]
-                         error:error];
+    if (![self executeStatement:
+                   @"INSERT INTO history_items "
+                    "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence, "
+                    "search_index_version) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                       bindings:@[ historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence ]
+                          error:error]) {
+        return NO;
+    }
+
+    sqlite3_int64 itemID = sqlite3_last_insert_rowid(_database);
+    return [self rebuildSearchIndexForItemID:itemID
+                                  historyKey:historyKey
+                            bundleIdentifier:bundleIdentifier
+                                     content:content
+                                   imageName:imageName
+                                       error:error];
 }
 
 - (BOOL)trimHistoryKey:(NSString *)historyKey toLimit:(NSUInteger)limit error:(NSError **)error {

@@ -14,3 +14,13 @@
 "Search" = "Search";
 "No Search Results" = "No Search Results";
 "SpringBoard" = "SpringBoard";
+"Categories" = "Categories";
+"Applications" = "Applications";
+"Text" = "Text";
+"Links" = "Links";
+"Phone Numbers" = "Phone Numbers";
+"Dates" = "Dates";
+"Addresses" = "Addresses";
+"Images" = "Images";
+"Unable to Load History" = "Unable to Load History";
+"%@\n%@" = "%@\n%@";

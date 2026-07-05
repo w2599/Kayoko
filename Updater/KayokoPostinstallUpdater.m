@@ -6,7 +6,9 @@
 #import "KayokoPostinstallUpdater.h"
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
+#import "KayokoNotificationKeys.h"
 
+#import <CoreFoundation/CoreFoundation.h>
 #import <roothide.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
@@ -16,6 +18,8 @@ static NSUInteger const kKayokoMobileGroupID = 501;
 @implementation KayokoPostinstallUpdater
 
 - (BOOL)runPostinstallWithError:(NSError **)error {
+    [self notifyCoreToPrepareForMaintenance];
+
     KayokoHistoryStore *store = [self historyStore];
     KayokoHistoryMigrator *migrator =
         [[KayokoHistoryMigrator alloc] initWithHistoryStore:store
@@ -23,11 +27,20 @@ static NSUInteger const kKayokoMobileGroupID = 501;
     NSError *migrationError = nil;
     BOOL migrated = [migrator migrateIfNeededWithError:&migrationError];
 
+    NSError *searchIndexError = nil;
+    BOOL upgradedSearchIndex = migrated && [store upgradeSearchIndexWithError:&searchIndexError];
+
     NSError *ownershipError = nil;
     BOOL repairedOwnership = [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
     if (!migrated) {
         if (error) {
             *error = migrationError;
+        }
+        return NO;
+    }
+    if (!upgradedSearchIndex) {
+        if (error) {
+            *error = searchIndexError;
         }
         return NO;
     }
@@ -69,6 +82,12 @@ static NSUInteger const kKayokoMobileGroupID = 501;
 }
 
 #pragma mark - Private
+
+- (void)notifyCoreToPrepareForMaintenance {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge CFStringRef)kKayokoNotificationKeyCorePrepareMaintenance, nil, nil,
+                                         YES);
+}
 
 - (KayokoHistoryStore *)historyStore {
     return [[KayokoHistoryStore alloc] initWithDatabasePath:[KayokoHistoryStore defaultDatabasePath]
