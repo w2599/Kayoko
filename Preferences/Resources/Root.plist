@@ -59,15 +59,15 @@
 			<key>key</key>
 			<string>MaximumHistoryAmount</string>
 			<key>min</key>
-			<real>50</real>
+			<real>100</real>
 			<key>max</key>
-			<real>500</real>
+			<real>2000</real>
 			<key>showValue</key>
 			<true/>
 			<key>isSegmented</key>
 			<true/>
 			<key>segmentCount</key>
-			<real>9</real>
+			<real>19</real>
 		</dict>
 		<dict>
 			<key>cell</key>

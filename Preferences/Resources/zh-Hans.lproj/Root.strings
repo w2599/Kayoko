@@ -22,6 +22,11 @@
 "Always Show Favorites" = "始终显示收藏";
 "Favorites Sort Order" = "收藏排序";
 "No favorites yet." = "还没有收藏内容。";
+"Edit Item" = "编辑内容";
+"Text" = "文字";
+"Remark" = "备注";
+"Cancel" = "取消";
+"Save" = "保存";
 "Feedbacks" = "反馈";
 "Play Sound Effects" = "播放声音效果";
 "Play Haptic Feedback" = "播放触觉反馈";

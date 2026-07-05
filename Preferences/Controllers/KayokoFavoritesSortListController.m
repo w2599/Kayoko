@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 
 #import "../NotificationKeys.h"
+#import "KayokoFavoriteItemEditController.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
@@ -32,6 +33,7 @@
     tableView.delegate = self;
     tableView.editing = YES;
     tableView.allowsSelection = NO;
+    tableView.allowsSelectionDuringEditing = YES;
     tableView.translatesAutoresizingMaskIntoConstraints = NO;
     if (@available(iOS 13.0, *)) {
         tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
@@ -111,10 +113,59 @@
     cell.detailTextLabel.text = subtitle;
     cell.detailTextLabel.numberOfLines = 1;
     cell.showsReorderControl = YES;
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.editingAccessoryType = UITableViewCellAccessoryDetailButton;
 
     return cell;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+
+    [self pushEditControllerForRowAtIndexPath:indexPath];
+}
+
+- (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath {
+    [self pushEditControllerForRowAtIndexPath:indexPath];
+}
+
+- (void)pushEditControllerForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row >= [self.favoriteItems count]) {
+        return;
+    }
+
+    NSDictionary *dictionary = self.favoriteItems[indexPath.row];
+    NSString *imageName = dictionary[kItemKeyImageName] ?: @"";
+
+    KayokoFavoriteItemEditController *editController = [[KayokoFavoriteItemEditController alloc] init];
+    editController.isImage = [imageName length] > 0;
+    editController.initialContent = dictionary[kItemKeyContent] ?: @"";
+    editController.initialRemark = dictionary[kItemKeyRemark] ?: @"";
+
+    __weak typeof(self) weakSelf = self;
+    editController.completionHandler = ^(NSString *content, NSString *remark) {
+      [weakSelf applyContent:content remark:remark toItemAtIndexPath:indexPath];
+    };
+
+    [self.navigationController pushViewController:editController animated:YES];
+}
+
+- (void)applyContent:(NSString *)content remark:(NSString *)remark toItemAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row >= [self.favoriteItems count]) {
+        return;
+    }
+
+    NSMutableDictionary *updatedDictionary = [self.favoriteItems[indexPath.row] mutableCopy];
+    updatedDictionary[kItemKeyContent] = content ?: @"";
+    updatedDictionary[kItemKeyRemark] = remark ?: @"";
+    self.favoriteItems[indexPath.row] = updatedDictionary;
+
+    [[PasteboardManager sharedInstance] setItems:self.favoriteItems forHistoryWithKey:kHistoryKeyFavorites];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
+
+    [self.tableView reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationNone];
 }
 
 - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
