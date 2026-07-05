@@ -27,7 +27,7 @@ static NSTimeInterval const kKayokoEdgeIndicatorPulseDuration = 2.5; // 指示�
 static CGFloat const kKayokoSegmentedMultiplier = 0.39; // 切换按钮宽度比例
 static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部按钮透明度
 static CGFloat const kKayokoHideTranslationMultiplier = 1.0; // 收起时向下滑动的距离比例
-static NSTimeInterval const kKayokoHideAnimationDuration = 0.03; // 收起动画时长
+static NSTimeInterval const kKayokoAnimationDuration = 0.08; // 收起动画时长
 static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
 
 @interface KayokoView ()
@@ -46,6 +46,7 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
     UIWindowLevel _originalWindowLevel;
     BOOL _didAdjustWindowLevel;
     __weak UIView *_clearConfirmationSourceView;
+    dispatch_queue_t _reloadQueue;
 }
 
 - (void)startEdgeIndicatorAnimation {
@@ -278,6 +279,7 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
     self = [super initWithFrame:frame];
 
     if (self) {
+        _reloadQueue = dispatch_queue_create("codes.aurora.kayoko.queue.view.reload", DISPATCH_QUEUE_SERIAL);
         _pendingSegmentIndex = UISegmentedControlNoSegment;
         [self hide];
 
@@ -581,7 +583,7 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
         }
 
         if (translation.y < kMaxTranslation) {
-            [UIView animateWithDuration:0.4
+            [UIView animateWithDuration:kKayokoAnimationDuration
                                   delay:0
                  usingSpringWithDamping:1
                   initialSpringVelocity:0
@@ -852,7 +854,7 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
     [viewToShow setHidden:NO];
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.3
+    [UIView animateWithDuration:kKayokoAnimationDuration
         delay:0
         usingSpringWithDamping:1
         initialSpringVelocity:0
@@ -905,13 +907,17 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
  * Reloads the active history view.
  */
 - (void)reload {
-    if (![[self historyTableView] isHidden]) {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
-        [[self historyTableView] reloadDataWithItems:items];
-    } else {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
-        [[self favoritesTableView] reloadDataWithItems:items];
-    }
+    BOOL isHistoryActive = ([self contentSegmentedControl].selectedSegmentIndex == 0) && ![[self historyTableView] isHidden];
+    dispatch_async(_reloadQueue, ^{
+        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:isHistoryActive ? kHistoryKeyHistory : kHistoryKeyFavorites];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (isHistoryActive) {
+                [[self historyTableView] reloadDataWithItems:items];
+            } else {
+                [[self favoritesTableView] reloadDataWithItems:items];
+            }
+        });
+    });
 }
 
 - (void)resetPagedTableViewsToTop {
@@ -991,13 +997,13 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
     [self setHidden:NO];
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.33
+    [UIView animateWithDuration:kKayokoAnimationDuration * 2
         delay:0
         usingSpringWithDamping:1
         initialSpringVelocity:0
         options:UIViewAnimationOptionCurveEaseOut
         animations:^{
-                    [backdropView setAlpha:1];
+          [backdropView setAlpha:1];
           [self setTransform:CGAffineTransformIdentity];
           [self setAlpha:1];
         }
@@ -1029,7 +1035,7 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
     CGAffineTransform hiddenTransform = CGAffineTransformMakeTranslation(0, hiddenOffset);
 
     _isAnimating = YES;
-    [UIView animateWithDuration:kKayokoHideAnimationDuration
+    [UIView animateWithDuration:kKayokoAnimationDuration
         delay:0
         options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState)
         animations:^{
