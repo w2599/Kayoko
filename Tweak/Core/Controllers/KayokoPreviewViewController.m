@@ -6,6 +6,7 @@
 #import "KayokoPreviewViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoHistoryItemActionHandler.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreviewView.h"
@@ -23,8 +24,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) UIButton *clearButton;
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *previewItem;
+@property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
+- (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item;
+- (NSString *)actionAccessibilityLabelKeyForItem:(KayokoPasteboardItem *)item;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -43,6 +47,7 @@ NS_ASSUME_NONNULL_END
         _favoritesButton = favoritesButton;
         _backButton = backButton;
         _clearButton = clearButton;
+        _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_previewView];
     }
     return self;
@@ -80,7 +85,7 @@ NS_ASSUME_NONNULL_END
                         andImageSize:kKayokoFavoritesButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [self updateStyleForHeaderButton:[self backButton]
-                       withImageName:@"doc.on.doc.fill"
+                       withImageName:[self actionImageNameForItem:item]
                         andImageSize:kKayokoBackButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [[self favoritesButton]
@@ -88,11 +93,55 @@ NS_ASSUME_NONNULL_END
                                                                                             value:nil
                                                                                             table:@"Tweak"]];
     [[self backButton]
-        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Copy"
-                                                                                            value:nil
-                                                                                            table:@"Tweak"]];
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
+                                  localizedStringForKey:[self actionAccessibilityLabelKeyForItem:item]
+                                                  value:nil
+                                                  table:@"Tweak"]];
     [[self clearButton] setHidden:YES];
-    [[self backButton] setHidden:YES];
+    [[self backButton] setHidden:NO];
+    [[self backButton] setEnabled:YES];
+    [[self backButton] setAlpha:1.0];
+}
+
+- (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item {
+    if ([[item imageName] length] > 0) {
+        return @"square.and.arrow.down.fill";
+    }
+    if ([item hasLink]) {
+        return @"arrow.up";
+    }
+    return @"doc.on.doc.fill";
+}
+
+- (NSString *)actionAccessibilityLabelKeyForItem:(KayokoPasteboardItem *)item {
+    if ([[item imageName] length] > 0) {
+        return @"Save to Photos";
+    }
+    if ([item hasLink]) {
+        return @"Open";
+    }
+    return @"Copy";
+}
+
+- (void)handleActionButtonWithCompletion:(void (^)(BOOL success))completion {
+    KayokoPasteboardItem *item = [self previewItem];
+    if (!item || [[self previewView] isHidden]) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    if ([[item imageName] length] > 0) {
+        [[self actionHandler] saveImageForItem:item completion:completion];
+        return;
+    }
+    if ([item hasLink]) {
+        [[self actionHandler] openLinkForItem:item completion:completion];
+        return;
+    }
+
+    [[self actionHandler] copyItem:item completion:completion];
 }
 
 - (void)prepareToHidePreview {

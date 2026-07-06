@@ -802,6 +802,15 @@ NS_ASSUME_NONNULL_END
 - (void)handlePreviewActionButtonPressed {
     if (![[[self wordSelectionViewController] view] isHidden]) {
         [[self wordSelectionViewController] handleActionButtonWithAutomaticallyPaste:[self automaticallyPaste]];
+        return;
+    }
+
+    if (![[[self previewViewController] previewView] isHidden]) {
+        [[self previewViewController] handleActionButtonWithCompletion:^(BOOL success) {
+          if (success) {
+              [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+          }
+        }];
     }
 }
 

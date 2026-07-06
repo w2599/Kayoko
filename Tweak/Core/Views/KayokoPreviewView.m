@@ -7,6 +7,8 @@
 
 #import "KayokoPreviewView.h"
 
+#import "KayokoMainView.h"
+
 @implementation KayokoPreviewView
 
 - (instancetype)initWithName:(NSString *)name {
@@ -20,6 +22,7 @@
         [[self textView] setFont:[UIFont systemFontOfSize:14]];
         [[self textView] setEditable:NO];
         [[self textView] setSelectable:NO];
+        [[self textView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
         [[self textView] setTextContainerInset:UIEdgeInsetsMake(8, 16, 8, 16)];
         [[[self textView] textContainer] setLineFragmentPadding:0];
         [[self textView] setHidden:YES];
@@ -50,10 +53,40 @@
     return self;
 }
 
+- (nullable KayokoMainView *)mainView {
+    UIView *view = [self superview];
+    while (view) {
+        if ([view isKindOfClass:[KayokoMainView class]]) {
+            return (KayokoMainView *)view;
+        }
+        view = [view superview];
+    }
+
+    return nil;
+}
+
+- (void)updateTextViewScrollInsets {
+    CGFloat bottomInset = 0;
+    KayokoMainView *mainView = [self mainView];
+    if (mainView) {
+        bottomInset = [mainView safeAreaBottomInsetForContentView:[self textView]];
+    } else {
+        bottomInset = MAX([[self textView] safeAreaInsets].bottom, 0);
+    }
+
+    UIEdgeInsets contentInset = [[self textView] contentInset];
+    contentInset.bottom = bottomInset;
+    [[self textView] setContentInset:contentInset];
+
+    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+    [[self textView] setVerticalScrollIndicatorInsets:indicatorInsets];
+}
+
 - (void)showText:(NSString *)text {
     [[self textView] setText:text];
     [[self textView] setHidden:NO];
     [[self imageView] setHidden:YES];
+    [self updateTextViewScrollInsets];
 }
 
 - (void)reset {
@@ -71,6 +104,16 @@
     CGPoint contentOffset = [[self textView] contentOffset];
     contentOffset.y = -[[self textView] adjustedContentInset].top;
     [[self textView] setContentOffset:contentOffset animated:animated];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self updateTextViewScrollInsets];
+}
+
+- (void)safeAreaInsetsDidChange {
+    [super safeAreaInsetsDidChange];
+    [self updateTextViewScrollInsets];
 }
 
 @end
