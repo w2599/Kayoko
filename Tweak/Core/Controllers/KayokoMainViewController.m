@@ -809,6 +809,7 @@ NS_ASSUME_NONNULL_END
         [[self previewViewController] handleActionButtonWithCompletion:^(BOOL success) {
           if (success) {
               [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+              [self hideAfterDirectPaste];
           }
         }];
     }
