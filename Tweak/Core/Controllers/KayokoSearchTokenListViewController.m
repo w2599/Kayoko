@@ -12,7 +12,8 @@
 #import "KayokoSearchTokenCollectionViewCell.h"
 #import "KayokoSearchTokenSectionView.h"
 
-static CGFloat const kKayokoSearchTokenOuterVerticalInset = 12;
+static CGFloat const kKayokoSearchTokenTopInset = 12;
+static CGFloat const kKayokoSearchTokenBottomInset = 16;
 static CGFloat const kKayokoSearchTokenSectionSpacing = 16;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -149,7 +150,7 @@ NS_ASSUME_NONNULL_END
         return 0;
     }
 
-    CGFloat height = kKayokoSearchTokenOuterVerticalInset + kKayokoSearchTokenOuterVerticalInset;
+    CGFloat height = kKayokoSearchTokenTopInset + kKayokoSearchTokenBottomInset;
     if (showsCategory) {
         height += [KayokoSearchTokenSectionView preferredHeight];
     }
@@ -166,7 +167,7 @@ NS_ASSUME_NONNULL_END
     CGFloat y = 0;
     BOOL didLayoutSection = NO;
     if ([self showsCategorySection]) {
-        y += kKayokoSearchTokenOuterVerticalInset;
+        y += kKayokoSearchTokenTopInset;
         CGFloat sectionHeight = [KayokoSearchTokenSectionView preferredHeight];
         [[self categorySectionView] setFrame:CGRectMake(0, y, width, sectionHeight)];
         [[self categorySectionView] layoutIfNeeded];
@@ -174,7 +175,7 @@ NS_ASSUME_NONNULL_END
         didLayoutSection = YES;
     }
     if ([self showsAppSection]) {
-        y += didLayoutSection ? kKayokoSearchTokenSectionSpacing : kKayokoSearchTokenOuterVerticalInset;
+        y += didLayoutSection ? kKayokoSearchTokenSectionSpacing : kKayokoSearchTokenTopInset;
         CGFloat sectionHeight = [KayokoSearchTokenSectionView preferredHeight];
         [[self appSectionView] setFrame:CGRectMake(0, y, width, sectionHeight)];
         [[self appSectionView] layoutIfNeeded];
