@@ -543,9 +543,13 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    NSDictionary<NSString *, id> *savedDictionary = [_historyRepository latestItemForHistoryKey:historyKey error:nil];
+    if (![savedDictionary[kKayokoItemKeyContent] isEqualToString:dictionary[kKayokoItemKeyContent]]) {
+        savedDictionary = dictionary;
+    }
     [self postHistoryChangedNotificationForHistoryKey:historyKey
                                            changeType:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
-                                       itemDictionary:dictionary
+                                       itemDictionary:savedDictionary
                                                 limit:limit];
     return YES;
 }
@@ -608,6 +612,28 @@ NS_ASSUME_NONNULL_END
                             fromHistoryKey:sourceHistoryKey
                               toHistoryKey:destinationHistoryKey
                                 completion:completion];
+}
+
+- (void)setTagUUID:(NSString *)tagUUID
+ forPasteboardItem:(KayokoPasteboardItem *)item
+  inHistoryWithKey:(NSString *)historyKey
+        completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    if (!item || [historyKey length] == 0) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    [_historyRepository setTagUUID:tagUUID forItemDictionary:dictionary inHistoryKey:historyKey completion:completion];
 }
 
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey

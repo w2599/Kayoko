@@ -420,6 +420,36 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+- (void)updateTagUUID:(NSString *)tagUUID forItem:(KayokoPasteboardItem *)item {
+    if (!item) {
+        return;
+    }
+
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    __block KayokoTableDataStoreDisplayedItemUpdate update = KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    __block NSUInteger displayedIndex = NSNotFound;
+
+    [[self tableView]
+        performBatchUpdates:^{
+          update = [[self dataStore] updateTagUUID:tagUUID
+                         forItemMatchingDictionary:dictionary
+                                displayedItemIndex:&displayedIndex];
+          if (displayedIndex == NSNotFound) {
+              return;
+          }
+
+          NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
+          if (update == KayokoTableDataStoreDisplayedItemUpdateRemove) {
+              [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
+          } else if (update == KayokoTableDataStoreDisplayedItemUpdateReload) {
+              [[self tableView] reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationNone];
+          }
+        }
+        completion:^(__unused BOOL finished) {
+          [self refreshSearchPlaceholder];
+        }];
+}
+
 - (BOOL)shouldMaintainSearchBarVisibilityAfterSwipe {
     return ![self hasActiveSearch] &&
            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:[[self tableView] contentOffset]];

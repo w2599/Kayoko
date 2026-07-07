@@ -13,6 +13,9 @@
 #import "KayokoSearchCriteria.h"
 #import "KayokoSearchPresentationController.h"
 #import "KayokoSearchTokenListViewController.h"
+#import "KayokoTag.h"
+#import "KayokoTagCatalog.h"
+#import "KayokoTagColorFormatter.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -25,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UISearchBar *favoritesSearchBar;
 @property(nonatomic, strong) KayokoSearchTokenListViewController *historyTokenListViewController;
 @property(nonatomic, strong) KayokoSearchTokenListViewController *favoritesTokenListViewController;
+@property(nonatomic, copy) NSArray<KayokoSearchToken *> *tagTokens;
 @property(nonatomic, copy) NSArray<KayokoSearchToken *> *appTokens;
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
@@ -59,6 +63,7 @@ NS_ASSUME_NONNULL_END
         [_favoritesTokenListViewController setContentHeightDidChange:^{
           [weakSelf updateSearchTokenHeaderHeights];
         }];
+        _tagTokens = @[];
         _appTokens = @[];
         _metadataProvider = [[KayokoApplicationMetadataProvider alloc] init];
 
@@ -191,11 +196,42 @@ NS_ASSUME_NONNULL_END
     return [KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeApp value:bundleIdentifier title:title imageName:nil];
 }
 
+- (KayokoSearchToken *)selectedTagTokenForCriteria:(KayokoSearchCriteria *)criteria {
+    NSString *tagUUID = [criteria tagUUID];
+    if ([tagUUID length] == 0) {
+        return nil;
+    }
+
+    KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:tagUUID];
+    if (!tag) {
+        return nil;
+    }
+    return [KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeTag value:tagUUID title:[tag title] imageName:nil];
+}
+
+- (UIImage *)iconForSearchToken:(KayokoSearchToken *)token {
+    if ([[token type] isEqualToString:kKayokoSearchTokenTypeApp]) {
+        return [[self metadataProvider] smallIconForBundleIdentifier:[token value]];
+    }
+    if ([[token type] isEqualToString:kKayokoSearchTokenTypeTag]) {
+        KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[token value]];
+        return [KayokoTagColorFormatter dotImageWithHexColor:[tag hexColor]
+                                                    diameter:14.0
+                                               canvasDiameter:20
+                                                  borderWidth:1.25];
+    }
+    if ([[token imageName] length] > 0) {
+        return [UIImage systemImageNamed:[token imageName]];
+    }
+    return nil;
+}
+
 - (NSArray<UISearchToken *> *)searchFieldTokensForCriteria:(KayokoSearchCriteria *)criteria
                                        tokenListController:(KayokoSearchTokenListViewController *)tokenListController {
     NSMutableArray<UISearchToken *> *searchTokens = [[NSMutableArray alloc] init];
     NSArray<KayokoSearchToken *> *tokens = @[
         [self selectedCategoryTokenForCriteria:criteria tokenListController:tokenListController] ?: (id)[NSNull null],
+        [self selectedTagTokenForCriteria:criteria] ?: (id)[NSNull null],
         [self selectedAppTokenForCriteria:criteria] ?: (id)[NSNull null]
     ];
     for (id object in tokens) {
@@ -203,12 +239,7 @@ NS_ASSUME_NONNULL_END
             continue;
         }
         KayokoSearchToken *token = object;
-        UIImage *icon = nil;
-        if ([[token type] isEqualToString:kKayokoSearchTokenTypeApp]) {
-            icon = [[self metadataProvider] smallIconForBundleIdentifier:[token value]];
-        } else if ([[token imageName] length] > 0) {
-            icon = [UIImage systemImageNamed:[token imageName]];
-        }
+        UIImage *icon = [self iconForSearchToken:token];
         UISearchToken *searchToken = [UISearchToken tokenWithIcon:icon text:[token title]];
         [searchToken setRepresentedObject:token];
         [searchTokens addObject:searchToken];
@@ -232,8 +263,10 @@ NS_ASSUME_NONNULL_END
         [[listViewController searchCriteria] criteriaByReplacingSearchText:[searchBar text]];
     NSArray<UISearchToken *> *tokens = [(UISearchTextField *)[searchBar searchTextField] tokens];
     BOOL hasCategoryToken = NO;
+    BOOL hasTagToken = NO;
     BOOL hasAppToken = NO;
     NSString *categoryValue = nil;
+    NSString *tagUUID = nil;
     NSString *appBundleIdentifier = nil;
     for (UISearchToken *searchToken in tokens) {
         KayokoSearchToken *token = [searchToken representedObject];
@@ -243,6 +276,9 @@ NS_ASSUME_NONNULL_END
         if ([[token type] isEqualToString:kKayokoSearchTokenTypeCategory] && !hasCategoryToken) {
             categoryValue = [token value];
             hasCategoryToken = YES;
+        } else if ([[token type] isEqualToString:kKayokoSearchTokenTypeTag] && !hasTagToken) {
+            tagUUID = [token value];
+            hasTagToken = YES;
         } else if ([[token type] isEqualToString:kKayokoSearchTokenTypeApp] && !hasAppToken) {
             appBundleIdentifier = [token value];
             hasAppToken = YES;
@@ -250,7 +286,8 @@ NS_ASSUME_NONNULL_END
     }
     return [KayokoSearchCriteria criteriaWithSearchText:[criteria searchText]
                                           categoryValue:categoryValue
-                                    appBundleIdentifier:appBundleIdentifier];
+                                    appBundleIdentifier:appBundleIdentifier
+                                                tagUUID:tagUUID];
 }
 
 - (void)layout {
@@ -269,7 +306,7 @@ NS_ASSUME_NONNULL_END
     if ([criteria hasSearchText]) {
         return NO;
     }
-    return !([criteria hasCategoryToken] && [criteria hasAppToken]);
+    return !([criteria hasCategoryToken] && [criteria hasTagToken] && [criteria hasAppToken]);
 }
 
 - (void)updateSearchTokenHeaderHeights {
@@ -292,13 +329,30 @@ NS_ASSUME_NONNULL_END
 - (void)updateTokenListForListViewController:(KayokoHistoryListViewController *)listViewController {
     KayokoSearchTokenListViewController *tokenListController =
         [self tokenListViewControllerForListViewController:listViewController];
-    [tokenListController updateWithSearchCriteria:[listViewController searchCriteria] appTokens:[self appTokens]];
+    [tokenListController updateWithSearchCriteria:[listViewController searchCriteria]
+                                        tagTokens:[self tagTokens]
+                                        appTokens:[self appTokens]];
 }
 
 - (void)updateAllTokenLists {
     [self updateTokenListForListViewController:[self historyListViewController]];
     [self updateTokenListForListViewController:[self favoritesListViewController]];
     [self updateSearchTokenHeaderHeights];
+}
+
+- (void)reloadTagTokens {
+    NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
+    NSMutableArray<KayokoSearchToken *> *tagTokens = [[NSMutableArray alloc] initWithCapacity:[tags count]];
+    for (KayokoTag *tag in tags) {
+        if ([[tag uuid] length] == 0) {
+            continue;
+        }
+        [tagTokens addObject:[KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeTag
+                                                        value:[tag uuid]
+                                                        title:[tag title]
+                                                    imageName:nil]];
+    }
+    [self setTagTokens:tagTokens];
 }
 
 - (void)loadAppTokensIfNeeded {
@@ -408,6 +462,9 @@ NS_ASSUME_NONNULL_END
 
 - (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController {
     [self attachToListViewController:listViewController hidesSearchBar:![self isSearchActive]];
+    if ([self isSearchActive]) {
+        [self reloadTagTokens];
+    }
     [self syncSearchBarForListViewController:listViewController];
     [self updateTokenListForListViewController:listViewController];
     [self applySearchFromSearchBar:[self searchBarForTableView:[listViewController tableView]]];
@@ -429,6 +486,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [self setSearchActive:YES];
+    [self reloadTagTokens];
     [self loadAppTokensIfNeeded];
     [[self historySearchBar] setShowsCancelButton:NO animated:NO];
     [[self favoritesSearchBar] setShowsCancelButton:NO animated:NO];

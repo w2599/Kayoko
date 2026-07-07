@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)new NS_UNAVAILABLE;
 
 + (UIColor *)colorFromHexColor:(nullable NSString *)hexColor;
++ (UIColor *)visibleColorFromHexColor:(nullable NSString *)hexColor;
++ (UIColor *)borderColorFromHexColor:(nullable NSString *)hexColor;
 + (NSString *)hexColorFromColor:(nullable UIColor *)color;
 
 @end

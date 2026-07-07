@@ -9,6 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 extern NSString *const kKayokoSearchTokenTypeCategory;
 extern NSString *const kKayokoSearchTokenTypeApp;
+extern NSString *const kKayokoSearchTokenTypeTag;
 
 extern NSString *const kKayokoSearchCategoryText;
 extern NSString *const kKayokoSearchCategoryLink;
@@ -43,19 +44,23 @@ extern NSString *const kKayokoSearchCategoryImage;
 @property(nonatomic, copy, readonly) NSString *searchText;
 @property(nonatomic, copy, readonly, nullable) NSString *categoryValue;
 @property(nonatomic, copy, readonly, nullable) NSString *appBundleIdentifier;
+@property(nonatomic, copy, readonly, nullable) NSString *tagUUID;
 @property(nonatomic, assign, readonly) BOOL hasCategoryToken;
 @property(nonatomic, assign, readonly) BOOL hasAppToken;
+@property(nonatomic, assign, readonly) BOOL hasTagToken;
 @property(nonatomic, assign, readonly) BOOL hasSearchText;
 @property(nonatomic, assign, readonly) BOOL hasActiveFilters;
 
 + (instancetype)emptyCriteria;
 + (instancetype)criteriaWithSearchText:(nullable NSString *)searchText
                          categoryValue:(nullable NSString *)categoryValue
-                   appBundleIdentifier:(nullable NSString *)appBundleIdentifier;
+                   appBundleIdentifier:(nullable NSString *)appBundleIdentifier
+                               tagUUID:(nullable NSString *)tagUUID;
 
 - (instancetype)initWithSearchText:(nullable NSString *)searchText
                      categoryValue:(nullable NSString *)categoryValue
-               appBundleIdentifier:(nullable NSString *)appBundleIdentifier NS_DESIGNATED_INITIALIZER;
+               appBundleIdentifier:(nullable NSString *)appBundleIdentifier
+                           tagUUID:(nullable NSString *)tagUUID NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
 

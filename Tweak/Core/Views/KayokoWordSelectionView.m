@@ -5,6 +5,7 @@
 
 #import "KayokoWordSelectionView.h"
 #import "KayokoMainView.h"
+#import "KayokoTagChipBarView.h"
 #import "KayokoWordSelectionTokenizer.h"
 #import "KayokoWordTokenView.h"
 
@@ -19,9 +20,10 @@ static CGFloat const kKayokoWordSelectionTokenBorderWidth = 0.5;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoWordSelectionView () <UIGestureRecognizerDelegate>
+@interface KayokoWordSelectionView () <UIGestureRecognizerDelegate, UIScrollViewDelegate>
 @property(nonatomic, strong) UIScrollView *scrollView;
 @property(nonatomic, strong) UIView *contentView;
+@property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
 @property(nonatomic, strong) NSMutableArray<NSDictionary<NSString *, id> *> *tokens;
 @property(nonatomic, strong) NSMutableArray<KayokoWordTokenView *> *tokenButtons;
 @property(nonatomic, strong) NSMutableIndexSet *selectedTokenIndexes;
@@ -52,6 +54,7 @@ NS_ASSUME_NONNULL_END
         [[self scrollView] setAlwaysBounceVertical:NO];
         [[self scrollView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
         [[self scrollView] setBackgroundColor:[UIColor clearColor]];
+        [[self scrollView] setDelegate:self];
         [self addSubview:[self scrollView]];
 
         [[self scrollView] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -74,6 +77,9 @@ NS_ASSUME_NONNULL_END
             [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleSelectionGesture:)];
         [selectionGesture setDelegate:self];
         [[self contentView] addGestureRecognizer:selectionGesture];
+
+        [self setTagChipBarView:[[KayokoTagChipBarView alloc] initWithFrame:CGRectZero]];
+        [self addSubview:[self tagChipBarView]];
     }
 
     return self;
@@ -122,6 +128,8 @@ NS_ASSUME_NONNULL_END
     [self setSelectionAnchorIndex:NSNotFound];
     [[self scrollView] setContentOffset:CGPointZero];
     [[self scrollView] setContentSize:CGSizeZero];
+    [[self tagChipBarView] configureWithTags:@[] selectedTagUUID:nil];
+    [[self tagChipBarView] setSelectionHandler:nil];
 }
 
 - (void)scrollToTopAnimated:(BOOL)animated {
@@ -142,14 +150,48 @@ NS_ASSUME_NONNULL_END
     return nil;
 }
 
-- (void)updateScrollInsets {
+- (CGFloat)bottomSafeAreaInsetForContentView:(UIView *)contentView {
     CGFloat bottomInset = 0;
     KayokoMainView *mainView = [self mainView];
     if (mainView) {
-        bottomInset = [mainView safeAreaBottomInsetForContentView:[self scrollView]];
+        bottomInset = [mainView safeAreaBottomInsetForContentView:contentView];
     } else {
-        bottomInset = MAX([[self scrollView] safeAreaInsets].bottom, 0);
+        bottomInset = MAX([contentView safeAreaInsets].bottom, 0);
     }
+    return bottomInset;
+}
+
+- (CGFloat)visibleTagBarHeight {
+    return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
+}
+
+- (void)layoutTagChipBarView {
+    CGFloat tagBarHeight = [self visibleTagBarHeight];
+    if (tagBarHeight <= 0) {
+        [[self tagChipBarView] setFrame:CGRectZero];
+        return;
+    }
+
+    CGFloat bottomInset = [self bottomSafeAreaInsetForContentView:self];
+    CGFloat width = CGRectGetWidth([self bounds]);
+    CGFloat y = MAX(CGRectGetHeight([self bounds]) - bottomInset - tagBarHeight, 0);
+    [UIView performWithoutAnimation:^{
+      [[self tagChipBarView] setBottomMaterialExtension:bottomInset];
+      [[self tagChipBarView] setFrame:CGRectMake(0, y, width, tagBarHeight)];
+    }];
+}
+
+- (void)updateTagBarFloatingProgressAnimated:(BOOL)animated {
+    if ([[self tagChipBarView] isHidden]) {
+        return;
+    }
+
+    CGFloat floatingProgress = [KayokoTagChipBarView floatingProgressForScrollView:[self scrollView]];
+    [[self tagChipBarView] setFloatingProgress:floatingProgress animated:animated];
+}
+
+- (void)updateScrollInsets {
+    CGFloat bottomInset = [self bottomSafeAreaInsetForContentView:[self scrollView]] + [self visibleTagBarHeight];
 
     UIEdgeInsets contentInset = [[self scrollView] contentInset];
     contentInset.bottom = bottomInset;
@@ -159,8 +201,24 @@ NS_ASSUME_NONNULL_END
     [[self scrollView] setVerticalScrollIndicatorInsets:indicatorInsets];
 }
 
+- (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags
+                selectedTagUUID:(NSString *)selectedTagUUID
+               selectionHandler:(void (^)(NSString *_Nullable tagUUID))selectionHandler {
+    [[self tagChipBarView] setSelectionHandler:selectionHandler];
+    [[self tagChipBarView] configureWithTags:tags ?: @[] selectedTagUUID:selectedTagUUID];
+    [self layoutTagChipBarView];
+    [self updateScrollInsets];
+    [self updateTagBarFloatingProgressAnimated:NO];
+}
+
+- (void)setSelectedTagUUID:(NSString *)selectedTagUUID {
+    [[self tagChipBarView] setSelectedTagUUID:selectedTagUUID];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
+
+    [self layoutTagChipBarView];
 
     CGFloat availableWidth = CGRectGetWidth([self bounds]) - kKayokoWordSelectionHorizontalInset * 2;
     CGFloat x = kKayokoWordSelectionHorizontalInset;
@@ -193,19 +251,29 @@ NS_ASSUME_NONNULL_END
     [[self scrollView] setContentSize:CGSizeMake(CGRectGetWidth([self bounds]), contentHeight)];
 
     BOOL scrollable = contentHeight > CGRectGetHeight([self bounds]) + 0.5;
+    [self updateScrollInsets];
+    scrollable = contentHeight + [[self scrollView] contentInset].bottom > CGRectGetHeight([self bounds]) + 0.5;
     [[self scrollView] setBounces:scrollable];
     [[self scrollView] setAlwaysBounceVertical:scrollable];
-    [self updateScrollInsets];
+    [self updateTagBarFloatingProgressAnimated:NO];
 }
 
 - (void)safeAreaInsetsDidChange {
     [super safeAreaInsetsDidChange];
+    [self layoutTagChipBarView];
     [self updateScrollInsets];
+    [self updateTagBarFloatingProgressAnimated:NO];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
     [self updateButtonStyles];
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if (scrollView == [self scrollView]) {
+        [self updateTagBarFloatingProgressAnimated:NO];
+    }
 }
 
 - (void)handleTapGesture:(UITapGestureRecognizer *)gesture {

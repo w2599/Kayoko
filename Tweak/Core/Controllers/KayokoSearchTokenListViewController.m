@@ -11,6 +11,9 @@
 #import "KayokoSearchTokenCollectionView.h"
 #import "KayokoSearchTokenCollectionViewCell.h"
 #import "KayokoSearchTokenSectionView.h"
+#import "KayokoTag.h"
+#import "KayokoTagCatalog.h"
+#import "KayokoTagColorFormatter.h"
 
 static CGFloat const kKayokoSearchTokenTopInset = 12;
 static CGFloat const kKayokoSearchTokenBottomInset = 16;
@@ -21,13 +24,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchTokenListViewController () <UICollectionViewDataSource, UICollectionViewDelegate>
 @property(nonatomic, strong) KayokoSearchTokenSectionView *categorySectionView;
+@property(nonatomic, strong) KayokoSearchTokenSectionView *tagSectionView;
 @property(nonatomic, strong) KayokoSearchTokenSectionView *appSectionView;
 @property(nonatomic, strong) NSArray<KayokoSearchToken *> *categoryTokens;
+@property(nonatomic, strong) NSArray<KayokoSearchToken *> *tagTokens;
 @property(nonatomic, strong) NSArray<KayokoSearchToken *> *appTokens;
 @property(nonatomic, strong) KayokoSearchCriteria *searchCriteria;
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
 @property(nonatomic, assign) CGFloat lastPreferredHeight;
 @property(nonatomic, assign) BOOL needsCategoryContentOffsetReset;
+@property(nonatomic, assign) BOOL needsTagContentOffsetReset;
 @property(nonatomic, assign) BOOL needsAppContentOffsetReset;
 @end
 
@@ -40,9 +46,11 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _searchCriteria = [KayokoSearchCriteria emptyCriteria];
         _categoryTokens = [self newCategoryTokens];
+        _tagTokens = @[];
         _appTokens = @[];
         _metadataProvider = [[KayokoApplicationMetadataProvider alloc] init];
         _needsCategoryContentOffsetReset = YES;
+        _needsTagContentOffsetReset = YES;
         _needsAppContentOffsetReset = YES;
     }
     return self;
@@ -56,13 +64,18 @@ NS_ASSUME_NONNULL_END
     NSBundle *bundle = [KayokoPasteboardManager localizationBundle];
     _categorySectionView = [[KayokoSearchTokenSectionView alloc]
         initWithTitle:[bundle localizedStringForKey:@"Categories" value:nil table:@"Tweak"]];
+    _tagSectionView = [[KayokoSearchTokenSectionView alloc] initWithTitle:[bundle localizedStringForKey:@"Tags"
+                                                                                                  value:nil
+                                                                                                  table:@"Tweak"]];
     _appSectionView = [[KayokoSearchTokenSectionView alloc] initWithTitle:[bundle localizedStringForKey:@"Applications"
                                                                                                   value:nil
                                                                                                   table:@"Tweak"]];
     [view addSubview:_categorySectionView];
+    [view addSubview:_tagSectionView];
     [view addSubview:_appSectionView];
 
     [self configureCollectionView:[_categorySectionView collectionView]];
+    [self configureCollectionView:[_tagSectionView collectionView]];
     [self configureCollectionView:[_appSectionView collectionView]];
 }
 
@@ -115,14 +128,23 @@ NS_ASSUME_NONNULL_END
     return ![[self searchCriteria] hasAppToken] && [[self appTokens] count] > 0;
 }
 
+- (BOOL)showsTagSection {
+    return ![[self searchCriteria] hasTagToken] && [[self tagTokens] count] > 0;
+}
+
 - (void)updateWithSearchCriteria:(KayokoSearchCriteria *)searchCriteria
+                       tagTokens:(NSArray<KayokoSearchToken *> *)tagTokens
                        appTokens:(NSArray<KayokoSearchToken *> *)appTokens {
     [self setSearchCriteria:searchCriteria ?: [KayokoSearchCriteria emptyCriteria]];
+    [self setTagTokens:tagTokens ?: @[]];
     [self setAppTokens:appTokens ?: @[]];
     [self setNeedsCategoryContentOffsetReset:YES];
+    [self setNeedsTagContentOffsetReset:YES];
     [self setNeedsAppContentOffsetReset:YES];
+    [self configureTagSectionForWidth:CGRectGetWidth([[self view] bounds])];
     [self configureAppSectionForWidth:CGRectGetWidth([[self view] bounds])];
     [[[self categorySectionView] collectionView] reloadData];
+    [[[self tagSectionView] collectionView] reloadData];
     [[[self appSectionView] collectionView] reloadData];
     [self updateSectionVisibility];
     [[self view] setNeedsLayout];
@@ -131,13 +153,30 @@ NS_ASSUME_NONNULL_END
 
 - (void)updateSectionVisibility {
     BOOL showsCategory = [self showsCategorySection];
+    BOOL showsTag = [self showsTagSection];
     BOOL showsApp = [self showsAppSection];
     [[self categorySectionView] setHidden:!showsCategory];
+    [[self tagSectionView] setHidden:!showsTag];
     [[self appSectionView] setHidden:!showsApp];
 }
 
 - (BOOL)usesHorizontalScrollingLayoutForAppSection {
     return [[self appTokens] count] > kKayokoSearchTokenMaximumVerticalAppTokenCount;
+}
+
+- (BOOL)usesHorizontalScrollingLayoutForTagSection {
+    return [[self tagTokens] count] > kKayokoSearchTokenMaximumVerticalAppTokenCount;
+}
+
+- (void)configureTagSectionForWidth:(CGFloat)width {
+    BOOL usesHorizontalScrollingLayout = [self usesHorizontalScrollingLayoutForTagSection];
+    NSUInteger numberOfRows = [KayokoSearchTokenSectionView numberOfRowsForItemCount:[[self tagTokens] count]
+                                                                               width:width
+                                                           horizontalScrollingLayout:usesHorizontalScrollingLayout];
+    [[self tagSectionView] setHorizontalScrollingLayout:usesHorizontalScrollingLayout];
+    if (numberOfRows > 0) {
+        [[self tagSectionView] setNumberOfRows:numberOfRows];
+    }
 }
 
 - (void)configureAppSectionForWidth:(CGFloat)width {
@@ -162,17 +201,30 @@ NS_ASSUME_NONNULL_END
 - (CGFloat)preferredContentHeightForWidth:(CGFloat)width {
     (void)width;
     BOOL showsCategory = [self showsCategorySection];
+    BOOL showsTag = [self showsTagSection];
     BOOL showsApp = [self showsAppSection];
-    if (!showsCategory && !showsApp) {
+    if (!showsCategory && !showsTag && !showsApp) {
         return 0;
     }
 
     CGFloat height = kKayokoSearchTokenTopInset + kKayokoSearchTokenBottomInset;
+    BOOL didAddSection = NO;
     if (showsCategory) {
         height += [KayokoSearchTokenSectionView preferredHeight];
+        didAddSection = YES;
+    }
+    if (showsTag) {
+        if (didAddSection) {
+            height += kKayokoSearchTokenSectionSpacing;
+        }
+        height += [KayokoSearchTokenSectionView
+            preferredHeightForItemCount:[[self tagTokens] count]
+                                  width:width
+              horizontalScrollingLayout:[self usesHorizontalScrollingLayoutForTagSection]];
+        didAddSection = YES;
     }
     if (showsApp) {
-        if (showsCategory) {
+        if (didAddSection) {
             height += kKayokoSearchTokenSectionSpacing;
         }
         height += [KayokoSearchTokenSectionView
@@ -194,6 +246,15 @@ NS_ASSUME_NONNULL_END
         y += sectionHeight;
         didLayoutSection = YES;
     }
+    if ([self showsTagSection]) {
+        [self configureTagSectionForWidth:width];
+        y += didLayoutSection ? kKayokoSearchTokenSectionSpacing : kKayokoSearchTokenTopInset;
+        CGFloat sectionHeight = [[self tagSectionView] preferredHeight];
+        [[self tagSectionView] setFrame:CGRectMake(0, y, width, sectionHeight)];
+        [[self tagSectionView] layoutIfNeeded];
+        y += sectionHeight;
+        didLayoutSection = YES;
+    }
     if ([self showsAppSection]) {
         [self configureAppSectionForWidth:width];
         y += didLayoutSection ? kKayokoSearchTokenSectionSpacing : kKayokoSearchTokenTopInset;
@@ -207,6 +268,9 @@ NS_ASSUME_NONNULL_END
     if (![[self categorySectionView] isHidden]) {
         [[[self categorySectionView] collectionView] updateEdgeFadeMask];
     }
+    if (![[self tagSectionView] isHidden]) {
+        [[[self tagSectionView] collectionView] updateEdgeFadeMask];
+    }
     if (![[self appSectionView] isHidden]) {
         [[[self appSectionView] collectionView] updateEdgeFadeMask];
     }
@@ -216,6 +280,10 @@ NS_ASSUME_NONNULL_END
     if ([self needsCategoryContentOffsetReset] && ![[self categorySectionView] isHidden]) {
         [[[self categorySectionView] collectionView] resetContentOffsetToLeadingEdge];
         [self setNeedsCategoryContentOffsetReset:NO];
+    }
+    if ([self needsTagContentOffsetReset] && ![[self tagSectionView] isHidden]) {
+        [[[self tagSectionView] collectionView] resetContentOffsetToLeadingEdge];
+        [self setNeedsTagContentOffsetReset:NO];
     }
     if ([self needsAppContentOffsetReset] && ![[self appSectionView] isHidden]) {
         [[[self appSectionView] collectionView] resetContentOffsetToLeadingEdge];
@@ -235,7 +303,13 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSArray<KayokoSearchToken *> *)tokensForCollectionView:(UICollectionView *)collectionView {
-    return collectionView == [[self appSectionView] collectionView] ? [self appTokens] : [self categoryTokens];
+    if (collectionView == [[self appSectionView] collectionView]) {
+        return [self appTokens];
+    }
+    if (collectionView == [[self tagSectionView] collectionView]) {
+        return [self tagTokens];
+    }
+    return [self categoryTokens];
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
@@ -250,12 +324,18 @@ NS_ASSUME_NONNULL_END
                                                   forIndexPath:indexPath];
     KayokoSearchToken *token = [self tokensForCollectionView:collectionView][(NSUInteger)[indexPath item]];
     UIImage *icon = nil;
+    UIColor *dotColor = nil;
+    UIColor *dotBorderColor = nil;
     if ([[token type] isEqualToString:kKayokoSearchTokenTypeApp]) {
         icon = [[self metadataProvider] smallIconForBundleIdentifier:[token value]];
+    } else if ([[token type] isEqualToString:kKayokoSearchTokenTypeTag]) {
+        KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[token value]];
+        dotColor = [KayokoTagColorFormatter visibleColorFromHexColor:[tag hexColor]];
+        dotBorderColor = [KayokoTagColorFormatter borderColorFromHexColor:[tag hexColor]];
     } else if ([[token imageName] length] > 0) {
         icon = [UIImage systemImageNamed:[token imageName]];
     }
-    [cell configureWithTitle:[token title] icon:icon];
+    [cell configureWithTitle:[token title] icon:icon dotColor:dotColor dotBorderColor:dotBorderColor];
     return cell;
 }
 

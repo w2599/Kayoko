@@ -18,6 +18,7 @@
 #import "KayokoPreviewView.h"
 #import "KayokoPreviewViewController.h"
 #import "KayokoSearchController.h"
+#import "KayokoTagCatalog.h"
 #import "KayokoWordSelectionViewController.h"
 
 static NSString *kayokoMainPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
@@ -70,6 +71,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
                           toHistoryKey:(NSString *)destinationHistoryKey;
+- (void)handleTagAssignmentForItem:(KayokoPasteboardItem *)item historyKey:(NSString *)historyKey;
 - (void)updateContentState;
 - (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
 - (void)showStorageError:(NSError *)error;
@@ -150,6 +152,9 @@ NS_ASSUME_NONNULL_END
             [[KayokoPreviewViewController alloc] initWithFavoritesButton:[_mainView favoritesButton]
                                                               backButton:[_mainView backButton]
                                                              clearButton:[_mainView clearButton]];
+        [_previewViewController setTagAssignmentHandler:^(KayokoPasteboardItem *item, NSString *historyKey) {
+          [weakSelf handleTagAssignmentForItem:item historyKey:historyKey];
+        }];
         [self addChildViewController:_previewViewController];
         [_mainView installContentView:[_previewViewController previewView] hidden:YES];
         [_previewViewController didMoveToParentViewController:self];
@@ -162,6 +167,9 @@ NS_ASSUME_NONNULL_END
                  backButton:[_mainView backButton]
                 clearButton:[_mainView clearButton]];
         [_wordSelectionViewController setDelegate:self];
+        [_wordSelectionViewController setTagAssignmentHandler:^(KayokoPasteboardItem *item, NSString *historyKey) {
+          [weakSelf handleTagAssignmentForItem:item historyKey:historyKey];
+        }];
         [self addChildViewController:_wordSelectionViewController];
         [_mainView installContentView:[_wordSelectionViewController view] hidden:YES];
         [_wordSelectionViewController didMoveToParentViewController:self];
@@ -851,6 +859,13 @@ NS_ASSUME_NONNULL_END
                                                 toHistoryKey:destinationHistoryKey];
 }
 
+- (void)handleTagAssignmentForItem:(KayokoPasteboardItem *)item historyKey:(NSString *)historyKey {
+    if (!item || [historyKey length] == 0) {
+        return;
+    }
+    [[self listViewControllerForHistoryKey:historyKey] updateTagUUID:[item tagUUID] forItem:item];
+}
+
 - (void)showContentForItem:(KayokoPasteboardItem *)item {
     [[self searchController] resignSearchFirstResponder];
     NSString *historyKey = [self effectiveActiveHistoryKey];
@@ -995,6 +1010,7 @@ NS_ASSUME_NONNULL_END
 
     [self setDismissingPanel:NO];
     [self setPreparingToShow:YES];
+    [[KayokoTagCatalog sharedCatalog] reloadTags];
     NSUInteger showRequestIdentifier = [self showRequestIdentifier] + 1;
     [self setShowRequestIdentifier:showRequestIdentifier];
     [self resetClearConfirmationIfNeeded];

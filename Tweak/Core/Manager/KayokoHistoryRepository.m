@@ -134,7 +134,13 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
               HBLogDebug(@"Kayoko: Failed to add history item: %@", error);
               continue;
           }
-          [savedDictionaries addObject:dictionary];
+          NSError *latestError = nil;
+          NSDictionary<NSString *, id> *savedDictionary =
+              [historyStore latestItemForHistoryKey:historyKey error:&latestError] ?: dictionary;
+          if (latestError) {
+              HBLogDebug(@"Kayoko: Failed to load saved history item: %@", latestError);
+          }
+          [savedDictionaries addObject:savedDictionary];
       }
 
       if (!completion) {
@@ -215,6 +221,24 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
                                                                 error:&error];
       if (!success) {
           HBLogDebug(@"Kayoko: Failed to move history item: %@", error);
+      }
+      [self dispatchCompletion:completion success:success];
+    }];
+}
+
+- (void)setTagUUID:(NSString *)tagUUID
+  forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+       inHistoryKey:(NSString *)historyKey
+         completion:(void (^)(BOOL success))completion {
+    [self performAsync:^{
+      NSError *error = nil;
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore setTagUUID:tagUUID
+                                            forItemDictionary:dictionary
+                                                 inHistoryKey:historyKey
+                                                        error:&error];
+      if (!success) {
+          HBLogDebug(@"Kayoko: Failed to set history item tag: %@", error);
       }
       [self dispatchCompletion:completion success:success];
     }];

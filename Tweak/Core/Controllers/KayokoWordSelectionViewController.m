@@ -6,8 +6,11 @@
 #import "KayokoWordSelectionViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoHistoryItemActionHandler.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
+#import "KayokoTag.h"
+#import "KayokoTagCatalog.h"
 #import "KayokoWordSelectionView.h"
 
 // Word selection creates one button per token; CJK text can approach one token per character.
@@ -27,6 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) UIButton *clearButton;
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *sourceItem;
+@property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (void)resetHeaderState;
@@ -34,6 +38,8 @@ NS_ASSUME_NONNULL_BEGIN
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
                       andTintColor:(UIColor *)color;
+- (void)configureTagBarForSourceItem:(KayokoPasteboardItem *)item;
+- (void)assignTagUUID:(nullable NSString *)tagUUID;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -52,6 +58,7 @@ NS_ASSUME_NONNULL_END
         _clearButton = clearButton;
         _wordSelectionView = [[KayokoWordSelectionView alloc] init];
         [_wordSelectionView setHidden:YES];
+        _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_wordSelectionView];
 
         __weak typeof(self) weakSelf = self;
@@ -105,6 +112,7 @@ NS_ASSUME_NONNULL_END
     NSString *text = kayokoWordSelectionTextByTrimmingBoundaryNewlines([item content]);
     [[self wordSelectionView] setText:text];
     [[self wordSelectionView] setHidden:NO];
+    [self configureTagBarForSourceItem:item];
 
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:@"arrowshape.turn.up.backward"
@@ -125,6 +133,51 @@ NS_ASSUME_NONNULL_END
     [[self clearButton] setHidden:YES];
     [[self backButton] setHidden:NO];
     [self updateActionButtonState];
+}
+
+- (void)configureTagBarForSourceItem:(KayokoPasteboardItem *)item {
+    NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
+    __weak typeof(self) weakSelf = self;
+    [[self wordSelectionView] configureTagBarWithTags:tags
+                                      selectedTagUUID:[item tagUUID]
+                                     selectionHandler:^(NSString *tagUUID) {
+                                       [weakSelf assignTagUUID:tagUUID];
+                                     }];
+}
+
+- (void)assignTagUUID:(NSString *)tagUUID {
+    KayokoPasteboardItem *item = [self sourceItem];
+    NSString *historyKey = [self sourceHistoryKey];
+    NSString *normalizedTagUUID = [tagUUID length] > 0 ? tagUUID : nil;
+    NSString *previousTagUUID = [item tagUUID];
+    if (!item || [historyKey length] == 0 ||
+        [(previousTagUUID ?: @"") isEqualToString:(normalizedTagUUID ?: @"")]) {
+        return;
+    }
+
+    [[self wordSelectionView] setSelectedTagUUID:normalizedTagUUID];
+    [item setTagUUID:normalizedTagUUID];
+
+    __weak typeof(self) weakSelf = self;
+    [[self actionHandler] setTagUUID:normalizedTagUUID
+                              forItem:item
+                           historyKey:historyKey
+                           completion:^(BOOL success) {
+                             __strong typeof(weakSelf) strongSelf = weakSelf;
+                             if (!strongSelf) {
+                                 return;
+                             }
+                             if (!success) {
+                                 [item setTagUUID:previousTagUUID];
+                                 [[strongSelf wordSelectionView] setSelectedTagUUID:previousTagUUID];
+                                 return;
+                             }
+                             [[strongSelf delegate] wordSelectionViewController:strongSelf
+                                                  triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleLight];
+                             if ([strongSelf tagAssignmentHandler]) {
+                                 [strongSelf tagAssignmentHandler](item, historyKey);
+                             }
+                           }];
 }
 
 - (void)prepareToHideWordSelection {

@@ -4,9 +4,12 @@
 //
 
 #import "KayokoTagColorFormatter.h"
+
 #import "KayokoTag.h"
 
-#import <math.h>
+@interface KayokoTagColorFormatter ()
++ (UIColor *)borderColorForVisibleColor:(UIColor *)color;
+@end
 
 @implementation KayokoTagColorFormatter
 
@@ -37,7 +40,44 @@
 }
 
 + (UIColor *)borderColorFromHexColor:(NSString *)hexColor {
+    return [self borderColorForVisibleColor:[self visibleColorFromHexColor:hexColor]];
+}
+
++ (UIImage *)dotImageWithHexColor:(NSString *)hexColor diameter:(CGFloat)diameter {
+    return [self dotImageWithHexColor:hexColor diameter:diameter canvasDiameter:diameter];
+}
+
++ (UIImage *)dotImageWithHexColor:(NSString *)hexColor
+                         diameter:(CGFloat)diameter
+                    canvasDiameter:(CGFloat)canvasDiameter {
+    return [self dotImageWithHexColor:hexColor diameter:diameter canvasDiameter:canvasDiameter borderWidth:0];
+}
+
++ (UIImage *)dotImageWithHexColor:(NSString *)hexColor
+                         diameter:(CGFloat)diameter
+                    canvasDiameter:(CGFloat)canvasDiameter
+                       borderWidth:(CGFloat)borderWidth {
+    CGFloat normalizedCanvasDiameter = MAX(canvasDiameter, diameter);
+    CGSize size = CGSizeMake(normalizedCanvasDiameter, normalizedCanvasDiameter);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGFloat origin = (normalizedCanvasDiameter - diameter) / 2.0;
+    CGRect rect = CGRectMake(origin, origin, diameter, diameter);
     UIColor *color = [self visibleColorFromHexColor:hexColor];
+    CGContextSetFillColorWithColor(context, [color CGColor]);
+    CGContextFillEllipseInRect(context, rect);
+    if (borderWidth > 0) {
+        CGRect strokeRect = CGRectInset(rect, borderWidth / 2.0, borderWidth / 2.0);
+        CGContextSetLineWidth(context, borderWidth);
+        CGContextSetStrokeColorWithColor(context, [[self borderColorForVisibleColor:color] CGColor]);
+        CGContextStrokeEllipseInRect(context, strokeRect);
+    }
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
++ (UIColor *)borderColorForVisibleColor:(UIColor *)color {
     CGFloat hue = 0.0;
     CGFloat saturation = 0.0;
     CGFloat brightness = 0.0;
@@ -51,23 +91,6 @@
                       saturation:MIN(saturation + 0.10, 1.0)
                       brightness:MAX(MIN(borderBrightness, 1.0), 0.0)
                            alpha:MAX(alpha, 0.86)];
-}
-
-+ (NSString *)hexColorFromColor:(UIColor *)color {
-    CGFloat red = 0.0;
-    CGFloat green = 0.0;
-    CGFloat blue = 0.0;
-    CGFloat alpha = 0.0;
-    if (!color || ![color getRed:&red green:&green blue:&blue alpha:&alpha]) {
-        return @"#00000000";
-    }
-
-    NSInteger redValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, red)) * 255.0);
-    NSInteger greenValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, green)) * 255.0);
-    NSInteger blueValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, blue)) * 255.0);
-    NSInteger alphaValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, alpha)) * 255.0);
-    return [NSString
-        stringWithFormat:@"#%02lX%02lX%02lX%02lX", (long)redValue, (long)greenValue, (long)blueValue, (long)alphaValue];
 }
 
 @end

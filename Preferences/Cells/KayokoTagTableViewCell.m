@@ -7,6 +7,9 @@
 #import "KayokoTag.h"
 #import "KayokoTagColorFormatter.h"
 
+static CGFloat const kKayokoTagTableViewCellSwatchDiameter = 22.0;
+static CGFloat const kKayokoTagTableViewCellSwatchBorderWidth = 1.0;
+
 @interface KayokoTagTableViewCell ()
 @property(nonatomic, strong) UIView *colorSwatchView;
 @property(nonatomic, strong) UILabel *titleLabel;
@@ -29,9 +32,8 @@
 
     _colorSwatchView = [[UIView alloc] init];
     [_colorSwatchView setTranslatesAutoresizingMaskIntoConstraints:NO];
-    [[_colorSwatchView layer] setCornerRadius:8.0];
-    [[_colorSwatchView layer] setBorderWidth:1.0];
-    [[_colorSwatchView layer] setBorderColor:[[[UIColor labelColor] colorWithAlphaComponent:0.18] CGColor]];
+    [[_colorSwatchView layer] setCornerRadius:kKayokoTagTableViewCellSwatchDiameter / 2.0];
+    [[_colorSwatchView layer] setBorderWidth:kKayokoTagTableViewCellSwatchBorderWidth];
     [[self contentView] addSubview:_colorSwatchView];
 
     _titleLabel = [[UILabel alloc] init];
@@ -52,8 +54,8 @@
     [NSLayoutConstraint activateConstraints:@[
         [[_colorSwatchView leadingAnchor] constraintEqualToAnchor:[margins leadingAnchor]],
         [[_colorSwatchView centerYAnchor] constraintEqualToAnchor:[[self contentView] centerYAnchor]],
-        [[_colorSwatchView widthAnchor] constraintEqualToConstant:28.0],
-        [[_colorSwatchView heightAnchor] constraintEqualToConstant:28.0],
+        [[_colorSwatchView widthAnchor] constraintEqualToConstant:kKayokoTagTableViewCellSwatchDiameter],
+        [[_colorSwatchView heightAnchor] constraintEqualToConstant:kKayokoTagTableViewCellSwatchDiameter],
 
         [[_titleLabel leadingAnchor] constraintEqualToAnchor:[_colorSwatchView trailingAnchor] constant:13.0],
         [[_titleLabel trailingAnchor] constraintEqualToAnchor:[margins trailingAnchor]],
@@ -70,7 +72,8 @@
 - (void)configureWithTag:(KayokoTag *)tag editing:(BOOL)editing {
     [[self titleLabel] setText:[tag title]];
     [[self hexColorLabel] setText:[tag hexColor]];
-    [[self colorSwatchView] setBackgroundColor:[KayokoTagColorFormatter colorFromHexColor:[tag hexColor]]];
+    [[self colorSwatchView] setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[tag hexColor]]];
+    [[[self colorSwatchView] layer] setBorderColor:[[KayokoTagColorFormatter borderColorFromHexColor:[tag hexColor]] CGColor]];
     [self setAccessoryType:editing ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator];
 }
 

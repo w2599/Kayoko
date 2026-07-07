@@ -10,6 +10,8 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreviewView.h"
+#import "KayokoTag.h"
+#import "KayokoTagCatalog.h"
 
 static NSString *kayokoPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
     return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
@@ -29,6 +31,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item;
 - (NSString *)actionAccessibilityLabelKeyForItem:(KayokoPasteboardItem *)item;
+- (void)configureTagBarForPreviewItem:(KayokoPasteboardItem *)item;
+- (void)assignTagUUID:(nullable NSString *)tagUUID;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -79,6 +83,7 @@ NS_ASSUME_NONNULL_END
         NSString *previewText = kayokoPreviewTextByTrimmingBoundaryNewlines([item content]);
         [[self previewView] showText:previewText];
     }
+    [self configureTagBarForPreviewItem:item];
 
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:@"arrowshape.turn.up.backward"
@@ -100,6 +105,56 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setHidden:NO];
     [[self backButton] setEnabled:YES];
     [[self backButton] setAlpha:1.0];
+}
+
+- (void)configureTagBarForPreviewItem:(KayokoPasteboardItem *)item {
+    NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
+    __weak typeof(self) weakSelf = self;
+    [[self previewView] configureTagBarWithTags:tags
+                                selectedTagUUID:[item tagUUID]
+                               selectionHandler:^(NSString *tagUUID) {
+                                 [weakSelf assignTagUUID:tagUUID];
+                               }];
+}
+
+- (void)triggerLightFeedback {
+    UIImpactFeedbackGenerator *feedbackGenerator =
+        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedbackGenerator impactOccurred];
+}
+
+- (void)assignTagUUID:(NSString *)tagUUID {
+    KayokoPasteboardItem *item = [self previewItem];
+    NSString *historyKey = [self sourceHistoryKey];
+    NSString *normalizedTagUUID = [tagUUID length] > 0 ? tagUUID : nil;
+    NSString *previousTagUUID = [item tagUUID];
+    if (!item || [historyKey length] == 0 ||
+        [(previousTagUUID ?: @"") isEqualToString:(normalizedTagUUID ?: @"")]) {
+        return;
+    }
+
+    [[self previewView] setSelectedTagUUID:normalizedTagUUID];
+    [item setTagUUID:normalizedTagUUID];
+
+    __weak typeof(self) weakSelf = self;
+    [[self actionHandler] setTagUUID:normalizedTagUUID
+                              forItem:item
+                           historyKey:historyKey
+                           completion:^(BOOL success) {
+                             __strong typeof(weakSelf) strongSelf = weakSelf;
+                             if (!strongSelf) {
+                                 return;
+                             }
+                             if (!success) {
+                                 [item setTagUUID:previousTagUUID];
+                                 [[strongSelf previewView] setSelectedTagUUID:previousTagUUID];
+                                 return;
+                             }
+                             [strongSelf triggerLightFeedback];
+                             if ([strongSelf tagAssignmentHandler]) {
+                                 [strongSelf tagAssignmentHandler](item, historyKey);
+                             }
+                           }];
 }
 
 - (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item {

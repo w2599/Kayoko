@@ -43,6 +43,15 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
         return defaultTags;
     }
 
+    return [self readTagsWithError:error];
+}
+
+- (NSMutableArray<KayokoTag *> *)readTagsWithError:(NSError **)error {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:[self tagsPath]]) {
+        return [[NSMutableArray alloc] init];
+    }
+
     NSData *plistData = [NSData dataWithContentsOfFile:[self tagsPath] options:0 error:error];
     if (!plistData) {
         return nil;
@@ -106,13 +115,13 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
 
 - (NSArray<KayokoTag *> *)defaultTags {
     return @[
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Red"] hexColor:@"#FF3B30FF"],
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Orange"] hexColor:@"#FF9500FF"],
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Yellow"] hexColor:@"#FFCC00FF"],
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Green"] hexColor:@"#34C759FF"],
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Blue"] hexColor:@"#007AFFFF"],
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Purple"] hexColor:@"#AF52DEFF"],
-        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Gray"] hexColor:@"#8E8E93FF"]
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Red"] hexColor:@"#EF7571FF"],
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Orange"] hexColor:@"#F3AC6DFF"],
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Yellow"] hexColor:@"#FAE06DFF"],
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Green"] hexColor:@"#86D885FF"],
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Blue"] hexColor:@"#66A5F9FF"],
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Purple"] hexColor:@"#D469EEFF"],
+        [KayokoTag tagWithTitle:[self localizedStringForKey:@"Gray"] hexColor:@"#ADADB0FF"]
     ];
 }
 
