@@ -70,6 +70,19 @@ NS_ASSUME_NONNULL_BEGIN
                              hideContentView:(UIView *)viewToHide
                                    direction:(KayokoContentTransitionDirection)direction;
 - (void)completePreparedContentTransitionHidingView:(UIView *)viewToHide completion:(nullable void (^)(void))completion;
+- (void)beginInteractiveBackwardContentTransitionToView:(UIView *)viewToShow hideContentView:(UIView *)viewToHide;
+- (void)updateInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                progress:(CGFloat)progress;
+- (void)finishInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                   title:(NSString *)title
+                                                duration:(NSTimeInterval)duration
+                                              completion:(nullable void (^)(void))completion;
+- (void)cancelInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                duration:(NSTimeInterval)duration
+                                              completion:(nullable void (^)(void))completion;
 
 @end
 

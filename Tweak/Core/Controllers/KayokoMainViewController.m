@@ -19,14 +19,21 @@
 #import "KayokoPreviewViewController.h"
 #import "KayokoSearchController.h"
 #import "KayokoTagCatalog.h"
+#import "KayokoWordSelectionView.h"
 #import "KayokoWordSelectionViewController.h"
+
+static CGFloat const kKayokoTransientEdgeBackHorizontalDominance = 1.2;
+static CGFloat const kKayokoTransientEdgeBackCompletionProgress = 0.35;
+static CGFloat const kKayokoTransientEdgeBackCompletionVelocity = 650;
+static NSTimeInterval const kKayokoTransientEdgeBackMinimumAnimationDuration = 0.08;
+static NSTimeInterval const kKayokoTransientEdgeBackMaximumAnimationDuration = 0.22;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoMainViewController () <KayokoClearConfirmationViewControllerDelegate, KayokoHistoryControllerDelegate,
                                         KayokoPanelPresentationControllerDelegate, KayokoSearchControllerDelegate,
                                         KayokoHistoryListViewControllerDelegate,
-                                        KayokoWordSelectionViewControllerDelegate>
+                                        KayokoWordSelectionViewControllerDelegate, UIGestureRecognizerDelegate>
 @property(nonatomic, strong) KayokoMainView *mainView;
 @property(nonatomic, copy, nullable) NSString *clearConfirmationHistoryKey;
 @property(nonatomic, strong) KayokoHistoryController *historyController;
@@ -48,6 +55,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL hasSearchContentOffsetBeforeTransientContent;
 @property(nonatomic, assign) CGPoint searchContentOffsetBeforeTransientContent;
 @property(nonatomic, weak, nullable) UIView *activeSourceContentView;
+@property(nonatomic, strong) UIScreenEdgePanGestureRecognizer *transientEdgeBackGestureRecognizer;
+@property(nonatomic, weak, nullable) UIView *interactiveTransientReturnSourceView;
+@property(nonatomic, weak, nullable) UIView *interactiveTransientReturnContentView;
+@property(nonatomic, assign) BOOL interactiveTransientReturnWasPreview;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -154,6 +165,17 @@ NS_ASSUME_NONNULL_END
                                       favoritesListViewController:_favoritesListViewController
                                              panGestureRecognizer:[_panelPresentationController panGestureRecognizer]];
         [_searchController setDelegate:self];
+
+        _transientEdgeBackGestureRecognizer =
+            [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self
+                                                              action:@selector(handleTransientEdgeBackGestureRecognizer:)];
+        [_transientEdgeBackGestureRecognizer setEdges:UIRectEdgeLeft];
+        [_transientEdgeBackGestureRecognizer setDelegate:self];
+        [_mainView addGestureRecognizer:_transientEdgeBackGestureRecognizer];
+        [[_previewViewController previewView]
+            requireImagePanGestureRecognizerToFailGestureRecognizer:_transientEdgeBackGestureRecognizer];
+        [[_wordSelectionViewController wordSelectionView]
+            requireSelectionGestureRecognizerToFailGestureRecognizer:_transientEdgeBackGestureRecognizer];
     }
     return self;
 }
@@ -238,6 +260,14 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self favoritesEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self storageErrorView] setKeyboardBottomInset:keyboardBottomInset];
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer == [self transientEdgeBackGestureRecognizer]) {
+        return [self canBeginTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)gestureRecognizer];
+    }
+
+    return YES;
 }
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
@@ -614,6 +644,177 @@ NS_ASSUME_NONNULL_END
 - (BOOL)isWordSelectionActive {
     return ![[[self wordSelectionViewController] view] isHidden] ||
            [[self wordSelectionViewController] sourceItem] != nil;
+}
+
+- (UIView *)activeTransientContentViewForEdgeBackGesture {
+    UIView *previewView = [[self previewViewController] previewView];
+    if (![previewView isHidden] && [[self previewViewController] previewItem]) {
+        return previewView;
+    }
+
+    UIView *wordSelectionView = [[self wordSelectionViewController] view];
+    if (![wordSelectionView isHidden] && [[self wordSelectionViewController] sourceItem]) {
+        return wordSelectionView;
+    }
+
+    return nil;
+}
+
+- (BOOL)canBeginTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    if ([self isHidden] || [[self mainView] isAnimating] || [[self panelPresentationController] isAnimating]) {
+        return NO;
+    }
+
+    UIView *sourceView = [self activeSourceContentView];
+    UIView *contentView = [self activeTransientContentViewForEdgeBackGesture];
+    if (!sourceView || !contentView) {
+        return NO;
+    }
+
+    CGPoint velocity = [recognizer velocityInView:[self mainView]];
+    if (velocity.x <= 0 || fabs(velocity.x) <= fabs(velocity.y) * kKayokoTransientEdgeBackHorizontalDominance) {
+        return NO;
+    }
+
+    if (contentView == [[self previewViewController] previewView] &&
+        ![[[self previewViewController] previewView] canBeginEdgeBackGesture]) {
+        return NO;
+    }
+
+    return YES;
+}
+
+- (CGFloat)progressForTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    CGFloat width = MAX(CGRectGetWidth([[self mainView] bounds]), 1);
+    CGFloat progress = [recognizer translationInView:[self mainView]].x / width;
+    return MIN(MAX(progress, 0), 1);
+}
+
+- (NSTimeInterval)transientEdgeBackAnimationDurationWithProgress:(CGFloat)progress finishing:(BOOL)finishing {
+    CGFloat remainingProgress = finishing ? 1 - progress : progress;
+    NSTimeInterval duration = kKayokoTransientEdgeBackMaximumAnimationDuration * remainingProgress;
+    return MIN(MAX(duration, kKayokoTransientEdgeBackMinimumAnimationDuration),
+               kKayokoTransientEdgeBackMaximumAnimationDuration);
+}
+
+- (void)resetInteractiveTransientReturnState {
+    [self setInteractiveTransientReturnSourceView:nil];
+    [self setInteractiveTransientReturnContentView:nil];
+    [self setInteractiveTransientReturnWasPreview:NO];
+}
+
+- (void)beginInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    UIView *sourceView = [self activeSourceContentView];
+    UIView *contentView = [self activeTransientContentViewForEdgeBackGesture];
+    if (!sourceView || !contentView) {
+        return;
+    }
+
+    [self setInteractiveTransientReturnSourceView:sourceView];
+    [self setInteractiveTransientReturnContentView:contentView];
+    [self setInteractiveTransientReturnWasPreview:(contentView == [[self previewViewController] previewView])];
+    [[self mainView] beginInteractiveBackwardContentTransitionToView:sourceView hideContentView:contentView];
+    [[self mainView] updateInteractiveBackwardContentTransitionToView:sourceView
+                                                      hideContentView:contentView
+                                                             progress:[self progressForTransientEdgeBackGestureRecognizer:recognizer]];
+}
+
+- (void)updateInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    UIView *sourceView = [self interactiveTransientReturnSourceView];
+    UIView *contentView = [self interactiveTransientReturnContentView];
+    if (!sourceView || !contentView) {
+        return;
+    }
+
+    [[self mainView] updateInteractiveBackwardContentTransitionToView:sourceView
+                                                      hideContentView:contentView
+                                                             progress:[self progressForTransientEdgeBackGestureRecognizer:recognizer]];
+}
+
+- (void)finishInteractiveTransientReturnWithDuration:(NSTimeInterval)duration {
+    UIView *sourceView = [self interactiveTransientReturnSourceView];
+    UIView *contentView = [self interactiveTransientReturnContentView];
+    if (!sourceView || !contentView) {
+        [self resetInteractiveTransientReturnState];
+        return;
+    }
+
+    BOOL wasPreview = [self interactiveTransientReturnWasPreview];
+    if (wasPreview) {
+        [[self previewViewController] prepareToHidePreview];
+    } else {
+        [[self wordSelectionViewController] prepareToHideWordSelection];
+    }
+    [self refreshSearchAfterEndingTransientContentIfNeeded];
+    [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+
+    [[self mainView] finishInteractiveBackwardContentTransitionToView:sourceView
+                                                      hideContentView:contentView
+                                                                title:[self titleForContentView:sourceView]
+                                                             duration:duration
+                                                           completion:^{
+                                                             if (wasPreview) {
+                                                                 [[self previewViewController] hidePreview];
+                                                             } else {
+                                                                 [[self wordSelectionViewController] hideWordSelection];
+                                                             }
+                                                             [self setActiveSourceContentView:nil];
+                                                             [self resetInteractiveTransientReturnState];
+                                                           }];
+}
+
+- (void)cancelInteractiveTransientReturnWithDuration:(NSTimeInterval)duration {
+    UIView *sourceView = [self interactiveTransientReturnSourceView];
+    UIView *contentView = [self interactiveTransientReturnContentView];
+    if (!sourceView || !contentView) {
+        [self resetInteractiveTransientReturnState];
+        return;
+    }
+
+    [[self mainView] cancelInteractiveBackwardContentTransitionToView:sourceView
+                                                      hideContentView:contentView
+                                                             duration:duration
+                                                           completion:^{
+                                                             [self resetInteractiveTransientReturnState];
+                                                           }];
+}
+
+- (void)finishOrCancelInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    if ([recognizer state] == UIGestureRecognizerStateCancelled || [recognizer state] == UIGestureRecognizerStateFailed) {
+        CGFloat progress = [self progressForTransientEdgeBackGestureRecognizer:recognizer];
+        [self cancelInteractiveTransientReturnWithDuration:[self transientEdgeBackAnimationDurationWithProgress:progress
+                                                                                                      finishing:NO]];
+        return;
+    }
+
+    CGFloat progress = [self progressForTransientEdgeBackGestureRecognizer:recognizer];
+    CGPoint velocity = [recognizer velocityInView:[self mainView]];
+    BOOL shouldFinish = progress >= kKayokoTransientEdgeBackCompletionProgress ||
+                        velocity.x >= kKayokoTransientEdgeBackCompletionVelocity;
+    NSTimeInterval duration = [self transientEdgeBackAnimationDurationWithProgress:progress finishing:shouldFinish];
+    if (shouldFinish) {
+        [self finishInteractiveTransientReturnWithDuration:duration];
+    } else {
+        [self cancelInteractiveTransientReturnWithDuration:duration];
+    }
+}
+
+- (void)handleTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    switch ([recognizer state]) {
+    case UIGestureRecognizerStateBegan:
+        [self beginInteractiveTransientReturnWithGestureRecognizer:recognizer];
+        break;
+    case UIGestureRecognizerStateChanged:
+        [self updateInteractiveTransientReturnWithGestureRecognizer:recognizer];
+        break;
+    case UIGestureRecognizerStateEnded:
+    case UIGestureRecognizerStateCancelled:
+    case UIGestureRecognizerStateFailed:
+        [self finishOrCancelInteractiveTransientReturnWithGestureRecognizer:recognizer];
+        break;
+    default:
+        break;
+    }
 }
 
 - (void)restoreActiveSourceContentView {

@@ -337,6 +337,26 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     }
 }
 
+- (BOOL)canBeginEdgeBackGesture {
+    if ([[self imageScrollView] isHidden] || ![[self imageView] image]) {
+        return YES;
+    }
+
+    UIScrollView *scrollView = [self imageScrollView];
+    if ([scrollView zoomScale] <= [scrollView minimumZoomScale] + 0.01) {
+        return YES;
+    }
+
+    CGFloat leftBoundary = -[scrollView adjustedContentInset].left;
+    return [scrollView contentOffset].x <= leftBoundary + 0.5;
+}
+
+- (void)requireImagePanGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer) {
+        [[[self imageScrollView] panGestureRecognizer] requireGestureRecognizerToFail:gestureRecognizer];
+    }
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self layoutTagChipBarView];

@@ -13,6 +13,10 @@
 
 static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
+static CGFloat const kKayokoInteractiveBackHiddenAlpha = 0.35;
+static CGFloat const kKayokoInteractiveBackSourceInitialAlpha = 0.75;
+static CGFloat const kKayokoInteractiveBackMaximumParallax = 72;
+static CGFloat const kKayokoInteractiveBackParallaxMultiplier = 0.18;
 
 @interface KayokoMainView ()
 @property(nonatomic, strong) NSLayoutConstraint *headerTopConstraint;
@@ -489,6 +493,95 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     if (completion) {
         completion();
     }
+}
+
+- (CGFloat)clampedInteractiveContentTransitionProgress:(CGFloat)progress {
+    return MIN(MAX(progress, 0), 1);
+}
+
+- (CGFloat)interactiveBackwardParallaxDistance {
+    return MIN(CGRectGetWidth([self bounds]) * kKayokoInteractiveBackParallaxMultiplier,
+               kKayokoInteractiveBackMaximumParallax);
+}
+
+- (void)applyInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                        hideContentView:(UIView *)viewToHide
+                                               progress:(CGFloat)progress {
+    CGFloat clampedProgress = [self clampedInteractiveContentTransitionProgress:progress];
+    CGFloat width = CGRectGetWidth([self bounds]);
+    CGFloat parallaxDistance = [self interactiveBackwardParallaxDistance];
+
+    [viewToShow setTransform:CGAffineTransformMakeTranslation(-parallaxDistance * (1 - clampedProgress), 0)];
+    [viewToShow setAlpha:kKayokoInteractiveBackSourceInitialAlpha +
+                         (1 - kKayokoInteractiveBackSourceInitialAlpha) * clampedProgress];
+
+    [viewToHide setTransform:CGAffineTransformMakeTranslation(width * clampedProgress, 0)];
+    [viewToHide setAlpha:1 - (1 - kKayokoInteractiveBackHiddenAlpha) * clampedProgress];
+}
+
+- (void)beginInteractiveBackwardContentTransitionToView:(UIView *)viewToShow hideContentView:(UIView *)viewToHide {
+    [viewToShow setHidden:NO];
+    [self setAnimating:YES];
+    [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:0];
+}
+
+- (void)updateInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                progress:(CGFloat)progress {
+    [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:progress];
+}
+
+- (void)finishInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                   title:(NSString *)title
+                                                duration:(NSTimeInterval)duration
+                                              completion:(void (^)(void))completion {
+    [UIView transitionWithView:[self titleLabel]
+                      duration:MIN(duration, 0.12)
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState
+                    animations:^{
+                      [self setTitleText:title];
+                    }
+                    completion:nil];
+
+    [UIView animateWithDuration:duration
+        delay:0
+        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+        animations:^{
+          [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:1];
+        }
+        completion:^(__unused BOOL finished) {
+          [viewToShow setTransform:CGAffineTransformIdentity];
+          [viewToShow setAlpha:1];
+          [viewToHide setHidden:YES];
+          [self setAnimating:NO];
+          if (completion) {
+              completion();
+          }
+        }];
+}
+
+- (void)cancelInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                duration:(NSTimeInterval)duration
+                                              completion:(void (^)(void))completion {
+    [UIView animateWithDuration:duration
+        delay:0
+        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+        animations:^{
+          [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:0];
+        }
+        completion:^(__unused BOOL finished) {
+          [viewToShow setHidden:YES];
+          [viewToShow setTransform:CGAffineTransformIdentity];
+          [viewToShow setAlpha:1];
+          [viewToHide setTransform:CGAffineTransformIdentity];
+          [viewToHide setAlpha:1];
+          [self setAnimating:NO];
+          if (completion) {
+              completion();
+          }
+        }];
 }
 
 @end

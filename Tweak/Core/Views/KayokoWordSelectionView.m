@@ -32,6 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) NSMutableIndexSet *selectionGestureOriginalIndexes;
 @property(nonatomic, copy, nullable) NSString *originalText;
 @property(nonatomic, copy, readwrite) NSString *selectedText;
+@property(nonatomic, weak) UIPanGestureRecognizer *selectionGestureRecognizer;
 @property(nonatomic, assign, readwrite) BOOL hasCustomSelection;
 @property(nonatomic, assign) NSUInteger selectionAnchorIndex;
 @property(nonatomic, assign) BOOL selectionGestureSelectsTokens;
@@ -81,6 +82,7 @@ NS_ASSUME_NONNULL_END
         UIPanGestureRecognizer *selectionGesture =
             [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleSelectionGesture:)];
         [selectionGesture setDelegate:self];
+        [self setSelectionGestureRecognizer:selectionGesture];
         [[self contentView] addGestureRecognizer:selectionGesture];
 
         [self setTagChipBarView:[[KayokoTagChipBarView alloc] initWithFrame:CGRectZero]];
@@ -141,6 +143,12 @@ NS_ASSUME_NONNULL_END
     CGPoint contentOffset = [[self scrollView] contentOffset];
     contentOffset.y = -[[self scrollView] adjustedContentInset].top;
     [[self scrollView] setContentOffset:contentOffset animated:animated];
+}
+
+- (void)requireSelectionGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer) {
+        [[self selectionGestureRecognizer] requireGestureRecognizerToFail:gestureRecognizer];
+    }
 }
 
 - (CGFloat)visibleTagBarHeight {
