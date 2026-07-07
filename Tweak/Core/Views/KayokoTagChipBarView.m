@@ -212,6 +212,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 @property(nonatomic, strong) NSMutableArray<KayokoTagChipButton *> *chipButtons;
 @property(nonatomic, assign, readwrite, getter=isSettled) BOOL settled;
 @property(nonatomic, assign) CGFloat floatingProgress;
+@property(nonatomic, assign) BOOL shouldRevealSelectedTagAfterLayout;
 @end
 
 @implementation KayokoTagChipBarView
@@ -309,8 +310,10 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [[self chipButtons] removeAllObjects];
 
     [self setSelectedTagUUID:[selectedTagUUID copy]];
+    [self setShouldRevealSelectedTagAfterLayout:([selectedTagUUID length] > 0)];
     [self setHidden:[tags count] == 0];
     if ([tags count] == 0) {
+        [self setShouldRevealSelectedTagAfterLayout:NO];
         [[self scrollView] setContentSize:CGSizeZero];
         return;
     }
@@ -325,6 +328,59 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [[self scrollView] setContentOffset:CGPointZero animated:NO];
     [[self scrollView] updateEdgeFadeMask];
     [self setNeedsLayout];
+}
+
+- (KayokoTagChipButton *)chipButtonForSelectedTag {
+    if ([[self selectedTagUUID] length] == 0) {
+        return nil;
+    }
+
+    for (KayokoTagChipButton *button in [self chipButtons]) {
+        if ([[button tagUUID] isEqualToString:[self selectedTagUUID]]) {
+            return button;
+        }
+    }
+
+    return nil;
+}
+
+- (BOOL)revealSelectedTagIfPossible {
+    if ([[self selectedTagUUID] length] == 0) {
+        return YES;
+    }
+
+    KayokoEdgeFadingScrollView *scrollView = [self scrollView];
+    CGFloat visibleWidth = CGRectGetWidth([scrollView bounds]);
+    CGFloat contentWidth = [scrollView contentSize].width;
+    if (visibleWidth <= 0 || contentWidth <= 0) {
+        return NO;
+    }
+
+    KayokoTagChipButton *button = [self chipButtonForSelectedTag];
+    if (!button) {
+        return YES;
+    }
+
+    CGFloat currentOffsetX = [scrollView contentOffset].x;
+    CGRect visibleRect = CGRectMake(currentOffsetX, 0, visibleWidth, CGRectGetHeight([scrollView bounds]));
+    CGRect comfortableRect = CGRectInset(visibleRect, kKayokoTagChipHorizontalInset, 0);
+    CGRect checkRect = CGRectGetWidth(comfortableRect) >= CGRectGetWidth([button frame]) ? comfortableRect : visibleRect;
+    if (CGRectContainsRect(checkRect, [button frame])) {
+        return YES;
+    }
+
+    CGFloat targetOffsetX = currentOffsetX;
+    if (CGRectGetMinX([button frame]) < CGRectGetMinX(checkRect)) {
+        targetOffsetX = CGRectGetMinX([button frame]) - kKayokoTagChipHorizontalInset;
+    } else if (CGRectGetMaxX([button frame]) > CGRectGetMaxX(checkRect)) {
+        targetOffsetX = CGRectGetMaxX([button frame]) - visibleWidth + kKayokoTagChipHorizontalInset;
+    }
+
+    CGFloat maximumOffsetX = MAX(contentWidth - visibleWidth, 0);
+    targetOffsetX = MIN(MAX(floor(targetOffsetX), 0), maximumOffsetX);
+    [scrollView setContentOffset:CGPointMake(targetOffsetX, [scrollView contentOffset].y) animated:NO];
+    [scrollView updateEdgeFadeMask];
+    return YES;
 }
 
 - (void)addChipWithTitle:(NSString *)title tagUUID:(NSString *)tagUUID hexColor:(NSString *)hexColor {
@@ -439,6 +495,9 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
       x += kKayokoTagChipHorizontalInset - kKayokoTagChipSpacing;
       [[self scrollView]
           setContentSize:CGSizeMake(MAX(x, CGRectGetWidth([[self scrollView] bounds]) + 1), kKayokoTagChipHeight)];
+      if ([self shouldRevealSelectedTagAfterLayout] && [self revealSelectedTagIfPossible]) {
+          [self setShouldRevealSelectedTagAfterLayout:NO];
+      }
       [[self scrollView] updateEdgeFadeMask];
     }];
 

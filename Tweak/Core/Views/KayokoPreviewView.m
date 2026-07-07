@@ -126,6 +126,7 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     [UIView performWithoutAnimation:^{
       [[self tagChipBarView] setBottomMaterialExtension:0];
       [[self tagChipBarView] setFrame:CGRectMake(0, y, width, tagBarHeight)];
+      [[self tagChipBarView] layoutIfNeeded];
     }];
 }
 

@@ -317,7 +317,12 @@ NS_ASSUME_NONNULL_END
     }
 
     KayokoPreviewView *previewView = [[self previewViewController] previewView];
-    return ![previewView isHidden] && [previewView hasVisibleTagBar];
+    if (![previewView isHidden] && [previewView hasVisibleTagBar]) {
+        return YES;
+    }
+
+    KayokoWordSelectionView *wordSelectionView = [[self wordSelectionViewController] wordSelectionView];
+    return ![wordSelectionView isHidden] && [wordSelectionView hasVisibleTagBar];
 }
 
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller

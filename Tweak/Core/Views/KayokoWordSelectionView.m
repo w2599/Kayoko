@@ -155,6 +155,10 @@ NS_ASSUME_NONNULL_END
     return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
 }
 
+- (BOOL)hasVisibleTagBar {
+    return [self visibleTagBarHeight] > 0;
+}
+
 - (CGFloat)safeAreaBottomInsetForScrollContent {
     UIView *view = self;
     while (view) {
@@ -184,6 +188,7 @@ NS_ASSUME_NONNULL_END
     [UIView performWithoutAnimation:^{
       [[self tagChipBarView] setBottomMaterialExtension:0];
       [[self tagChipBarView] setFrame:CGRectMake(0, y, width, tagBarHeight)];
+      [[self tagChipBarView] layoutIfNeeded];
     }];
 }
 

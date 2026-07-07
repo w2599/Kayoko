@@ -91,7 +91,7 @@ CHDeclareClass(_UISystemGestureWindow);
 @end
 
 static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
-static const NSInteger kKayokoSystemGestureTypeMultitasking = 0x2;
+static const NSInteger kKayokoSystemGestureTypeMultitasking = 0x29;
 static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
 
 static CGFloat const kKayokoSystemKeyboardFrameEdgeTolerance = 1.0;

@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setSelectedTagUUID:(nullable NSString *)selectedTagUUID;
 - (void)reset;
 - (void)scrollToTopAnimated:(BOOL)animated;
+- (BOOL)hasVisibleTagBar;
 - (void)requireSelectionGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 
 @end
