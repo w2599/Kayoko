@@ -4,7 +4,6 @@
 //
 
 #import "KayokoWordSelectionView.h"
-#import "KayokoMainView.h"
 #import "KayokoTagChipBarView.h"
 #import "KayokoWordSelectionTokenizer.h"
 #import "KayokoWordTokenView.h"
@@ -138,29 +137,6 @@ NS_ASSUME_NONNULL_END
     [[self scrollView] setContentOffset:contentOffset animated:animated];
 }
 
-- (nullable KayokoMainView *)mainView {
-    UIView *view = [self superview];
-    while (view) {
-        if ([view isKindOfClass:[KayokoMainView class]]) {
-            return (KayokoMainView *)view;
-        }
-        view = [view superview];
-    }
-
-    return nil;
-}
-
-- (CGFloat)bottomSafeAreaInsetForContentView:(UIView *)contentView {
-    CGFloat bottomInset = 0;
-    KayokoMainView *mainView = [self mainView];
-    if (mainView) {
-        bottomInset = [mainView safeAreaBottomInsetForContentView:contentView];
-    } else {
-        bottomInset = MAX([contentView safeAreaInsets].bottom, 0);
-    }
-    return bottomInset;
-}
-
 - (CGFloat)visibleTagBarHeight {
     return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
 }
@@ -172,11 +148,10 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    CGFloat bottomInset = [self bottomSafeAreaInsetForContentView:self];
     CGFloat width = CGRectGetWidth([self bounds]);
-    CGFloat y = MAX(CGRectGetHeight([self bounds]) - bottomInset - tagBarHeight, 0);
+    CGFloat y = MAX(CGRectGetHeight([self bounds]) - tagBarHeight, 0);
     [UIView performWithoutAnimation:^{
-      [[self tagChipBarView] setBottomMaterialExtension:bottomInset];
+      [[self tagChipBarView] setBottomMaterialExtension:0];
       [[self tagChipBarView] setFrame:CGRectMake(0, y, width, tagBarHeight)];
     }];
 }
@@ -191,7 +166,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateScrollInsets {
-    CGFloat bottomInset = [self bottomSafeAreaInsetForContentView:[self scrollView]] + [self visibleTagBarHeight];
+    CGFloat bottomInset = [self visibleTagBarHeight];
 
     UIEdgeInsets contentInset = [[self scrollView] contentInset];
     contentInset.bottom = bottomInset;

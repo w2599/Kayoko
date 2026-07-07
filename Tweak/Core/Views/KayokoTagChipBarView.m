@@ -5,6 +5,7 @@
 
 #import "KayokoTagChipBarView.h"
 
+#import "KayokoEdgeFadingScrollView.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoTag.h"
 #import "KayokoTagColorFormatter.h"
@@ -15,7 +16,7 @@
 static CGFloat const kKayokoTagChipBarHeight = 54;
 static CGFloat const kKayokoTagChipHeight = 32;
 static CGFloat const kKayokoTagChipMaximumWidth = 136;
-static CGFloat const kKayokoTagChipHorizontalInset = 16;
+static CGFloat const kKayokoTagChipHorizontalInset = 20;
 static CGFloat const kKayokoTagChipSpacing = 8;
 static CGFloat const kKayokoTagChipLeadingInset = 11;
 static CGFloat const kKayokoTagChipTrailingInset = 13;
@@ -88,7 +89,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 - (UIColor *)normalFillColor {
     return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
       BOOL dark = [traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark;
-      return [UIColor colorWithWhite:(dark ? 1.0 : 0.0) alpha:(dark ? 0.045 : 0.035)];
+      return [UIColor colorWithWhite:(dark ? 1.0 : 0.0) alpha:(dark ? 0.09 : 0.035)];
     }];
 }
 
@@ -99,7 +100,10 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     if ([self isSelected]) {
         return [[UIColor labelColor] colorWithAlphaComponent:0.24];
     }
-    return [[UIColor separatorColor] colorWithAlphaComponent:0.24];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+      BOOL dark = [traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark;
+      return [[UIColor separatorColor] colorWithAlphaComponent:(dark ? 0.32 : 0.24)];
+    }];
 }
 
 - (void)updateStyle {
@@ -204,7 +208,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 @property(nonatomic, strong) UIVisualEffectView *materialView;
 @property(nonatomic, strong) CAGradientLayer *materialMaskLayer;
 @property(nonatomic, strong) KayokoTagChipBarFadeView *fadeView;
-@property(nonatomic, strong) UIScrollView *scrollView;
+@property(nonatomic, strong) KayokoEdgeFadingScrollView *scrollView;
 @property(nonatomic, strong) NSMutableArray<KayokoTagChipButton *> *chipButtons;
 @property(nonatomic, assign, readwrite, getter=isSettled) BOOL settled;
 @property(nonatomic, assign) CGFloat floatingProgress;
@@ -284,10 +288,12 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
         [_fadeView setAlpha:0.0];
         [self addSubview:_fadeView];
 
-        _scrollView = [[UIScrollView alloc] init];
+        _scrollView = [[KayokoEdgeFadingScrollView alloc] init];
         [_scrollView setShowsHorizontalScrollIndicator:NO];
         [_scrollView setAlwaysBounceHorizontal:YES];
         [_scrollView setBackgroundColor:[UIColor clearColor]];
+        [_scrollView setEdgeFadeWidth:kKayokoTagChipHorizontalInset];
+        [_scrollView setEdgeFadeEnabled:YES];
         [self addSubview:_scrollView];
 
         _chipButtons = [[NSMutableArray alloc] init];
@@ -317,6 +323,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     }
 
     [[self scrollView] setContentOffset:CGPointZero animated:NO];
+    [[self scrollView] updateEdgeFadeMask];
     [self setNeedsLayout];
 }
 
@@ -433,6 +440,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
       x += kKayokoTagChipHorizontalInset - kKayokoTagChipSpacing;
       [[self scrollView] setContentSize:CGSizeMake(MAX(x, CGRectGetWidth([[self scrollView] bounds]) + 1),
                                                    kKayokoTagChipHeight)];
+      [[self scrollView] updateEdgeFadeMask];
     }];
 
     [CATransaction begin];
