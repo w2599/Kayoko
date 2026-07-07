@@ -19,6 +19,7 @@
 #include <math.h>
 
 CHDeclareClass(SpringBoard);
+CHDeclareClass(FBScene);
 CHDeclareClass(UIStatusBarWindow);
 CHDeclareClass(UIWindowScene);
 CHDeclareClass(UIViewController);
@@ -38,6 +39,16 @@ CHDeclareClass(_UISystemGestureWindow);
 @end
 
 @interface UIStatusBarWindow : UIWindow
+@end
+
+@class FBSSceneTransitionContext;
+@class UIApplicationSceneSettings;
+typedef void (^FBSceneUpdateCompletion)(void);
+
+@interface FBScene : NSObject
+- (void)updateSettings:(UIApplicationSceneSettings *)settings
+    withTransitionContext:(FBSSceneTransitionContext *)context
+               completion:(FBSceneUpdateCompletion)completion;
 @end
 
 @interface SBCoverSheetPrimarySlidingViewController : UIViewController
@@ -122,6 +133,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
 + (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window;
 + (void)installApplicationMetadataHooks;
++ (void)installSceneSettingsHooks;
 + (void)installSystemSwipeUpHooks;
 
 @end
@@ -387,6 +399,12 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     CHSuper1(_UISystemGestureWindow, sendEvent, event);
 }
 
+CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettings *, settings, withTransitionContext,
+                   FBSSceneTransitionContext *, context, completion, FBSceneUpdateCompletion, completion) {
+    CHSuper3(FBScene, updateSettings, settings, withTransitionContext, context, completion, completion);
+    [[KayokoCoreRuntime sharedRuntime] handleScene:self didUpdateSettings:settings];
+}
+
 @implementation KayokoSpringBoardHookInstaller
 
 + (BOOL)isStatusBarWindow:(UIWindow *)window {
@@ -578,6 +596,17 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     }
 }
 
++ (void)installSceneSettingsHooks {
+    Class sceneClass = NSClassFromString(@"FBScene");
+    SEL updateSettingsSelector = @selector(updateSettings:withTransitionContext:completion:);
+    if (![sceneClass instancesRespondToSelector:updateSettingsSelector]) {
+        return;
+    }
+
+    CHLoadClass_(&FBScene$, sceneClass);
+    CHHook3(FBScene, updateSettings, withTransitionContext, completion);
+}
+
 + (void)installSystemGestureHooks {
     Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
     CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
@@ -642,6 +671,7 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     [self installSpotlightHooks];
     [self installLibrarySearchHooks];
     [self installApplicationMetadataHooks];
+    [self installSceneSettingsHooks];
     [self installSystemGestureHooks];
 
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];

@@ -22,28 +22,77 @@
 
 static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
 static NSTimeInterval const kKayokoPasteSuppressionExpirationDelay = 1.0;
-
-@interface UIStatusBarStyleRequest : NSObject
-@property(nonatomic, assign, readonly) long long style;
-@end
+static NSString *const kKayokoSpotlightSceneIdentifier = @"searchScreen";
+static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
+static NSString *const kKayokoSpringBoardProcessName = @"SpringBoard";
 
 @interface UIApplication (KayokoPrivate)
 - (UIInterfaceOrientation)_frontMostAppOrientation;
 @end
 
-@interface SBStatusBarManager : NSObject
-+ (instancetype)sharedInstance;
-- (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
+@interface UIApplicationSceneSettings : NSObject
+- (UIUserInterfaceStyle)userInterfaceStyle;
 @end
 
-@interface SBWindowSceneStatusBarManager : NSObject
-+ (instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
-- (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
+@class FBSSceneIdentityToken;
+
+@interface FBSSceneClientSettings : NSObject
+- (FBSSceneIdentityToken *)preferredSceneHostIdentity;
+@end
+
+@interface FBSSceneIdentityToken : NSObject
+- (NSString *)identifier;
+@end
+
+@interface FBProcess : NSObject
+- (NSString *)bundleIdentifier;
+- (NSString *)name;
+@end
+
+@interface FBScene : NSObject
+- (FBSSceneClientSettings *)clientSettings;
+- (FBProcess *)clientProcess;
+- (UIApplicationSceneSettings *)settings;
+- (NSString *)identifier;
+@end
+
+@interface FBSceneManager : NSObject
++ (FBScene *)keyboardScene;
++ (instancetype)sharedInstance;
+- (FBScene *)sceneWithIdentifier:(NSString *)identifier;
+@end
+
+@protocol KayokoFBSceneManagerClass <NSObject>
++ (FBScene *)keyboardScene;
++ (FBSceneManager *)sharedInstance;
 @end
 
 @interface SBLockScreenManager : NSObject
 + (instancetype)sharedInstance;
 - (BOOL)isUILocked;
+@end
+
+@protocol KayokoSBLockScreenManagerClass <NSObject>
++ (SBLockScreenManager *)sharedInstance;
+@end
+
+@protocol KayokoKeyboardAppearanceProviding <NSObject>
+- (UIKeyboardAppearance)keyboardAppearance;
+@end
+
+@interface TITextInputTraits : NSObject <KayokoKeyboardAppearanceProviding>
+- (UIKeyboardAppearance)keyboardAppearance;
+@end
+
+@interface UIKeyboardImpl : NSObject
++ (instancetype)activeInstance;
+- (TITextInputTraits *)textInputTraits;
+- (NSObject<KayokoKeyboardAppearanceProviding> *)inputDelegate;
+- (NSObject<KayokoKeyboardAppearanceProviding> *)delegate;
+@end
+
+@protocol KayokoUIKeyboardImplClass <NSObject>
++ (UIKeyboardImpl *)activeInstance;
 @end
 
 NS_ASSUME_NONNULL_BEGIN
@@ -429,12 +478,13 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Device State
 
 - (BOOL)readUILocked:(BOOL *)locked {
-    Class managerClass = NSClassFromString(@"SBLockScreenManager");
+    Class<KayokoSBLockScreenManagerClass> managerClass =
+        (Class<KayokoSBLockScreenManagerClass>)NSClassFromString(@"SBLockScreenManager");
     if (![managerClass respondsToSelector:@selector(sharedInstance)]) {
         return NO;
     }
 
-    SBLockScreenManager *manager = [(id)managerClass sharedInstance];
+    SBLockScreenManager *manager = [managerClass sharedInstance];
     if (![manager respondsToSelector:@selector(isUILocked)]) {
         return NO;
     }
@@ -443,6 +493,212 @@ NS_ASSUME_NONNULL_END
         *locked = [manager isUILocked];
     }
     return YES;
+}
+
+- (nullable FBScene *)currentKeyboardHostScene {
+    Class<KayokoFBSceneManagerClass> managerClass =
+        (Class<KayokoFBSceneManagerClass>)NSClassFromString(@"FBSceneManager");
+    if (![managerClass respondsToSelector:@selector(keyboardScene)] ||
+        ![managerClass respondsToSelector:@selector(sharedInstance)]) {
+        return nil;
+    }
+
+    FBScene *keyboardScene = [managerClass keyboardScene];
+    FBSceneManager *sceneManager = [managerClass sharedInstance];
+    if (![keyboardScene respondsToSelector:@selector(clientSettings)] ||
+        ![sceneManager respondsToSelector:@selector(sceneWithIdentifier:)]) {
+        return nil;
+    }
+
+    FBSSceneClientSettings *keyboardClientSettings = [keyboardScene clientSettings];
+    if (![keyboardClientSettings respondsToSelector:@selector(preferredSceneHostIdentity)]) {
+        return nil;
+    }
+
+    FBSSceneIdentityToken *hostIdentity = [keyboardClientSettings preferredSceneHostIdentity];
+    if (![hostIdentity respondsToSelector:@selector(identifier)]) {
+        return nil;
+    }
+
+    NSString *hostSceneIdentifier = [hostIdentity identifier];
+    if (![hostSceneIdentifier isKindOfClass:[NSString class]] || [hostSceneIdentifier length] == 0) {
+        return nil;
+    }
+
+    FBScene *hostScene = [sceneManager sceneWithIdentifier:hostSceneIdentifier];
+    return [hostScene respondsToSelector:@selector(settings)] ? hostScene : nil;
+}
+
+- (nullable NSString *)identifierForScene:(FBScene *)scene {
+    if (!scene) {
+        return nil;
+    }
+
+    if (![scene respondsToSelector:@selector(identifier)]) {
+        return nil;
+    }
+
+    NSString *identifier = [scene identifier];
+    return [identifier isKindOfClass:[NSString class]] && [identifier length] > 0 ? identifier : nil;
+}
+
+- (BOOL)sceneIsSpotlightScene:(FBScene *)scene {
+    return [[self identifierForScene:scene] isEqualToString:kKayokoSpotlightSceneIdentifier];
+}
+
+- (BOOL)stringMatchesSpringBoard:(NSString *)string {
+    if (![string isKindOfClass:[NSString class]] || [string length] == 0) {
+        return NO;
+    }
+
+    return [string caseInsensitiveCompare:kKayokoSpringBoardBundleIdentifier] == NSOrderedSame ||
+           [string caseInsensitiveCompare:kKayokoSpringBoardProcessName] == NSOrderedSame;
+}
+
+- (BOOL)sceneIsHostedBySpringBoard:(FBScene *)scene {
+    if (!scene) {
+        return NO;
+    }
+
+    NSString *identifier = [self identifierForScene:scene];
+    if ([self stringMatchesSpringBoard:identifier]) {
+        return YES;
+    }
+
+    if (![scene respondsToSelector:@selector(clientProcess)]) {
+        return NO;
+    }
+
+    FBProcess *process = [scene clientProcess];
+    if ([process respondsToSelector:@selector(bundleIdentifier)] &&
+        [self stringMatchesSpringBoard:[process bundleIdentifier]]) {
+        return YES;
+    }
+    return [process respondsToSelector:@selector(name)] && [self stringMatchesSpringBoard:[process name]];
+}
+
+- (UIUserInterfaceStyle)userInterfaceStyleFromSceneSettings:(UIApplicationSceneSettings *)settings {
+    if (![settings respondsToSelector:@selector(userInterfaceStyle)]) {
+        return UIUserInterfaceStyleUnspecified;
+    }
+
+    NSInteger style = (NSInteger)[settings userInterfaceStyle];
+    if (style == UIUserInterfaceStyleLight || style == UIUserInterfaceStyleDark) {
+        return (UIUserInterfaceStyle)style;
+    }
+    return UIUserInterfaceStyleUnspecified;
+}
+
+- (UIUserInterfaceStyle)userInterfaceStyleFromKeyboardAppearance:(NSInteger)keyboardAppearance {
+    switch ((UIKeyboardAppearance)keyboardAppearance) {
+    case UIKeyboardAppearanceDark:
+        return UIUserInterfaceStyleDark;
+    case UIKeyboardAppearanceLight:
+        return UIUserInterfaceStyleLight;
+    default:
+        return UIUserInterfaceStyleUnspecified;
+    }
+}
+
+- (UIUserInterfaceStyle)userInterfaceStyleFromKeyboardAppearanceProvider:
+    (NSObject<KayokoKeyboardAppearanceProviding> *)provider {
+    if (![provider respondsToSelector:@selector(keyboardAppearance)]) {
+        return UIUserInterfaceStyleUnspecified;
+    }
+
+    return [self userInterfaceStyleFromKeyboardAppearance:[provider keyboardAppearance]];
+}
+
+- (UIUserInterfaceStyle)currentSpringBoardKeyboardUserInterfaceStyle {
+    Class<KayokoUIKeyboardImplClass> keyboardImplClass =
+        (Class<KayokoUIKeyboardImplClass>)NSClassFromString(@"UIKeyboardImpl");
+    if (![keyboardImplClass respondsToSelector:@selector(activeInstance)]) {
+        return UIUserInterfaceStyleUnspecified;
+    }
+
+    UIKeyboardImpl *keyboardImpl = [keyboardImplClass activeInstance];
+    if ([keyboardImpl respondsToSelector:@selector(textInputTraits)]) {
+        UIUserInterfaceStyle style =
+            [self userInterfaceStyleFromKeyboardAppearanceProvider:[keyboardImpl textInputTraits]];
+        if (style == UIUserInterfaceStyleLight || style == UIUserInterfaceStyleDark) {
+            return style;
+        }
+    }
+
+    if ([keyboardImpl respondsToSelector:@selector(inputDelegate)]) {
+        UIUserInterfaceStyle style =
+            [self userInterfaceStyleFromKeyboardAppearanceProvider:[keyboardImpl inputDelegate]];
+        if (style == UIUserInterfaceStyleLight || style == UIUserInterfaceStyleDark) {
+            return style;
+        }
+    }
+
+    return [keyboardImpl respondsToSelector:@selector(delegate)]
+               ? [self userInterfaceStyleFromKeyboardAppearanceProvider:[keyboardImpl delegate]]
+               : UIUserInterfaceStyleUnspecified;
+}
+
+- (UIUserInterfaceStyle)currentKeyboardHostUserInterfaceStyle {
+    FBScene *hostScene = [self currentKeyboardHostScene];
+    if ([self sceneIsHostedBySpringBoard:hostScene]) {
+        UIUserInterfaceStyle style = [self currentSpringBoardKeyboardUserInterfaceStyle];
+        if (style == UIUserInterfaceStyleLight || style == UIUserInterfaceStyleDark) {
+            return style;
+        }
+    }
+
+    if ([self sceneIsSpotlightScene:hostScene]) {
+        return UIUserInterfaceStyleDark;
+    }
+
+    if (![hostScene respondsToSelector:@selector(settings)]) {
+        return UIUserInterfaceStyleUnspecified;
+    }
+
+    return [self userInterfaceStyleFromSceneSettings:[hostScene settings]];
+}
+
+- (void)applyKeyboardHostUserInterfaceStyle:(UIUserInterfaceStyle)style {
+    if (!self.mainViewController ||
+        (style != UIUserInterfaceStyleLight && style != UIUserInterfaceStyleDark)) {
+        return;
+    }
+
+    [self.mainViewController applyUserInterfaceStyle:style];
+}
+
+- (void)applyCurrentKeyboardHostUserInterfaceStyle {
+    [self applyKeyboardHostUserInterfaceStyle:[self currentKeyboardHostUserInterfaceStyle]];
+}
+
+- (BOOL)sceneIsCurrentKeyboardHostScene:(FBScene *)scene {
+    if (!scene) {
+        return NO;
+    }
+
+    return scene == [self currentKeyboardHostScene];
+}
+
+- (void)handleScene:(FBScene *)scene didUpdateSettings:(UIApplicationSceneSettings *)settings {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self handleScene:scene didUpdateSettings:settings];
+        });
+        return;
+    }
+
+    if (![self panelVisible] || ![self sceneIsCurrentKeyboardHostScene:scene]) {
+        return;
+    }
+
+    UIUserInterfaceStyle style = UIUserInterfaceStyleUnspecified;
+    if ([self sceneIsHostedBySpringBoard:scene]) {
+        style = [self currentSpringBoardKeyboardUserInterfaceStyle];
+    }
+    if (style != UIUserInterfaceStyleLight && style != UIUserInterfaceStyleDark) {
+        style = [self sceneIsSpotlightScene:scene] ? UIUserInterfaceStyleDark : [self userInterfaceStyleFromSceneSettings:settings];
+    }
+    [self applyKeyboardHostUserInterfaceStyle:style];
 }
 
 - (BOOL)frontmostAppIsLandscape {
@@ -603,29 +859,7 @@ NS_ASSUME_NONNULL_END
 
     [self applyHeightPreferenceToViewApplyingWhenHidden:YES];
     [self.mainViewController applyUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
-
-    SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
-    if (statusBarManager) {
-        UIStatusBarStyleRequest *styleRequest = [statusBarManager frontmostStatusBarStyleRequest];
-        if (styleRequest) {
-            long long style = [styleRequest style];
-            BOOL isKindOfDark = style == 1;
-            [self.mainViewController
-                applyUserInterfaceStyle:isKindOfDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight];
-        }
-    }
-
-    SBWindowSceneStatusBarManager *windowSceneStatusBarManager =
-        [objc_getClass("SBWindowSceneStatusBarManager") windowSceneStatusBarManagerForEmbeddedDisplay];
-    if (windowSceneStatusBarManager) {
-        UIStatusBarStyleRequest *styleRequest = [windowSceneStatusBarManager frontmostStatusBarStyleRequest];
-        if (styleRequest) {
-            long long style = [styleRequest style];
-            BOOL isKindOfDark = style == 1;
-            [self.mainViewController
-                applyUserInterfaceStyle:isKindOfDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight];
-        }
-    }
+    [self applyCurrentKeyboardHostUserInterfaceStyle];
 
     [self.mainViewController show];
 
