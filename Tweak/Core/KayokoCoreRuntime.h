@@ -27,6 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)hide;
 - (void)hideImmediately;
 - (void)reloadHistory;
+- (void)handleApplicationMetadataChanged;
 - (void)checkpointHistoryDatabase;
 - (void)prepareForPackageMaintenance;
 - (void)clearFavorites;

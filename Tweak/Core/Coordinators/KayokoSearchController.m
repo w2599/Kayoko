@@ -35,6 +35,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL isResettingSearch;
 @property(nonatomic, assign) NSUInteger searchRequestIdentifier;
 @property(nonatomic, assign) BOOL loadingAppTokens;
+@property(nonatomic, assign) BOOL appTokensDirty;
+@property(nonatomic, assign) BOOL needsAppTokenReloadAfterCurrentLoad;
+@property(nonatomic, assign) NSUInteger appTokenLoadRequestIdentifier;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -66,6 +69,7 @@ NS_ASSUME_NONNULL_END
         _tagTokens = @[];
         _appTokens = @[];
         _metadataProvider = [[KayokoApplicationMetadataProvider alloc] init];
+        _appTokensDirty = YES;
 
         _presentationController =
             [[KayokoSearchPresentationController alloc] initWithContainerView:containerView
@@ -80,6 +84,10 @@ NS_ASSUME_NONNULL_END
         [_presentationController setDelegate:self];
 
         [self attachToListViewController:historyListViewController hidesSearchBar:YES];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleHistoryDidChangeNotification:)
+                                                     name:kKayokoPasteboardManagerHistoryDidChangeNotification
+                                                   object:nil];
     }
     return self;
 }
@@ -105,6 +113,15 @@ NS_ASSUME_NONNULL_END
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)handleHistoryDidChangeNotification:(NSNotification *)notification {
+    (void)notification;
+    [self invalidateAppTokensAndReloadIfActive];
+}
+
+- (void)handleApplicationMetadataChanged {
+    [self invalidateAppTokensAndReloadIfActive];
 }
 
 - (KayokoHistoryListViewController *)activeListViewController {
@@ -146,6 +163,40 @@ NS_ASSUME_NONNULL_END
     (KayokoHistoryListViewController *)listViewController {
     return listViewController == [self favoritesListViewController] ? [self favoritesTokenListViewController]
                                                                     : [self historyTokenListViewController];
+}
+
+- (BOOL)tokenArray:(NSArray<KayokoSearchToken *> *)left
+    isDisplayEqualToTokenArray:(NSArray<KayokoSearchToken *> *)right {
+    if ([left count] != [right count]) {
+        return NO;
+    }
+
+    for (NSUInteger index = 0; index < [left count]; index++) {
+        if (![left[index] isDisplayEqualToToken:right[index]]) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
+- (KayokoSearchToken *)tokenWithType:(NSString *)type
+                               value:(NSString *)value
+                            inTokens:(NSArray<KayokoSearchToken *> *)tokens {
+    if ([value length] == 0) {
+        return nil;
+    }
+
+    for (KayokoSearchToken *token in tokens) {
+        if ([[token type] isEqualToString:type] && [[token value] isEqualToString:value]) {
+            return token;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)appDisplaySignatureForBundleIdentifier:(NSString *)bundleIdentifier title:(NSString *)title {
+    BOOL installed = [[self metadataProvider] hasApplicationForBundleIdentifier:bundleIdentifier];
+    return [NSString stringWithFormat:@"installed=%@;title=%@", installed ? @"1" : @"0", title ?: @""];
 }
 
 - (KayokoSearchToken *)selectedCategoryTokenForCriteria:(KayokoSearchCriteria *)criteria
@@ -192,8 +243,7 @@ NS_ASSUME_NONNULL_END
     if ([bundleIdentifier length] == 0) {
         return nil;
     }
-    NSString *title = [[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier];
-    return [KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeApp value:bundleIdentifier title:title imageName:nil];
+    return [self tokenWithType:kKayokoSearchTokenTypeApp value:bundleIdentifier inTokens:[self appTokens]];
 }
 
 - (KayokoSearchToken *)selectedTagTokenForCriteria:(KayokoSearchCriteria *)criteria {
@@ -201,12 +251,7 @@ NS_ASSUME_NONNULL_END
     if ([tagUUID length] == 0) {
         return nil;
     }
-
-    KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:tagUUID];
-    if (!tag) {
-        return nil;
-    }
-    return [KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeTag value:tagUUID title:[tag title] imageName:nil];
+    return [self tokenWithType:kKayokoSearchTokenTypeTag value:tagUUID inTokens:[self tagTokens]];
 }
 
 - (UIImage *)iconForSearchToken:(KayokoSearchToken *)token {
@@ -214,8 +259,7 @@ NS_ASSUME_NONNULL_END
         return [[self metadataProvider] smallIconForBundleIdentifier:[token value]];
     }
     if ([[token type] isEqualToString:kKayokoSearchTokenTypeTag]) {
-        KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[token value]];
-        return [KayokoTagColorFormatter dotImageWithHexColor:[tag hexColor]
+        return [KayokoTagColorFormatter dotImageWithHexColor:[token displaySignature]
                                                     diameter:14.0
                                               canvasDiameter:20
                                                  borderWidth:1.25];
@@ -226,19 +270,25 @@ NS_ASSUME_NONNULL_END
     return nil;
 }
 
-- (NSArray<UISearchToken *> *)searchFieldTokensForCriteria:(KayokoSearchCriteria *)criteria
-                                       tokenListController:(KayokoSearchTokenListViewController *)tokenListController {
-    NSMutableArray<UISearchToken *> *searchTokens = [[NSMutableArray alloc] init];
+- (NSArray<KayokoSearchToken *> *)searchTokensForCriteria:(KayokoSearchCriteria *)criteria
+                                      tokenListController:(KayokoSearchTokenListViewController *)tokenListController {
+    NSMutableArray<KayokoSearchToken *> *searchTokens = [[NSMutableArray alloc] init];
     NSArray<KayokoSearchToken *> *tokens = @[
         [self selectedCategoryTokenForCriteria:criteria tokenListController:tokenListController] ?: (id)[NSNull null],
         [self selectedTagTokenForCriteria:criteria] ?: (id)[NSNull null],
         [self selectedAppTokenForCriteria:criteria] ?: (id)[NSNull null]
     ];
     for (id object in tokens) {
-        if (![object isKindOfClass:[KayokoSearchToken class]]) {
-            continue;
+        if ([object isKindOfClass:[KayokoSearchToken class]]) {
+            [searchTokens addObject:object];
         }
-        KayokoSearchToken *token = object;
+    }
+    return searchTokens;
+}
+
+- (NSArray<UISearchToken *> *)searchFieldTokensForSearchTokens:(NSArray<KayokoSearchToken *> *)tokens {
+    NSMutableArray<UISearchToken *> *searchTokens = [[NSMutableArray alloc] init];
+    for (KayokoSearchToken *token in tokens) {
         UIImage *icon = [self iconForSearchToken:token];
         UISearchToken *searchToken = [UISearchToken tokenWithIcon:icon text:[token title]];
         [searchToken setRepresentedObject:token];
@@ -247,14 +297,37 @@ NS_ASSUME_NONNULL_END
     return searchTokens;
 }
 
-- (void)syncSearchTokensForSearchBar:(UISearchBar *)searchBar criteria:(KayokoSearchCriteria *)criteria {
+- (BOOL)searchTextField:(UISearchTextField *)textField hasSearchTokens:(NSArray<KayokoSearchToken *> *)tokens {
+    NSArray<UISearchToken *> *currentSearchTokens = [textField tokens];
+    if ([currentSearchTokens count] != [tokens count]) {
+        return NO;
+    }
+
+    for (NSUInteger index = 0; index < [currentSearchTokens count]; index++) {
+        id representedObject = [currentSearchTokens[index] representedObject];
+        if (![representedObject isKindOfClass:[KayokoSearchToken class]] ||
+            ![(KayokoSearchToken *)representedObject isDisplayEqualToToken:tokens[index]]) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
+- (BOOL)syncSearchTokensForSearchBar:(UISearchBar *)searchBar criteria:(KayokoSearchCriteria *)criteria {
     UITextField *textField = [searchBar searchTextField];
     if (![textField respondsToSelector:@selector(setTokens:)]) {
-        return;
+        return NO;
     }
     KayokoSearchTokenListViewController *tokenListController = [self tokenListViewControllerForSearchBar:searchBar];
-    [(UISearchTextField *)textField setTokens:[self searchFieldTokensForCriteria:criteria
-                                                             tokenListController:tokenListController]];
+    NSArray<KayokoSearchToken *> *tokens = [self searchTokensForCriteria:criteria
+                                                     tokenListController:tokenListController];
+    UISearchTextField *searchTextField = (UISearchTextField *)textField;
+    if ([self searchTextField:searchTextField hasSearchTokens:tokens]) {
+        return NO;
+    }
+
+    [searchTextField setTokens:[self searchFieldTokensForSearchTokens:tokens]];
+    return YES;
 }
 
 - (KayokoSearchCriteria *)criteriaFromSearchBar:(UISearchBar *)searchBar
@@ -340,7 +413,28 @@ NS_ASSUME_NONNULL_END
     [self updateSearchTokenHeaderHeights];
 }
 
-- (void)reloadTagTokens {
+- (void)syncSearchBarsAfterTokenSourceChange {
+    if (![self isSearchActive]) {
+        return;
+    }
+
+    [self syncSearchBarForListViewController:[self historyListViewController]];
+    [self syncSearchBarForListViewController:[self favoritesListViewController]];
+
+    KayokoHistoryListViewController *activeListViewController = [self activeListViewController];
+    UISearchBar *activeSearchBar = [self searchBarForTableView:[activeListViewController tableView]];
+    KayokoSearchCriteria *criteria = [self criteriaFromSearchBar:activeSearchBar
+                                              listViewController:activeListViewController];
+    if (![criteria isEqualToCriteria:[activeListViewController searchCriteria]]) {
+        [self applySearchCriteria:criteria toListViewController:activeListViewController];
+        return;
+    }
+
+    [self updateTokenListForListViewController:activeListViewController];
+    [self updateSearchTokenHeaderHeights];
+}
+
+- (BOOL)reloadTagTokens {
     NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
     NSMutableArray<KayokoSearchToken *> *tagTokens = [[NSMutableArray alloc] initWithCapacity:[tags count]];
     for (KayokoTag *tag in tags) {
@@ -350,16 +444,79 @@ NS_ASSUME_NONNULL_END
         [tagTokens addObject:[KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeTag
                                                         value:[tag uuid]
                                                         title:[tag title]
-                                                    imageName:nil]];
+                                                    imageName:nil
+                                             displaySignature:([KayokoTag normalizedHexColorFromString:[tag hexColor]]
+                                                                   ?: @"#00000000")]];
+    }
+    if ([self tokenArray:[self tagTokens] isDisplayEqualToTokenArray:tagTokens]) {
+        return NO;
     }
     [self setTagTokens:tagTokens];
+    return YES;
+}
+
+- (NSArray<KayokoSearchToken *> *)appTokensFromBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
+    NSMutableArray<NSString *> *installedBundleIdentifiers = [[NSMutableArray alloc] init];
+    for (NSString *bundleIdentifier in bundleIdentifiers) {
+        if ([[self metadataProvider] hasApplicationForBundleIdentifier:bundleIdentifier]) {
+            [installedBundleIdentifiers addObject:bundleIdentifier];
+        }
+    }
+
+    NSArray<NSString *> *sortedBundleIdentifiers =
+        [installedBundleIdentifiers sortedArrayUsingComparator:^NSComparisonResult(NSString *left, NSString *right) {
+          NSString *leftName = [[self metadataProvider] displayNameForBundleIdentifier:left];
+          NSString *rightName = [[self metadataProvider] displayNameForBundleIdentifier:right];
+          NSComparisonResult result = [leftName localizedStandardCompare:rightName];
+          return result == NSOrderedSame ? [left localizedStandardCompare:right] : result;
+        }];
+    NSMutableArray<KayokoSearchToken *> *appTokens =
+        [[NSMutableArray alloc] initWithCapacity:[sortedBundleIdentifiers count]];
+    for (NSString *bundleIdentifier in sortedBundleIdentifiers) {
+        NSString *title = [[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier];
+        [appTokens
+            addObject:[KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeApp
+                                                 value:bundleIdentifier
+                                                 title:title
+                                             imageName:nil
+                                      displaySignature:[self appDisplaySignatureForBundleIdentifier:bundleIdentifier
+                                                                                              title:title]]];
+    }
+    return appTokens;
+}
+
+- (void)finishLoadingAppTokensAndReloadIfNeeded {
+    BOOL shouldReload = [self needsAppTokenReloadAfterCurrentLoad] || [self appTokensDirty];
+    [self setNeedsAppTokenReloadAfterCurrentLoad:NO];
+    if (shouldReload) {
+        [self setAppTokensDirty:YES];
+        [self loadAppTokensIfNeeded];
+    }
+}
+
+- (void)invalidateAppTokensAndReloadIfActive {
+    [self setAppTokensDirty:YES];
+    if ([self loadingAppTokens]) {
+        [self setNeedsAppTokenReloadAfterCurrentLoad:YES];
+        return;
+    }
+    if ([self isSearchActive]) {
+        [self loadAppTokensIfNeeded];
+    }
 }
 
 - (void)loadAppTokensIfNeeded {
-    if ([self loadingAppTokens]) {
+    if (![self appTokensDirty]) {
         return;
     }
+    if ([self loadingAppTokens]) {
+        [self setNeedsAppTokenReloadAfterCurrentLoad:YES];
+        return;
+    }
+    [self setAppTokensDirty:NO];
     [self setLoadingAppTokens:YES];
+    NSUInteger requestIdentifier = [self appTokenLoadRequestIdentifier] + 1;
+    [self setAppTokenLoadRequestIdentifier:requestIdentifier];
     __weak typeof(self) weakSelf = self;
     [[KayokoPasteboardManager sharedInstance]
         availableSearchAppBundleIdentifiersWithCompletion:^(NSArray<NSString *> *bundleIdentifiers, NSError *error) {
@@ -368,29 +525,22 @@ NS_ASSUME_NONNULL_END
               return;
           }
           [strongSelf setLoadingAppTokens:NO];
+          if ([strongSelf appTokenLoadRequestIdentifier] != requestIdentifier) {
+              return;
+          }
           if (error) {
+              [strongSelf setAppTokensDirty:YES];
               [[strongSelf delegate] searchController:strongSelf didFailLoadingSearchWithError:error];
               return;
           }
 
-          NSArray<NSString *> *sortedBundleIdentifiers =
-              [bundleIdentifiers sortedArrayUsingComparator:^NSComparisonResult(NSString *left, NSString *right) {
-                NSString *leftName = [[strongSelf metadataProvider] displayNameForBundleIdentifier:left];
-                NSString *rightName = [[strongSelf metadataProvider] displayNameForBundleIdentifier:right];
-                NSComparisonResult result = [leftName localizedStandardCompare:rightName];
-                return result == NSOrderedSame ? [left localizedStandardCompare:right] : result;
-              }];
-          NSMutableArray<KayokoSearchToken *> *appTokens =
-              [[NSMutableArray alloc] initWithCapacity:[sortedBundleIdentifiers count]];
-          for (NSString *bundleIdentifier in sortedBundleIdentifiers) {
-              [appTokens addObject:[KayokoSearchToken tokenWithType:kKayokoSearchTokenTypeApp
-                                                              value:bundleIdentifier
-                                                              title:[[strongSelf metadataProvider]
-                                                                        displayNameForBundleIdentifier:bundleIdentifier]
-                                                          imageName:nil]];
+          NSArray<KayokoSearchToken *> *appTokens = [strongSelf appTokensFromBundleIdentifiers:bundleIdentifiers];
+          if (![strongSelf tokenArray:[strongSelf appTokens] isDisplayEqualToTokenArray:appTokens]) {
+              [strongSelf setAppTokens:appTokens];
+              [strongSelf updateAllTokenLists];
+              [strongSelf syncSearchBarsAfterTokenSourceChange];
           }
-          [strongSelf setAppTokens:appTokens];
-          [strongSelf updateAllTokenLists];
+          [strongSelf finishLoadingAppTokensAndReloadIfNeeded];
         }];
 }
 

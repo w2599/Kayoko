@@ -23,19 +23,40 @@ NSString *const kKayokoSearchCategoryImage = @"image";
                         value:(NSString *)value
                         title:(NSString *)title
                     imageName:(nullable NSString *)imageName {
-    return [[self alloc] initWithType:type value:value title:title imageName:imageName];
+    return [[self alloc] initWithType:type value:value title:title imageName:imageName displaySignature:nil];
+}
+
++ (instancetype)tokenWithType:(NSString *)type
+                        value:(NSString *)value
+                        title:(NSString *)title
+                    imageName:(nullable NSString *)imageName
+             displaySignature:(nullable NSString *)displaySignature {
+    return [[self alloc] initWithType:type
+                                value:value
+                                title:title
+                            imageName:imageName
+                     displaySignature:displaySignature];
 }
 
 - (instancetype)initWithType:(NSString *)type
                        value:(NSString *)value
                        title:(NSString *)title
                    imageName:(nullable NSString *)imageName {
+    return [self initWithType:type value:value title:title imageName:imageName displaySignature:nil];
+}
+
+- (instancetype)initWithType:(NSString *)type
+                       value:(NSString *)value
+                       title:(NSString *)title
+                   imageName:(nullable NSString *)imageName
+            displaySignature:(nullable NSString *)displaySignature {
     self = [super init];
     if (self) {
         _type = [type copy] ?: @"";
         _value = [value copy] ?: @"";
         _title = [title copy] ?: @"";
         _imageName = [imageName copy];
+        _displaySignature = [displaySignature copy];
     }
     return self;
 }
@@ -44,7 +65,22 @@ NSString *const kKayokoSearchCategoryImage = @"image";
     return [[[self class] allocWithZone:zone] initWithType:[self type]
                                                      value:[self value]
                                                      title:[self title]
-                                                 imageName:[self imageName]];
+                                                 imageName:[self imageName]
+                                          displaySignature:[self displaySignature]];
+}
+
+- (BOOL)isDisplayEqualToToken:(nullable KayokoSearchToken *)token {
+    if (self == token) {
+        return YES;
+    }
+    if (![token isKindOfClass:[KayokoSearchToken class]]) {
+        return NO;
+    }
+
+    return [[self type] isEqualToString:[token type]] && [[self value] isEqualToString:[token value]] &&
+           [[self title] isEqualToString:[token title]] &&
+           [([self imageName] ?: @"") isEqualToString:([token imageName] ?: @"")] &&
+           [([self displaySignature] ?: @"") isEqualToString:([token displaySignature] ?: @"")];
 }
 
 - (BOOL)isEqual:(id)object {

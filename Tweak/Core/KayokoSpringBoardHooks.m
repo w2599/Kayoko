@@ -29,6 +29,7 @@ CHDeclareClass(SBHLibrarySearchController);
 CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
+CHDeclareClass(SBApplicationController);
 CHDeclareClass(_UISystemGestureWindow);
 
 @interface SpringBoard : UIApplication
@@ -65,6 +66,14 @@ CHDeclareClass(_UISystemGestureWindow);
 - (void)beginEditingForSearchField;
 - (void)endEditingForSearchField;
 - (BOOL)isSearchFieldEditing;
+@end
+
+@interface SBApplicationController : NSObject
+- (void)applicationsAdded:(id)added;
+- (void)applicationsDemoted:(id)demoted;
+- (void)applicationsRemoved:(id)removed;
+- (void)applicationsReplaced:(id)replaced;
+- (void)applicationsUpdated:(id)updated;
 @end
 
 @interface SBMainDisplaySystemGestureManager : NSObject
@@ -110,6 +119,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)hideForLayoutStateTransition;
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
 + (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window;
++ (void)installApplicationMetadataHooks;
 + (void)installSystemSwipeUpHooks;
 
 @end
@@ -299,6 +309,31 @@ CHOptimizedMethod1(self, void, SBHLibrarySearchController, _willDismissSearchAni
     } else {
         [[KayokoCoreRuntime sharedRuntime] hideImmediately];
     }
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsAdded, id, added) {
+    CHSuper1(SBApplicationController, applicationsAdded, added);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsDemoted, id, demoted) {
+    CHSuper1(SBApplicationController, applicationsDemoted, demoted);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsRemoved, id, removed) {
+    CHSuper1(SBApplicationController, applicationsRemoved, removed);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsReplaced, id, replaced) {
+    CHSuper1(SBApplicationController, applicationsReplaced, replaced);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsUpdated, id, updated) {
+    CHSuper1(SBApplicationController, applicationsUpdated, updated);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
 }
 
 CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
@@ -513,6 +548,30 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     }
 }
 
++ (void)installApplicationMetadataHooks {
+    Class applicationControllerClass = NSClassFromString(@"SBApplicationController");
+    if (!applicationControllerClass) {
+        return;
+    }
+
+    CHLoadClass_(&SBApplicationController$, applicationControllerClass);
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsAdded:)]) {
+        CHHook1(SBApplicationController, applicationsAdded);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsDemoted:)]) {
+        CHHook1(SBApplicationController, applicationsDemoted);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsRemoved:)]) {
+        CHHook1(SBApplicationController, applicationsRemoved);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsReplaced:)]) {
+        CHHook1(SBApplicationController, applicationsReplaced);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsUpdated:)]) {
+        CHHook1(SBApplicationController, applicationsUpdated);
+    }
+}
+
 + (void)installSystemGestureHooks {
     Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
     CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
@@ -576,6 +635,7 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     [self installLockScreenTransitionHooks];
     [self installSpotlightHooks];
     [self installLibrarySearchHooks];
+    [self installApplicationMetadataHooks];
     [self installSystemGestureHooks];
 
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];

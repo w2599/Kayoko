@@ -654,6 +654,18 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)handleApplicationMetadataChanged {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
+    if (self.mainViewController) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self.mainViewController handleApplicationMetadataChanged];
+        });
+    }
+}
+
 - (void)checkpointHistoryDatabase {
     if ([self isPackageMaintenanceMode]) {
         return;

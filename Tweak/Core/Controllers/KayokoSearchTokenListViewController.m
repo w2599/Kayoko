@@ -11,8 +11,6 @@
 #import "KayokoSearchTokenCollectionView.h"
 #import "KayokoSearchTokenCollectionViewCell.h"
 #import "KayokoSearchTokenSectionView.h"
-#import "KayokoTag.h"
-#import "KayokoTagCatalog.h"
 #import "KayokoTagColorFormatter.h"
 
 static CGFloat const kKayokoSearchTokenTopInset = 12;
@@ -132,23 +130,76 @@ NS_ASSUME_NONNULL_END
     return ![[self searchCriteria] hasTagToken] && [[self tagTokens] count] > 0;
 }
 
+- (BOOL)tokenArray:(NSArray<KayokoSearchToken *> *)left
+    isDisplayEqualToTokenArray:(NSArray<KayokoSearchToken *> *)right {
+    if ([left count] != [right count]) {
+        return NO;
+    }
+
+    for (NSUInteger index = 0; index < [left count]; index++) {
+        if (![left[index] isDisplayEqualToToken:right[index]]) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
+- (BOOL)searchCriteria:(KayokoSearchCriteria *)left
+    hasSameSelectedTokensAsSearchCriteria:(KayokoSearchCriteria *)right {
+    return [([left categoryValue] ?: @"") isEqualToString:([right categoryValue] ?: @"")] &&
+           [([left tagUUID] ?: @"") isEqualToString:([right tagUUID] ?: @"")] &&
+           [([left appBundleIdentifier] ?: @"") isEqualToString:([right appBundleIdentifier] ?: @"")];
+}
+
 - (void)updateWithSearchCriteria:(KayokoSearchCriteria *)searchCriteria
                        tagTokens:(NSArray<KayokoSearchToken *> *)tagTokens
                        appTokens:(NSArray<KayokoSearchToken *> *)appTokens {
-    [self setSearchCriteria:searchCriteria ?: [KayokoSearchCriteria emptyCriteria]];
-    [self setTagTokens:tagTokens ?: @[]];
-    [self setAppTokens:appTokens ?: @[]];
-    [self setNeedsCategoryContentOffsetReset:YES];
-    [self setNeedsTagContentOffsetReset:YES];
-    [self setNeedsAppContentOffsetReset:YES];
-    [self configureTagSectionForWidth:CGRectGetWidth([[self view] bounds])];
-    [self configureAppSectionForWidth:CGRectGetWidth([[self view] bounds])];
-    [[[self categorySectionView] collectionView] reloadData];
-    [[[self tagSectionView] collectionView] reloadData];
-    [[[self appSectionView] collectionView] reloadData];
+    KayokoSearchCriteria *newSearchCriteria = searchCriteria ?: [KayokoSearchCriteria emptyCriteria];
+    NSArray<KayokoSearchToken *> *newTagTokens = tagTokens ?: @[];
+    NSArray<KayokoSearchToken *> *newAppTokens = appTokens ?: @[];
+
+    BOOL oldShowsCategory = [self showsCategorySection];
+    BOOL oldShowsTag = [self showsTagSection];
+    BOOL oldShowsApp = [self showsAppSection];
+    BOOL oldTagUsesHorizontalLayout = [self usesHorizontalScrollingLayoutForTagSection];
+    BOOL oldAppUsesHorizontalLayout = [self usesHorizontalScrollingLayoutForAppSection];
+
+    BOOL selectedTokensChanged = ![self searchCriteria:[self searchCriteria]
+                 hasSameSelectedTokensAsSearchCriteria:newSearchCriteria];
+    BOOL tagTokensChanged = ![self tokenArray:[self tagTokens] isDisplayEqualToTokenArray:newTagTokens];
+    BOOL appTokensChanged = ![self tokenArray:[self appTokens] isDisplayEqualToTokenArray:newAppTokens];
+
+    [self setSearchCriteria:newSearchCriteria];
+    if (tagTokensChanged) {
+        [self setTagTokens:newTagTokens];
+    }
+    if (appTokensChanged) {
+        [self setAppTokens:newAppTokens];
+    }
+
+    CGFloat width = CGRectGetWidth([[self view] bounds]);
+    BOOL tagLayoutChanged = oldTagUsesHorizontalLayout != [self usesHorizontalScrollingLayoutForTagSection];
+    BOOL appLayoutChanged = oldAppUsesHorizontalLayout != [self usesHorizontalScrollingLayoutForAppSection];
+    if (tagTokensChanged || tagLayoutChanged) {
+        [self setNeedsTagContentOffsetReset:YES];
+        [self configureTagSectionForWidth:width];
+        [[[self tagSectionView] collectionView] reloadData];
+    }
+    if (appTokensChanged || appLayoutChanged) {
+        [self setNeedsAppContentOffsetReset:YES];
+        [self configureAppSectionForWidth:width];
+        [[[self appSectionView] collectionView] reloadData];
+    }
+
     [self updateSectionVisibility];
-    [[self view] setNeedsLayout];
-    [self notifyContentHeightIfNeeded];
+
+    BOOL visibilityChanged = oldShowsCategory != [self showsCategorySection] || oldShowsTag != [self showsTagSection] ||
+                             oldShowsApp != [self showsAppSection];
+    if (selectedTokensChanged || tagTokensChanged || appTokensChanged || tagLayoutChanged || appLayoutChanged ||
+        visibilityChanged) {
+        [[self view] setNeedsLayout];
+        [self notifyContentHeightIfNeeded];
+    }
 }
 
 - (void)updateSectionVisibility {
@@ -329,9 +380,8 @@ NS_ASSUME_NONNULL_END
     if ([[token type] isEqualToString:kKayokoSearchTokenTypeApp]) {
         icon = [[self metadataProvider] smallIconForBundleIdentifier:[token value]];
     } else if ([[token type] isEqualToString:kKayokoSearchTokenTypeTag]) {
-        KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[token value]];
-        dotColor = [KayokoTagColorFormatter visibleColorFromHexColor:[tag hexColor]];
-        dotBorderColor = [KayokoTagColorFormatter borderColorFromHexColor:[tag hexColor]];
+        dotColor = [KayokoTagColorFormatter visibleColorFromHexColor:[token displaySignature]];
+        dotBorderColor = [KayokoTagColorFormatter borderColorFromHexColor:[token displaySignature]];
     } else if ([[token imageName] length] > 0) {
         icon = [UIImage systemImageNamed:[token imageName]];
     }

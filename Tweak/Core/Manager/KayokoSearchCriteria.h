@@ -25,17 +25,29 @@ extern NSString *const kKayokoSearchCategoryImage;
 @property(nonatomic, copy, readonly) NSString *value;
 @property(nonatomic, copy, readonly) NSString *title;
 @property(nonatomic, copy, readonly, nullable) NSString *imageName;
+@property(nonatomic, copy, readonly, nullable) NSString *displaySignature;
 
 + (instancetype)tokenWithType:(NSString *)type
                         value:(NSString *)value
                         title:(NSString *)title
                     imageName:(nullable NSString *)imageName;
++ (instancetype)tokenWithType:(NSString *)type
+                        value:(NSString *)value
+                        title:(NSString *)title
+                    imageName:(nullable NSString *)imageName
+             displaySignature:(nullable NSString *)displaySignature;
 - (instancetype)initWithType:(NSString *)type
                        value:(NSString *)value
                        title:(NSString *)title
-                   imageName:(nullable NSString *)imageName NS_DESIGNATED_INITIALIZER;
+                   imageName:(nullable NSString *)imageName;
+- (instancetype)initWithType:(NSString *)type
+                       value:(NSString *)value
+                       title:(NSString *)title
+                   imageName:(nullable NSString *)imageName
+            displaySignature:(nullable NSString *)displaySignature NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
+- (BOOL)isDisplayEqualToToken:(nullable KayokoSearchToken *)token;
 
 @end
 

@@ -318,6 +318,10 @@ NS_ASSUME_NONNULL_END
     [self showStorageError:error];
 }
 
+- (void)handleApplicationMetadataChanged {
+    [[self searchController] handleApplicationMetadataChanged];
+}
+
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
     [self hideRestoringFocus];
 }

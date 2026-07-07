@@ -43,6 +43,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)cancelSearchWithCompletion:(nullable void (^)(void))completion;
 - (void)cancelSearchWithAnimations:(nullable void (^)(void))animations completion:(nullable void (^)(void))completion;
 - (void)resignSearchFirstResponder;
+- (void)handleApplicationMetadataChanged;
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
 - (void)resetBeforeHide;
 

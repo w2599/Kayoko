@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)applyUserInterfaceStyle:(UIUserInterfaceStyle)style;
 
 - (void)handleHistoryChanged;
+- (void)handleApplicationMetadataChanged;
 - (void)preloadHistoryIfNeeded;
 - (BOOL)isFullscreenSearchActive;
 - (void)show;
