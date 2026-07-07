@@ -759,9 +759,11 @@ NS_ASSUME_NONNULL_END
     [self endSearchRestoringFrame:YES clearsSearch:YES animations:nil panVelocityY:velocityY completion:nil];
 }
 
-- (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
+- (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                           beganInHeaderView:(BOOL)beganInHeaderView {
     [[self presentationController] handleFullscreenPanGestureRecognizer:recognizer
-                                                        activeTableView:[self activeTableView]];
+                                                        activeTableView:[self activeTableView]
+                                                      beganInHeaderView:beganInHeaderView];
 }
 
 - (void)resetBeforeHide {

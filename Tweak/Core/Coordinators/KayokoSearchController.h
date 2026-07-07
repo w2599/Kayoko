@@ -48,7 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isActiveSearchFirstResponder;
 - (void)resignSearchFirstResponder;
 - (void)handleApplicationMetadataChanged;
-- (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
+- (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                           beganInHeaderView:(BOOL)beganInHeaderView;
 - (void)resetBeforeHide;
 
 @end

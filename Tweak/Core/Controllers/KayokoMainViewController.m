@@ -167,9 +167,9 @@ NS_ASSUME_NONNULL_END
                                              panGestureRecognizer:[_panelPresentationController panGestureRecognizer]];
         [_searchController setDelegate:self];
 
-        _transientEdgeBackGestureRecognizer =
-            [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self
-                                                              action:@selector(handleTransientEdgeBackGestureRecognizer:)];
+        _transientEdgeBackGestureRecognizer = [[UIScreenEdgePanGestureRecognizer alloc]
+            initWithTarget:self
+                    action:@selector(handleTransientEdgeBackGestureRecognizer:)];
         [_transientEdgeBackGestureRecognizer setEdges:UIRectEdgeLeft];
         [_transientEdgeBackGestureRecognizer setDelegate:self];
         [_mainView addGestureRecognizer:_transientEdgeBackGestureRecognizer];
@@ -326,8 +326,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
-    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
-    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer];
+    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                             beganInHeaderView:(BOOL)beganInHeaderView {
+    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer beganInHeaderView:beganInHeaderView];
 }
 
 - (BOOL)historyControllerIsPanelVisible:(KayokoHistoryController *)controller {
@@ -755,9 +756,11 @@ NS_ASSUME_NONNULL_END
     [self setInteractiveTransientReturnContentView:contentView];
     [self setInteractiveTransientReturnWasPreview:(contentView == [[self previewViewController] previewView])];
     [[self mainView] beginInteractiveBackwardContentTransitionToView:sourceView hideContentView:contentView];
-    [[self mainView] updateInteractiveBackwardContentTransitionToView:sourceView
-                                                      hideContentView:contentView
-                                                             progress:[self progressForTransientEdgeBackGestureRecognizer:recognizer]];
+    [[self mainView]
+        updateInteractiveBackwardContentTransitionToView:sourceView
+                                         hideContentView:contentView
+                                                progress:[self
+                                                             progressForTransientEdgeBackGestureRecognizer:recognizer]];
     [self setDidRestoreSearchDuringInteractiveTransientReturn:
               [self restoreSearchAfterTransientContentIfNeededClearingState:NO]];
 }
@@ -769,9 +772,11 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [[self mainView] updateInteractiveBackwardContentTransitionToView:sourceView
-                                                      hideContentView:contentView
-                                                             progress:[self progressForTransientEdgeBackGestureRecognizer:recognizer]];
+    [[self mainView]
+        updateInteractiveBackwardContentTransitionToView:sourceView
+                                         hideContentView:contentView
+                                                progress:[self
+                                                             progressForTransientEdgeBackGestureRecognizer:recognizer]];
 }
 
 - (void)finishInteractiveTransientReturnWithDuration:(NSTimeInterval)duration {
@@ -831,7 +836,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)finishOrCancelInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
-    if ([recognizer state] == UIGestureRecognizerStateCancelled || [recognizer state] == UIGestureRecognizerStateFailed) {
+    if ([recognizer state] == UIGestureRecognizerStateCancelled ||
+        [recognizer state] == UIGestureRecognizerStateFailed) {
         CGFloat progress = [self progressForTransientEdgeBackGestureRecognizer:recognizer];
         [self cancelInteractiveTransientReturnWithDuration:[self transientEdgeBackAnimationDurationWithProgress:progress
                                                                                                       finishing:NO]];

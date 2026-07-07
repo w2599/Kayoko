@@ -440,7 +440,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
-                             activeTableView:(KayokoHistoryListView *)activeTableView {
+                             activeTableView:(KayokoHistoryListView *)activeTableView
+                           beganInHeaderView:(BOOL)beganInHeaderView {
     if (![self isSearchActive]) {
         return;
     }
@@ -483,11 +484,11 @@ NS_ASSUME_NONNULL_END
     }
 
     CGPoint velocity = [recognizer velocityInView:trackingView];
-    BOOL shouldCollapse = translation.y > 0 && velocity.y >= kKayokoSearchFullscreenCollapseVelocity;
+    BOOL shouldCollapse =
+        translation.y > 0 && ((beganInHeaderView && velocity.y >= kKayokoSearchFullscreenCollapseVelocity) ||
+                              progress >= kKayokoSearchFullscreenCollapseProgress);
     if (velocity.y <= kKayokoSearchFullscreenReboundVelocity) {
         shouldCollapse = NO;
-    } else if (translation.y > 0 && progress >= kKayokoSearchFullscreenCollapseProgress) {
-        shouldCollapse = YES;
     }
 
     if (shouldCollapse) {

@@ -364,7 +364,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     CGFloat currentOffsetX = [scrollView contentOffset].x;
     CGRect visibleRect = CGRectMake(currentOffsetX, 0, visibleWidth, CGRectGetHeight([scrollView bounds]));
     CGRect comfortableRect = CGRectInset(visibleRect, kKayokoTagChipHorizontalInset, 0);
-    CGRect checkRect = CGRectGetWidth(comfortableRect) >= CGRectGetWidth([button frame]) ? comfortableRect : visibleRect;
+    CGRect checkRect =
+        CGRectGetWidth(comfortableRect) >= CGRectGetWidth([button frame]) ? comfortableRect : visibleRect;
     if (CGRectContainsRect(checkRect, [button frame])) {
         return YES;
     }

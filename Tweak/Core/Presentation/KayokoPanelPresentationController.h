@@ -19,7 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
     shouldBeginExpandedPanelPanFromView:(nullable UIView *)view
                                velocity:(CGPoint)velocity;
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
-    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
+    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                             beganInHeaderView:(BOOL)beganInHeaderView;
 
 @end
 

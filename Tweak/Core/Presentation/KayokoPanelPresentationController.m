@@ -16,7 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, strong) UITapGestureRecognizer *grabberTapGestureRecognizer;
 @property(nonatomic, weak, nullable) UIView *panGestureTouchView;
-@property(nonatomic, strong) NSHashTable<UIGestureRecognizer *> *scrollViewPanGestureRecognizersRequiringPanelPanFailure;
+@property(nonatomic, strong)
+    NSHashTable<UIGestureRecognizer *> *scrollViewPanGestureRecognizersRequiringPanelPanFailure;
 @property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL panGestureDidReachZeroAlpha;
@@ -165,8 +166,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)makeScrollViewPanGestureRecognizerWaitForPanelPanIfNeeded:(UIScrollView *)scrollView {
     UIGestureRecognizer *scrollViewPanGestureRecognizer = [scrollView panGestureRecognizer];
-    if (!scrollViewPanGestureRecognizer ||
-        [[self scrollViewPanGestureRecognizersRequiringPanelPanFailure] containsObject:scrollViewPanGestureRecognizer]) {
+    if (!scrollViewPanGestureRecognizer || [[self scrollViewPanGestureRecognizersRequiringPanelPanFailure]
+                                               containsObject:scrollViewPanGestureRecognizer]) {
         return;
     }
 
@@ -191,6 +192,10 @@ NS_ASSUME_NONNULL_END
     return [scrollView contentOffset].y <= topBoundary + kKayokoPanelPanScrollViewTopTolerance;
 }
 
+- (BOOL)currentPanGestureBeganInHeaderView {
+    return [self view:[self panGestureTouchView] isDescendantOfView:[[self panelView] headerView]];
+}
+
 - (BOOL)shouldBeginPanelPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     if ([[self panelView] isHidden] || [self isAnimating]) {
         return NO;
@@ -207,8 +212,8 @@ NS_ASSUME_NONNULL_END
     }
 
     if (![[self delegate] panelPresentationController:self
-                    shouldBeginExpandedPanelPanFromView:touchView
-                                               velocity:velocity]) {
+                  shouldBeginExpandedPanelPanFromView:touchView
+                                             velocity:velocity]) {
         return NO;
     }
 
@@ -218,7 +223,14 @@ NS_ASSUME_NONNULL_END
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
-        [[self delegate] panelPresentationController:self handleFullscreenSearchPanGestureRecognizer:recognizer];
+        [[self delegate] panelPresentationController:self
+            handleFullscreenSearchPanGestureRecognizer:recognizer
+                                     beganInHeaderView:[self currentPanGestureBeganInHeaderView]];
+        if ([recognizer state] == UIGestureRecognizerStateEnded ||
+            [recognizer state] == UIGestureRecognizerStateCancelled ||
+            [recognizer state] == UIGestureRecognizerStateFailed) {
+            [self setPanGestureTouchView:nil];
+        }
         return;
     }
 
@@ -262,8 +274,9 @@ NS_ASSUME_NONNULL_END
         CGPoint velocity = CGPointZero;
         if ([recognizer state] == UIGestureRecognizerStateEnded) {
             velocity = [recognizer velocityInView:[self panelView]];
-            shouldUseFastDismissAnimation =
-                ![self panGestureDidReachZeroAlpha] && translation.y > 0 && velocity.y >= kFastDismissVelocity;
+            shouldUseFastDismissAnimation = [self currentPanGestureBeganInHeaderView] &&
+                                            ![self panGestureDidReachZeroAlpha] && translation.y > 0 &&
+                                            velocity.y >= kFastDismissVelocity;
             shouldDismiss = shouldDismiss || shouldUseFastDismissAnimation;
         }
 
@@ -287,6 +300,7 @@ NS_ASSUME_NONNULL_END
             }
             [[self delegate] panelPresentationControllerDidRequestDismiss:self];
         }
+        [self setPanGestureTouchView:nil];
     }
 }
 
