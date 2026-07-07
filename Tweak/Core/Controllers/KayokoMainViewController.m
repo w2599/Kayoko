@@ -59,6 +59,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable) UIView *interactiveTransientReturnSourceView;
 @property(nonatomic, weak, nullable) UIView *interactiveTransientReturnContentView;
 @property(nonatomic, assign) BOOL interactiveTransientReturnWasPreview;
+@property(nonatomic, assign) BOOL didRestoreSearchDuringInteractiveTransientReturn;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -701,6 +702,32 @@ NS_ASSUME_NONNULL_END
     [self setInteractiveTransientReturnSourceView:nil];
     [self setInteractiveTransientReturnContentView:nil];
     [self setInteractiveTransientReturnWasPreview:NO];
+    [self setDidRestoreSearchDuringInteractiveTransientReturn:NO];
+}
+
+- (void)clearSearchAfterTransientContentState {
+    [self setRestoresSearchFirstResponderAfterTransientContent:NO];
+    [self setHasSearchContentOffsetBeforeTransientContent:NO];
+}
+
+- (BOOL)restoreSearchAfterTransientContentIfNeededClearingState:(BOOL)clearsState {
+    BOOL didRestore = NO;
+    if ([[self searchController] isSearchActive]) {
+        CGPoint targetContentOffset = [[[self activeListViewController] tableView] contentOffset];
+        if ([self hasSearchContentOffsetBeforeTransientContent]) {
+            targetContentOffset = [self searchContentOffsetBeforeTransientContent];
+        }
+        [[self searchController]
+            refreshAfterTransientContentForListViewController:[self activeListViewController]
+                                       restoresFirstResponder:[self restoresSearchFirstResponderAfterTransientContent]
+                                          targetContentOffset:targetContentOffset];
+        didRestore = YES;
+    }
+
+    if (clearsState) {
+        [self clearSearchAfterTransientContentState];
+    }
+    return didRestore;
 }
 
 - (void)beginInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
@@ -717,6 +744,8 @@ NS_ASSUME_NONNULL_END
     [[self mainView] updateInteractiveBackwardContentTransitionToView:sourceView
                                                       hideContentView:contentView
                                                              progress:[self progressForTransientEdgeBackGestureRecognizer:recognizer]];
+    [self setDidRestoreSearchDuringInteractiveTransientReturn:
+              [self restoreSearchAfterTransientContentIfNeededClearingState:NO]];
 }
 
 - (void)updateInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
@@ -745,7 +774,11 @@ NS_ASSUME_NONNULL_END
     } else {
         [[self wordSelectionViewController] prepareToHideWordSelection];
     }
-    [self refreshSearchAfterEndingTransientContentIfNeeded];
+    if ([self didRestoreSearchDuringInteractiveTransientReturn]) {
+        [self clearSearchAfterTransientContentState];
+    } else {
+        [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
+    }
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
 
     [[self mainView] finishInteractiveBackwardContentTransitionToView:sourceView
@@ -769,6 +802,10 @@ NS_ASSUME_NONNULL_END
     if (!sourceView || !contentView) {
         [self resetInteractiveTransientReturnState];
         return;
+    }
+
+    if ([self didRestoreSearchDuringInteractiveTransientReturn]) {
+        [[self searchController] resignSearchFirstResponder];
     }
 
     [[self mainView] cancelInteractiveBackwardContentTransitionToView:sourceView
@@ -829,18 +866,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)refreshSearchAfterEndingTransientContentIfNeeded {
-    if ([[self searchController] isSearchActive]) {
-        CGPoint targetContentOffset = [[[self activeListViewController] tableView] contentOffset];
-        if ([self hasSearchContentOffsetBeforeTransientContent]) {
-            targetContentOffset = [self searchContentOffsetBeforeTransientContent];
-        }
-        [[self searchController]
-            refreshAfterTransientContentForListViewController:[self activeListViewController]
-                                       restoresFirstResponder:[self restoresSearchFirstResponderAfterTransientContent]
-                                          targetContentOffset:targetContentOffset];
-    }
-    [self setRestoresSearchFirstResponderAfterTransientContent:NO];
-    [self setHasSearchContentOffsetBeforeTransientContent:NO];
+    [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
 }
 
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
