@@ -14,7 +14,7 @@
 #import "KayokoTagColorFormatter.h"
 
 static CGFloat const kKayokoSearchTokenTopInset = 12;
-static CGFloat const kKayokoSearchTokenBottomInset = 16;
+static CGFloat const kKayokoSearchTokenBottomInset = 20;
 static CGFloat const kKayokoSearchTokenSectionSpacing = 16;
 static NSUInteger const kKayokoSearchTokenMaximumVerticalAppTokenCount = 2;
 
