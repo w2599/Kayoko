@@ -119,7 +119,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 }
 
 - (void)configureTableView {
-    _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
+    _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     [_tableView setTranslatesAutoresizingMaskIntoConstraints:NO];
     [_tableView setDataSource:self];
     [_tableView setDelegate:self];
@@ -174,8 +174,14 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 }
 
 - (void)setEditing:(BOOL)editing animated:(BOOL)animated {
+    BOOL wasEditing = [self isEditing];
+    UITableView *tableView = [self tableView];
+    if (editing && !wasEditing) {
+        [tableView setEditing:NO animated:NO];
+    }
+
     [super setEditing:editing animated:animated];
-    [[self tableView] setEditing:editing animated:animated];
+    [tableView setEditing:editing animated:animated];
     [[self navigationItem] setRightBarButtonItem:[self editDoneButton] animated:animated];
 
     if (!editing) {

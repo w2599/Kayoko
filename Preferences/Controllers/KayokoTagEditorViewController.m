@@ -15,6 +15,7 @@
 @property(nonatomic, strong) UITextField *titleTextField;
 @property(nonatomic, strong) UIColorWell *colorWell;
 @property(nonatomic, strong) KayokoKeyboardAvoidanceCoordinator *keyboardAvoidanceCoordinator;
+@property(nonatomic, assign) BOOL didFocusTitleTextFieldInitially;
 @end
 
 @implementation KayokoTagEditorViewController
@@ -52,6 +53,16 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [[self keyboardAvoidanceCoordinator] startObserving];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    if ([self didFocusTitleTextFieldInitially]) {
+        return;
+    }
+
+    [self setDidFocusTitleTextFieldInitially:YES];
+    [[self titleTextField] becomeFirstResponder];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
