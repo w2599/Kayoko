@@ -123,8 +123,7 @@ NS_ASSUME_NONNULL_END
 
     CGFloat width = CGRectGetWidth([tableView bounds]);
     UIView *tokenView = [self searchTokenViewForTableView:tableView];
-    CGFloat tokenHeight =
-        ([self isSearchActive] && tokenView && ![tokenView isHidden]) ? CGRectGetHeight([tokenView frame]) : 0;
+    CGFloat tokenHeight = (tokenView && ![tokenView isHidden]) ? CGRectGetHeight([tokenView frame]) : 0;
     CGFloat headerHeight = kKayokoSearchHeaderHeight + tokenHeight;
     CGRect headerFrame = CGRectMake(0, 0, width, headerHeight);
     CGRect searchBarFrame = CGRectMake(0, 0, width, kKayokoSearchHeaderHeight);
@@ -175,6 +174,7 @@ NS_ASSUME_NONNULL_END
     if (!headerView) {
         headerView = [[UIView alloc] initWithFrame:CGRectZero];
         [headerView setBackgroundColor:[UIColor clearColor]];
+        [headerView setClipsToBounds:YES];
         [self setSearchHeaderView:headerView forTableView:tableView];
     }
     if ([searchBar superview] != headerView) {
