@@ -4,11 +4,14 @@
 //
 
 #import "KayokoWordSelectionView.h"
+#import "KayokoEdgeFadingScrollView.h"
+#import "KayokoMainView.h"
 #import "KayokoTagChipBarView.h"
 #import "KayokoWordSelectionTokenizer.h"
 #import "KayokoWordTokenView.h"
 
 static CGFloat const kKayokoWordSelectionHorizontalInset = 20;
+static CGFloat const kKayokoWordSelectionVerticalFadeHeight = 20;
 static CGFloat const kKayokoWordSelectionTopInset = 8;
 static CGFloat const kKayokoWordSelectionTokenSpacing = 2;
 static CGFloat const kKayokoWordSelectionLineSpacing = 9;
@@ -20,7 +23,7 @@ static CGFloat const kKayokoWordSelectionTokenBorderWidth = 0.5;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoWordSelectionView () <UIGestureRecognizerDelegate, UIScrollViewDelegate>
-@property(nonatomic, strong) UIScrollView *scrollView;
+@property(nonatomic, strong) KayokoEdgeFadingScrollView *scrollView;
 @property(nonatomic, strong) UIView *contentView;
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
 @property(nonatomic, strong) NSMutableArray<NSDictionary<NSString *, id> *> *tokens;
@@ -49,7 +52,10 @@ NS_ASSUME_NONNULL_END
         [self setSelectedText:@""];
         [self setSelectionAnchorIndex:NSNotFound];
 
-        [self setScrollView:[[UIScrollView alloc] init]];
+        [self setScrollView:[[KayokoEdgeFadingScrollView alloc] init]];
+        [[self scrollView] setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
+        [[self scrollView] setEdgeFadeWidth:kKayokoWordSelectionVerticalFadeHeight];
+        [[self scrollView] setEdgeFadeEnabled:YES];
         [[self scrollView] setAlwaysBounceVertical:NO];
         [[self scrollView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
         [[self scrollView] setBackgroundColor:[UIColor clearColor]];
@@ -141,6 +147,23 @@ NS_ASSUME_NONNULL_END
     return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
 }
 
+- (CGFloat)safeAreaBottomInsetForScrollContent {
+    UIView *view = self;
+    while (view) {
+        if ([view isKindOfClass:[KayokoMainView class]]) {
+            return [(KayokoMainView *)view safeAreaBottomInsetForContentView:self];
+        }
+        view = [view superview];
+    }
+
+    return MAX([self safeAreaInsets].bottom, 0);
+}
+
+- (CGFloat)scrollBottomInset {
+    CGFloat tagBarHeight = [self visibleTagBarHeight];
+    return tagBarHeight > 0 ? tagBarHeight : [self safeAreaBottomInsetForScrollContent];
+}
+
 - (void)layoutTagChipBarView {
     CGFloat tagBarHeight = [self visibleTagBarHeight];
     if (tagBarHeight <= 0) {
@@ -166,7 +189,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateScrollInsets {
-    CGFloat bottomInset = [self visibleTagBarHeight];
+    CGFloat tagBarHeight = [self visibleTagBarHeight];
+    CGFloat bottomInset = [self scrollBottomInset];
 
     UIEdgeInsets contentInset = [[self scrollView] contentInset];
     contentInset.bottom = bottomInset;
@@ -174,6 +198,7 @@ NS_ASSUME_NONNULL_END
 
     UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
     [[self scrollView] setVerticalScrollIndicatorInsets:indicatorInsets];
+    [[self scrollView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, tagBarHeight, 0)];
 }
 
 - (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags

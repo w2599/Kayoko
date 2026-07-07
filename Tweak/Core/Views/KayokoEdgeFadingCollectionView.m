@@ -30,6 +30,9 @@
 }
 
 - (void)commonInit {
+    if ([self edgeFadeMaskController]) {
+        return;
+    }
     [self setEdgeFadeMaskController:[[KayokoEdgeFadeMaskController alloc] initWithScrollView:self]];
 }
 
@@ -39,6 +42,14 @@
 
 - (void)setEdgeFadeWidth:(CGFloat)edgeFadeWidth {
     [[self edgeFadeMaskController] setFadeWidth:edgeFadeWidth];
+}
+
+- (KayokoEdgeFadeAxis)edgeFadeAxis {
+    return [[self edgeFadeMaskController] axis];
+}
+
+- (void)setEdgeFadeAxis:(KayokoEdgeFadeAxis)edgeFadeAxis {
+    [[self edgeFadeMaskController] setAxis:edgeFadeAxis];
 }
 
 - (BOOL)isEdgeFadeEnabled {

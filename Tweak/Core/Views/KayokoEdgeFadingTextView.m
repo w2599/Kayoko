@@ -1,20 +1,28 @@
 //
-//  KayokoEdgeFadingScrollView.m
+//  KayokoEdgeFadingTextView.m
 //  Kayoko
 //
 
-#import "KayokoEdgeFadingScrollView.h"
+#import "KayokoEdgeFadingTextView.h"
 
 #import "KayokoEdgeFadeMaskController.h"
 
-@interface KayokoEdgeFadingScrollView ()
+@interface KayokoEdgeFadingTextView ()
 @property(nonatomic, strong) KayokoEdgeFadeMaskController *edgeFadeMaskController;
 @end
 
-@implementation KayokoEdgeFadingScrollView
+@implementation KayokoEdgeFadingTextView
 
 - (instancetype)init {
     self = [super init];
+    if (self) {
+        [self commonInit];
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame textContainer:(NSTextContainer *)textContainer {
+    self = [super initWithFrame:frame textContainer:textContainer];
     if (self) {
         [self commonInit];
     }

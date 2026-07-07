@@ -292,6 +292,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
         [_scrollView setShowsHorizontalScrollIndicator:NO];
         [_scrollView setAlwaysBounceHorizontal:YES];
         [_scrollView setBackgroundColor:[UIColor clearColor]];
+        [_scrollView setEdgeFadeAxis:KayokoEdgeFadeAxisHorizontal];
         [_scrollView setEdgeFadeWidth:kKayokoTagChipHorizontalInset];
         [_scrollView setEdgeFadeEnabled:YES];
         [self addSubview:_scrollView];

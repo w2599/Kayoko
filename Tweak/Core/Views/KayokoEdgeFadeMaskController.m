@@ -18,6 +18,7 @@
     self = [super init];
     if (self) {
         _scrollView = scrollView;
+        _axis = KayokoEdgeFadeAxisHorizontal;
         _enabled = YES;
         _maskLayer = [self newMaskLayer];
         [[scrollView layer] setMask:_maskLayer];
@@ -43,6 +44,26 @@
     }
 
     _fadeWidth = normalizedFadeWidth;
+    [self updateMask];
+}
+
+- (void)setEdgeInsets:(UIEdgeInsets)edgeInsets {
+    UIEdgeInsets normalizedInsets = UIEdgeInsetsMake(MAX(edgeInsets.top, 0), MAX(edgeInsets.left, 0),
+                                                     MAX(edgeInsets.bottom, 0), MAX(edgeInsets.right, 0));
+    if (UIEdgeInsetsEqualToEdgeInsets(_edgeInsets, normalizedInsets)) {
+        return;
+    }
+
+    _edgeInsets = normalizedInsets;
+    [self updateMask];
+}
+
+- (void)setAxis:(KayokoEdgeFadeAxis)axis {
+    if (_axis == axis) {
+        return;
+    }
+
+    _axis = axis;
     [self updateMask];
 }
 
@@ -76,47 +97,108 @@
 
     if ([self isEnabled] && [self fadeWidth] > 0.5) {
         UIEdgeInsets adjustedInset = [scrollView adjustedContentInset];
-        CGFloat leadingScrolledWidth = contentOffset.x + adjustedInset.left;
-        CGFloat leadingFadeWidth = MIN([self fadeWidth], MAX(leadingScrolledWidth, 0));
+        BOOL verticalAxis = [self axis] == KayokoEdgeFadeAxisVertical;
+        CGFloat visibleLength = verticalAxis ? height : width;
+        CGFloat contentLength = verticalAxis ? [scrollView contentSize].height : [scrollView contentSize].width;
+        CGFloat leadingInset = verticalAxis ? adjustedInset.top : adjustedInset.left;
+        CGFloat trailingInset = verticalAxis ? adjustedInset.bottom : adjustedInset.right;
+        CGFloat contentOffsetValue = verticalAxis ? contentOffset.y : contentOffset.x;
+        UIEdgeInsets edgeInsets = [self edgeInsets];
+        CGFloat leadingEdgeInset = verticalAxis ? edgeInsets.top : edgeInsets.left;
+        CGFloat trailingEdgeInset = verticalAxis ? edgeInsets.bottom : edgeInsets.right;
+        leadingEdgeInset = MIN(MAX(leadingEdgeInset, 0), visibleLength);
+        trailingEdgeInset = MIN(MAX(trailingEdgeInset, 0), MAX(visibleLength - leadingEdgeInset, 0));
+        CGFloat fadeStart = leadingEdgeInset;
+        CGFloat fadeEnd = visibleLength - trailingEdgeInset;
+        CGFloat fadeLength = MAX(fadeEnd - fadeStart, 0);
 
-        CGFloat visibleMaxX = contentOffset.x + width;
-        CGFloat remainingWidth = [scrollView contentSize].width + adjustedInset.right - visibleMaxX;
-        CGFloat trailingFadeWidth = MIN([self fadeWidth], MAX(remainingWidth, 0));
+        CGFloat leadingScrolledWidth = contentOffsetValue + leadingInset;
+        CGFloat leadingFadeWidth = MIN(MIN([self fadeWidth], fadeLength), MAX(leadingScrolledWidth, 0));
+
+        CGFloat visibleMaxX = contentOffsetValue + visibleLength;
+        CGFloat remainingWidth = contentLength + trailingInset - visibleMaxX;
+        CGFloat trailingFadeWidth = MIN(MIN([self fadeWidth], fadeLength), MAX(remainingWidth, 0));
 
         BOOL showsLeadingFade = leadingFadeWidth > 0.5;
         BOOL showsTrailingFade = trailingFadeWidth > 0.5;
-        if (showsLeadingFade && showsTrailingFade) {
-            CGFloat leadingEndLocation = MIN(leadingFadeWidth / width, 1);
-            CGFloat trailingStartLocation = MAX((width - trailingFadeWidth) / width, 0);
-            if (leadingEndLocation > trailingStartLocation) {
-                CGFloat midpoint = (leadingEndLocation + trailingStartLocation) / 2.0;
-                leadingEndLocation = midpoint;
-                trailingStartLocation = midpoint;
+        if (fadeLength <= 0.5) {
+            colors = @[
+                (__bridge id)[transparentColor CGColor], (__bridge id)[transparentColor CGColor]
+            ];
+            locations = @[ @0, @1 ];
+        } else if (showsLeadingFade && showsTrailingFade) {
+            CGFloat leadingEnd = fadeStart + leadingFadeWidth;
+            CGFloat trailingStart = fadeEnd - trailingFadeWidth;
+            if (leadingEnd > trailingStart) {
+                CGFloat midpoint = (leadingEnd + trailingStart) / 2.0;
+                leadingEnd = midpoint;
+                trailingStart = midpoint;
             }
             colors = @[
                 (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
-                (__bridge id)[opaqueColor CGColor], (__bridge id)[transparentColor CGColor]
-            ];
-            locations = @[ @0, @(leadingEndLocation), @(trailingStartLocation), @1 ];
-        } else if (showsLeadingFade) {
-            CGFloat leadingEndLocation = MIN(leadingFadeWidth / width, 1);
-            colors = @[
-                (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
-                (__bridge id)[opaqueColor CGColor]
-            ];
-            locations = @[ @0, @(leadingEndLocation), @1 ];
-        } else if (showsTrailingFade) {
-            CGFloat trailingStartLocation = MAX((width - trailingFadeWidth) / width, 0);
-            colors = @[
-                (__bridge id)[opaqueColor CGColor], (__bridge id)[opaqueColor CGColor],
+                (__bridge id)[opaqueColor CGColor], (__bridge id)[transparentColor CGColor],
                 (__bridge id)[transparentColor CGColor]
             ];
-            locations = @[ @0, @(trailingStartLocation), @1 ];
+            locations = @[
+                @(fadeStart / visibleLength), @(leadingEnd / visibleLength), @(trailingStart / visibleLength),
+                @(fadeEnd / visibleLength), @1
+            ];
+        } else if (showsLeadingFade) {
+            CGFloat leadingEnd = fadeStart + leadingFadeWidth;
+            if (trailingEdgeInset > 0.5) {
+                colors = @[
+                    (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
+                    (__bridge id)[opaqueColor CGColor], (__bridge id)[transparentColor CGColor]
+                ];
+                locations = @[
+                    @(fadeStart / visibleLength), @(leadingEnd / visibleLength), @(fadeEnd / visibleLength), @1
+                ];
+            } else {
+                colors = @[
+                    (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
+                    (__bridge id)[opaqueColor CGColor]
+                ];
+                locations = @[ @(fadeStart / visibleLength), @(leadingEnd / visibleLength), @1 ];
+            }
+        } else if (showsTrailingFade) {
+            CGFloat trailingStart = fadeEnd - trailingFadeWidth;
+            colors = @[
+                (__bridge id)[opaqueColor CGColor], (__bridge id)[opaqueColor CGColor],
+                (__bridge id)[transparentColor CGColor], (__bridge id)[transparentColor CGColor]
+            ];
+            locations = @[ @0, @(trailingStart / visibleLength), @(fadeEnd / visibleLength), @1 ];
+        } else if (leadingEdgeInset > 0.5 || trailingEdgeInset > 0.5) {
+            if (leadingEdgeInset > 0.5 && trailingEdgeInset > 0.5) {
+                colors = @[
+                    (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
+                    (__bridge id)[opaqueColor CGColor], (__bridge id)[transparentColor CGColor]
+                ];
+                locations = @[ @0, @(fadeStart / visibleLength), @(fadeEnd / visibleLength), @1 ];
+            } else if (leadingEdgeInset > 0.5) {
+                colors = @[
+                    (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
+                    (__bridge id)[opaqueColor CGColor]
+                ];
+                locations = @[ @0, @(fadeStart / visibleLength), @1 ];
+            } else {
+                colors = @[
+                    (__bridge id)[opaqueColor CGColor], (__bridge id)[opaqueColor CGColor],
+                    (__bridge id)[transparentColor CGColor]
+                ];
+                locations = @[ @0, @(fadeEnd / visibleLength), @1 ];
+            }
         }
     }
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
+    if ([self axis] == KayokoEdgeFadeAxisVertical) {
+        [maskLayer setStartPoint:CGPointMake(0.5, 0)];
+        [maskLayer setEndPoint:CGPointMake(0.5, 1)];
+    } else {
+        [maskLayer setStartPoint:CGPointMake(0, 0.5)];
+        [maskLayer setEndPoint:CGPointMake(1, 0.5)];
+    }
     [maskLayer setFrame:CGRectMake(contentOffset.x, contentOffset.y, width, height)];
     [maskLayer setColors:colors];
     [maskLayer setLocations:locations];

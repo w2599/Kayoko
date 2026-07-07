@@ -1,5 +1,5 @@
 //
-//  KayokoEdgeFadingCollectionView.h
+//  KayokoEdgeFadingTextView.h
 //  Kayoko
 //
 
@@ -9,8 +9,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoEdgeFadingCollectionView : UICollectionView
+@interface KayokoEdgeFadingTextView : UITextView
 @property(nonatomic, assign) CGFloat edgeFadeWidth;
+@property(nonatomic, assign) UIEdgeInsets edgeFadeInsets;
 @property(nonatomic, assign) KayokoEdgeFadeAxis edgeFadeAxis;
 @property(nonatomic, assign, getter=isEdgeFadeEnabled) BOOL edgeFadeEnabled;
 - (void)updateEdgeFadeMask;

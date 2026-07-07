@@ -13,6 +13,7 @@ static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
 static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
+static CGFloat const kKayokoHistoryListViewVerticalFadeHeight = 20;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -189,6 +190,9 @@ NS_ASSUME_NONNULL_END
         [self setName:name];
         [self setBackgroundColor:[UIColor clearColor]];
         [self setAlwaysBounceVertical:YES];
+        [self setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
+        [self setEdgeFadeWidth:kKayokoHistoryListViewVerticalFadeHeight];
+        [self setEdgeFadeEnabled:YES];
         [self setPreviewLineCount:1];
     }
 

@@ -7,7 +7,11 @@
 
 #import "KayokoPreviewView.h"
 
+#import "KayokoEdgeFadingTextView.h"
+#import "KayokoMainView.h"
 #import "KayokoTagChipBarView.h"
+
+static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
 
 @interface KayokoPreviewView () <UITextViewDelegate>
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
@@ -21,7 +25,11 @@
     if (self) {
         [self setName:name];
 
-        [self setTextView:[[UITextView alloc] init]];
+        KayokoEdgeFadingTextView *textView = [[KayokoEdgeFadingTextView alloc] init];
+        [textView setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
+        [textView setEdgeFadeWidth:kKayokoPreviewViewVerticalFadeHeight];
+        [textView setEdgeFadeEnabled:YES];
+        [self setTextView:textView];
         [[self textView] setBackgroundColor:[UIColor clearColor]];
         [[self textView] setFont:[UIFont systemFontOfSize:14]];
         [[self textView] setEditable:NO];
@@ -65,6 +73,23 @@
     return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
 }
 
+- (CGFloat)safeAreaBottomInsetForScrollContent {
+    UIView *view = self;
+    while (view) {
+        if ([view isKindOfClass:[KayokoMainView class]]) {
+            return [(KayokoMainView *)view safeAreaBottomInsetForContentView:self];
+        }
+        view = [view superview];
+    }
+
+    return MAX([self safeAreaInsets].bottom, 0);
+}
+
+- (CGFloat)scrollBottomInset {
+    CGFloat tagBarHeight = [self visibleTagBarHeight];
+    return tagBarHeight > 0 ? tagBarHeight : [self safeAreaBottomInsetForScrollContent];
+}
+
 - (void)layoutTagChipBarView {
     CGFloat tagBarHeight = [self visibleTagBarHeight];
     if (tagBarHeight <= 0) {
@@ -94,7 +119,8 @@
 }
 
 - (void)updateTextViewScrollInsets {
-    CGFloat bottomInset = [self visibleTagBarHeight];
+    CGFloat tagBarHeight = [self visibleTagBarHeight];
+    CGFloat bottomInset = [self scrollBottomInset];
 
     UIEdgeInsets contentInset = [[self textView] contentInset];
     contentInset.bottom = bottomInset;
@@ -102,6 +128,7 @@
 
     UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
     [[self textView] setVerticalScrollIndicatorInsets:indicatorInsets];
+    [(KayokoEdgeFadingTextView *)[self textView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, tagBarHeight, 0)];
 }
 
 - (void)showText:(NSString *)text {

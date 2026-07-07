@@ -23,6 +23,7 @@
         [self setBackgroundColor:[UIColor clearColor]];
         [self setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
         [self setContentInset:UIEdgeInsetsMake(0, horizontalContentInset, 0, horizontalContentInset)];
+        [self setEdgeFadeAxis:KayokoEdgeFadeAxisHorizontal];
         [self setEdgeFadeWidth:horizontalContentInset];
         [self setEdgeFadeEnabled:YES];
         [self setScrollEnabled:YES];
@@ -43,6 +44,7 @@
                                                          : UICollectionViewScrollDirectionVertical];
     [layout invalidateLayout];
     [self setScrollEnabled:horizontalScrollingLayout];
+    [self setEdgeFadeAxis:KayokoEdgeFadeAxisHorizontal];
     [self setEdgeFadeEnabled:horizontalScrollingLayout];
     [self resetContentOffsetToLeadingEdge];
     [self updateEdgeFadeMask];

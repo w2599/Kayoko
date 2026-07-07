@@ -1,20 +1,28 @@
 //
-//  KayokoEdgeFadingScrollView.m
+//  KayokoEdgeFadingTableView.m
 //  Kayoko
 //
 
-#import "KayokoEdgeFadingScrollView.h"
+#import "KayokoEdgeFadingTableView.h"
 
 #import "KayokoEdgeFadeMaskController.h"
 
-@interface KayokoEdgeFadingScrollView ()
+@interface KayokoEdgeFadingTableView ()
 @property(nonatomic, strong) KayokoEdgeFadeMaskController *edgeFadeMaskController;
 @end
 
-@implementation KayokoEdgeFadingScrollView
+@implementation KayokoEdgeFadingTableView
 
 - (instancetype)init {
     self = [super init];
+    if (self) {
+        [self commonInit];
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame style:(UITableViewStyle)style {
+    self = [super initWithFrame:frame style:style];
     if (self) {
         [self commonInit];
     }
@@ -50,14 +58,6 @@
 
 - (void)setEdgeFadeWidth:(CGFloat)edgeFadeWidth {
     [[self edgeFadeMaskController] setFadeWidth:edgeFadeWidth];
-}
-
-- (UIEdgeInsets)edgeFadeInsets {
-    return [[self edgeFadeMaskController] edgeInsets];
-}
-
-- (void)setEdgeFadeInsets:(UIEdgeInsets)edgeFadeInsets {
-    [[self edgeFadeMaskController] setEdgeInsets:edgeFadeInsets];
 }
 
 - (KayokoEdgeFadeAxis)edgeFadeAxis {
