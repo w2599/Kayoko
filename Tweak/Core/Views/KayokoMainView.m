@@ -383,7 +383,24 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
                   title:(NSString *)title
               direction:(KayokoContentTransitionDirection)direction
              completion:(void (^)(void))completion {
+    [self showContentView:viewToShow
+          hideContentView:viewToHide
+                    title:title
+                direction:direction
+              willAnimate:nil
+               completion:completion];
+}
+
+- (void)showContentView:(UIView *)viewToShow
+        hideContentView:(UIView *)viewToHide
+                  title:(NSString *)title
+              direction:(KayokoContentTransitionDirection)direction
+            willAnimate:(void (^)(void))willAnimate
+             completion:(void (^)(void))completion {
     [self prepareContentTransitionToView:viewToShow hideContentView:viewToHide title:title direction:direction];
+    if (willAnimate) {
+        willAnimate();
+    }
 
     [UIView animateWithDuration:0.3
         delay:0

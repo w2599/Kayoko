@@ -907,14 +907,17 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [self showContentView:sourceView
-          hideContentView:previewView
-                direction:KayokoContentTransitionDirectionBackward
-               completion:^{
-                 [[self previewViewController] hidePreview];
-                 [self setActiveSourceContentView:nil];
-                 [self refreshSearchAfterEndingTransientContentIfNeeded];
-               }];
+    [[self mainView] showContentView:sourceView
+                      hideContentView:previewView
+                                title:[self titleForContentView:sourceView]
+                            direction:KayokoContentTransitionDirectionBackward
+                          willAnimate:^{
+                            [self refreshSearchAfterEndingTransientContentIfNeeded];
+                          }
+                           completion:^{
+                             [[self previewViewController] hidePreview];
+                             [self setActiveSourceContentView:nil];
+                           }];
 }
 
 - (void)hideWordSelection {
@@ -932,14 +935,17 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [self showContentView:sourceView
-          hideContentView:wordSelectionView
-                direction:KayokoContentTransitionDirectionBackward
-               completion:^{
-                 [[self wordSelectionViewController] hideWordSelection];
-                 [self setActiveSourceContentView:nil];
-                 [self refreshSearchAfterEndingTransientContentIfNeeded];
-               }];
+    [[self mainView] showContentView:sourceView
+                      hideContentView:wordSelectionView
+                                title:[self titleForContentView:sourceView]
+                            direction:KayokoContentTransitionDirectionBackward
+                          willAnimate:^{
+                            [self refreshSearchAfterEndingTransientContentIfNeeded];
+                          }
+                           completion:^{
+                             [[self wordSelectionViewController] hideWordSelection];
+                             [self setActiveSourceContentView:nil];
+                           }];
 }
 
 - (void)clearConfirmationViewControllerDidCancel:(KayokoClearConfirmationViewController *)controller {
