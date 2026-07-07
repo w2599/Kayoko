@@ -34,13 +34,8 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
 }
 
 - (NSMutableArray<KayokoTag *> *)loadTagsWithError:(NSError **)error {
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    if (![fileManager fileExistsAtPath:[self tagsPath]]) {
-        NSMutableArray<KayokoTag *> *defaultTags = [[self defaultTags] mutableCopy];
-        if (![self saveTags:defaultTags error:error]) {
-            return nil;
-        }
-        return defaultTags;
+    if (![self ensureDefaultTagsFileExistsWithError:error]) {
+        return nil;
     }
 
     return [self readTagsWithError:error];
@@ -83,6 +78,15 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
     }
 
     return tags;
+}
+
+- (BOOL)ensureDefaultTagsFileExistsWithError:(NSError **)error {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if ([fileManager fileExistsAtPath:[self tagsPath]]) {
+        return YES;
+    }
+
+    return [self saveTags:[self defaultTags] error:error];
 }
 
 - (BOOL)saveTags:(NSArray<KayokoTag *> *)tags error:(NSError **)error {

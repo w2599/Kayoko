@@ -24,6 +24,7 @@ extern NSString *const kKayokoTagStoreErrorDomain;
 
 - (nullable NSMutableArray<KayokoTag *> *)loadTagsWithError:(NSError **)error;
 - (nullable NSMutableArray<KayokoTag *> *)readTagsWithError:(NSError **)error;
+- (BOOL)ensureDefaultTagsFileExistsWithError:(NSError **)error;
 - (BOOL)saveTags:(NSArray<KayokoTag *> *)tags error:(NSError **)error;
 - (BOOL)restoreDefaultTagsWithError:(NSError **)error;
 

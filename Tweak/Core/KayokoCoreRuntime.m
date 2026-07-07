@@ -659,8 +659,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)applyKeyboardHostUserInterfaceStyle:(UIUserInterfaceStyle)style {
-    if (!self.mainViewController ||
-        (style != UIUserInterfaceStyleLight && style != UIUserInterfaceStyleDark)) {
+    if (!self.mainViewController || (style != UIUserInterfaceStyleLight && style != UIUserInterfaceStyleDark)) {
         return;
     }
 
@@ -696,7 +695,8 @@ NS_ASSUME_NONNULL_END
         style = [self currentSpringBoardKeyboardUserInterfaceStyle];
     }
     if (style != UIUserInterfaceStyleLight && style != UIUserInterfaceStyleDark) {
-        style = [self sceneIsSpotlightScene:scene] ? UIUserInterfaceStyleDark : [self userInterfaceStyleFromSceneSettings:settings];
+        style = [self sceneIsSpotlightScene:scene] ? UIUserInterfaceStyleDark
+                                                   : [self userInterfaceStyleFromSceneSettings:settings];
     }
     [self applyKeyboardHostUserInterfaceStyle:style];
 }

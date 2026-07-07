@@ -102,7 +102,8 @@ typedef void (^FBSceneUpdateCompletion)(void);
 @end
 
 static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
-static const NSInteger kKayokoSystemGestureTypeMultitasking = 0x29;
+static const NSInteger kKayokoSystemGestureTypeMultitaskingA = 0x29;
+static const NSInteger kKayokoSystemGestureTypeMultitaskingB = 0x2B;
 static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
 
 static CGFloat const kKayokoSystemKeyboardFrameEdgeTolerance = 1.0;
@@ -356,7 +357,8 @@ CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWith
         [runtime fullscreenSearchActive]) {
         return NO;
     }
-    if (type == kKayokoSystemGestureTypeMultitasking && [runtime systemMultitaskingGestureSuppressed]) {
+    if ((type == kKayokoSystemGestureTypeMultitaskingA || type == kKayokoSystemGestureTypeMultitaskingB) &&
+        [runtime systemMultitaskingGestureSuppressed]) {
         return NO;
     }
 
