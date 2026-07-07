@@ -152,8 +152,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 
     CGRect bounds = [self bounds];
     CGFloat dotY = floor((CGRectGetHeight(bounds) - kKayokoTagChipDotSlotSize) / 2.0);
-    [[self dotView] setFrame:CGRectMake(kKayokoTagChipLeadingInset, dotY, kKayokoTagChipDotSlotSize,
-                                        kKayokoTagChipDotSlotSize)];
+    [[self dotView]
+        setFrame:CGRectMake(kKayokoTagChipLeadingInset, dotY, kKayokoTagChipDotSlotSize, kKayokoTagChipDotSlotSize)];
 
     CGFloat x = CGRectGetMaxX([[self dotView] frame]) + kKayokoTagChipDotLabelSpacing;
     CGFloat labelWidth = MAX(CGRectGetWidth(bounds) - x - kKayokoTagChipTrailingInset, 0);
@@ -246,8 +246,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 }
 
 - (UIBlurEffect *)materialEffect {
-    UIBlurEffectStyle style = [self isDarkMode] ? UIBlurEffectStyleSystemUltraThinMaterialDark
-                                                : UIBlurEffectStyleSystemUltraThinMaterial;
+    UIBlurEffectStyle style =
+        [self isDarkMode] ? UIBlurEffectStyleSystemUltraThinMaterialDark : UIBlurEffectStyleSystemUltraThinMaterial;
     return [UIBlurEffect effectWithStyle:style];
 }
 
@@ -276,8 +276,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
         [_materialMaskLayer setStartPoint:CGPointMake(0.5, 0.0)];
         [_materialMaskLayer setEndPoint:CGPointMake(0.5, 1.0)];
         [_materialMaskLayer setColors:@[
-            (__bridge id)[[UIColor clearColor] CGColor],
-            (__bridge id)[[UIColor blackColor] CGColor],
+            (__bridge id)[[UIColor clearColor] CGColor], (__bridge id)[[UIColor blackColor] CGColor],
             (__bridge id)[[UIColor blackColor] CGColor]
         ]];
         [[_materialView layer] setMask:_materialMaskLayer];
@@ -420,14 +419,13 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     CGFloat bottomExtension = MAX([self bottomMaterialExtension], 0.0);
     CGRect materialFrame = CGRectMake(0, -kKayokoTagChipFadeHeight, CGRectGetWidth(bounds),
                                       CGRectGetHeight(bounds) + kKayokoTagChipFadeHeight + bottomExtension);
-    CGFloat fadeLocation = CGRectGetHeight(materialFrame) > 0
-                               ? MIN(kKayokoTagChipFadeHeight / CGRectGetHeight(materialFrame), 1.0)
-                               : 0.0;
+    CGFloat fadeLocation =
+        CGRectGetHeight(materialFrame) > 0 ? MIN(kKayokoTagChipFadeHeight / CGRectGetHeight(materialFrame), 1.0) : 0.0;
 
     [UIView performWithoutAnimation:^{
       [[self materialView] setFrame:materialFrame];
-      [[self fadeView] setFrame:CGRectMake(0, -kKayokoTagChipFadeHeight, CGRectGetWidth(bounds),
-                                           kKayokoTagChipFadeHeight)];
+      [[self fadeView]
+          setFrame:CGRectMake(0, -kKayokoTagChipFadeHeight, CGRectGetWidth(bounds), kKayokoTagChipFadeHeight)];
 
       CGFloat scrollY = floor((CGRectGetHeight(bounds) - kKayokoTagChipHeight) / 2.0);
       [[self scrollView] setFrame:CGRectMake(0, scrollY, CGRectGetWidth(bounds), kKayokoTagChipHeight)];
@@ -439,8 +437,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
           x += width + kKayokoTagChipSpacing;
       }
       x += kKayokoTagChipHorizontalInset - kKayokoTagChipSpacing;
-      [[self scrollView] setContentSize:CGSizeMake(MAX(x, CGRectGetWidth([[self scrollView] bounds]) + 1),
-                                                   kKayokoTagChipHeight)];
+      [[self scrollView]
+          setContentSize:CGSizeMake(MAX(x, CGRectGetWidth([[self scrollView] bounds]) + 1), kKayokoTagChipHeight)];
       [[self scrollView] updateEdgeFadeMask];
     }];
 

@@ -73,7 +73,8 @@ static CGFloat const kKayokoTagTableViewCellSwatchBorderWidth = 1.0;
     [[self titleLabel] setText:[tag title]];
     [[self hexColorLabel] setText:[tag hexColor]];
     [[self colorSwatchView] setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[tag hexColor]]];
-    [[[self colorSwatchView] layer] setBorderColor:[[KayokoTagColorFormatter borderColorFromHexColor:[tag hexColor]] CGColor]];
+    [[[self colorSwatchView] layer]
+        setBorderColor:[[KayokoTagColorFormatter borderColorFromHexColor:[tag hexColor]] CGColor]];
     [self setAccessoryType:editing ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator];
 }
 

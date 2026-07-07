@@ -227,9 +227,9 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
 }
 
 - (void)setTagUUID:(NSString *)tagUUID
-  forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
-       inHistoryKey:(NSString *)historyKey
-         completion:(void (^)(BOOL success))completion {
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+           completion:(void (^)(BOOL success))completion {
     [self performAsync:^{
       NSError *error = nil;
       KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];

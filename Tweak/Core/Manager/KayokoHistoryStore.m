@@ -388,9 +388,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)setTagUUID:(NSString *)tagUUID
-  forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
-       inHistoryKey:(NSString *)historyKey
-              error:(NSError **)error {
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+                error:(NSError **)error {
     NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [historyKey length] == 0) {
         return YES;
@@ -426,12 +426,12 @@ NS_ASSUME_NONNULL_END
     NSString *imageName = [self stringFromColumn:statement index:2] ?: @"";
     sqlite3_finalize(statement);
 
-    NSArray<id> *bindings = normalizedTagUUID ? @[ normalizedTagUUID, historyKey, content ]
-                                              : @[ [NSNull null], historyKey, content ];
+    NSArray<id> *bindings =
+        normalizedTagUUID ? @[ normalizedTagUUID, historyKey, content ] : @[ [NSNull null], historyKey, content ];
     BOOL success = [self executeStatement:@"UPDATE history_items SET tag_uuid = ? "
-                                          "WHERE history_key = ? AND content = ?"
-                                bindings:bindings
-                                   error:error];
+                                           "WHERE history_key = ? AND content = ?"
+                                 bindings:bindings
+                                    error:error];
     if (success) {
         success = [self rebuildSearchIndexForItemID:itemID
                                          historyKey:historyKey
@@ -496,9 +496,10 @@ NS_ASSUME_NONNULL_END
                                                                  error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
-    NSMutableString *sql = [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link, "
-                                                              "tag_uuid "
-                                                              "FROM history_items WHERE history_key = ?"];
+    NSMutableString *sql =
+        [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link, "
+                                           "tag_uuid "
+                                           "FROM history_items WHERE history_key = ?"];
     NSMutableArray<id> *bindings = [NSMutableArray arrayWithObject:historyKey ?: @""];
 
     if ([searchCriteria hasSearchText]) {
@@ -770,12 +771,11 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    if ([tagUUID length] > 0 &&
-        ![self insertSearchTokenForItemID:itemID
-                               historyKey:historyKey
-                                tokenType:kKayokoSearchTokenTypeTag
-                               tokenValue:tagUUID
-                                    error:error]) {
+    if ([tagUUID length] > 0 && ![self insertSearchTokenForItemID:itemID
+                                                       historyKey:historyKey
+                                                        tokenType:kKayokoSearchTokenTypeTag
+                                                       tokenValue:tagUUID
+                                                            error:error]) {
         return NO;
     }
 

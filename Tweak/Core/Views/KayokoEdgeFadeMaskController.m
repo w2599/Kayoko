@@ -132,9 +132,7 @@
         BOOL showsLeadingFade = leadingFadeWidth > 0.5;
         BOOL showsTrailingFade = trailingFadeWidth > 0.5;
         if (fadeLength <= 0.5) {
-            colors = @[
-                (__bridge id)[transparentColor CGColor], (__bridge id)[transparentColor CGColor]
-            ];
+            colors = @[ (__bridge id)[transparentColor CGColor], (__bridge id)[transparentColor CGColor] ];
             locations = @[ @0, @1 ];
         } else if (showsLeadingFade && showsTrailingFade) {
             CGFloat leadingEnd = fadeStart + leadingFadeWidth;
@@ -160,9 +158,8 @@
                     (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],
                     (__bridge id)[opaqueColor CGColor], (__bridge id)[transparentColor CGColor]
                 ];
-                locations = @[
-                    @(fadeStart / visibleLength), @(leadingEnd / visibleLength), @(fadeEnd / visibleLength), @1
-                ];
+                locations =
+                    @[ @(fadeStart / visibleLength), @(leadingEnd / visibleLength), @(fadeEnd / visibleLength), @1 ];
             } else {
                 colors = @[
                     (__bridge id)[transparentColor CGColor], (__bridge id)[opaqueColor CGColor],

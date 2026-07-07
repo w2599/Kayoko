@@ -440,7 +440,8 @@ NS_ASSUME_NONNULL_END
 
           NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
           if (update == KayokoTableDataStoreDisplayedItemUpdateRemove) {
-              [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
+              [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ]
+                                      withRowAnimation:UITableViewRowAnimationAutomatic];
           } else if (update == KayokoTableDataStoreDisplayedItemUpdateReload) {
               [[self tableView] reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationNone];
           }

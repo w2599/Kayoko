@@ -49,14 +49,14 @@
 
 + (UIImage *)dotImageWithHexColor:(NSString *)hexColor
                          diameter:(CGFloat)diameter
-                    canvasDiameter:(CGFloat)canvasDiameter {
+                   canvasDiameter:(CGFloat)canvasDiameter {
     return [self dotImageWithHexColor:hexColor diameter:diameter canvasDiameter:canvasDiameter borderWidth:0];
 }
 
 + (UIImage *)dotImageWithHexColor:(NSString *)hexColor
                          diameter:(CGFloat)diameter
-                    canvasDiameter:(CGFloat)canvasDiameter
-                       borderWidth:(CGFloat)borderWidth {
+                   canvasDiameter:(CGFloat)canvasDiameter
+                      borderWidth:(CGFloat)borderWidth {
     CGFloat normalizedCanvasDiameter = MAX(canvasDiameter, diameter);
     CGSize size = CGSizeMake(normalizedCanvasDiameter, normalizedCanvasDiameter);
     UIGraphicsBeginImageContextWithOptions(size, NO, 0);

@@ -73,9 +73,9 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
           toHistoryWithKey:(NSString *)destinationHistoryKey
                 completion:(nullable void (^)(BOOL success))completion;
 - (void)setTagUUID:(nullable NSString *)tagUUID
- forPasteboardItem:(KayokoPasteboardItem *)item
-    inHistoryWithKey:(NSString *)historyKey
-          completion:(nullable void (^)(BOOL success))completion;
+    forPasteboardItem:(KayokoPasteboardItem *)item
+     inHistoryWithKey:(NSString *)historyKey
+           completion:(nullable void (^)(BOOL success))completion;
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                                         completion:(nullable void (^)(BOOL success))completion;

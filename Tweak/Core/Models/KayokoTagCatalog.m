@@ -36,13 +36,13 @@
 }
 
 - (NSArray<KayokoTag *> *)reloadTags {
-    KayokoTagStore *store =
-        [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
-                              localizationBundle:[KayokoPasteboardManager localizationBundle]];
+    KayokoTagStore *store = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
+                                                  localizationBundle:[KayokoPasteboardManager localizationBundle]];
     NSError *error = nil;
     NSArray<KayokoTag *> *tags = [store readTagsWithError:&error] ?: @[];
 
-    NSMutableDictionary<NSString *, KayokoTag *> *tagsByUUID = [[NSMutableDictionary alloc] initWithCapacity:[tags count]];
+    NSMutableDictionary<NSString *, KayokoTag *> *tagsByUUID =
+        [[NSMutableDictionary alloc] initWithCapacity:[tags count]];
     for (KayokoTag *tag in tags) {
         if ([[tag uuid] length] > 0) {
             tagsByUUID[[tag uuid]] = tag;

@@ -150,8 +150,7 @@ NS_ASSUME_NONNULL_END
     NSString *historyKey = [self sourceHistoryKey];
     NSString *normalizedTagUUID = [tagUUID length] > 0 ? tagUUID : nil;
     NSString *previousTagUUID = [item tagUUID];
-    if (!item || [historyKey length] == 0 ||
-        [(previousTagUUID ?: @"") isEqualToString:(normalizedTagUUID ?: @"")]) {
+    if (!item || [historyKey length] == 0 || [(previousTagUUID ?: @"") isEqualToString:(normalizedTagUUID ?: @"")]) {
         return;
     }
 
@@ -160,24 +159,24 @@ NS_ASSUME_NONNULL_END
 
     __weak typeof(self) weakSelf = self;
     [[self actionHandler] setTagUUID:normalizedTagUUID
-                              forItem:item
-                           historyKey:historyKey
-                           completion:^(BOOL success) {
-                             __strong typeof(weakSelf) strongSelf = weakSelf;
-                             if (!strongSelf) {
-                                 return;
-                             }
-                             if (!success) {
-                                 [item setTagUUID:previousTagUUID];
-                                 [[strongSelf wordSelectionView] setSelectedTagUUID:previousTagUUID];
-                                 return;
-                             }
-                             [[strongSelf delegate] wordSelectionViewController:strongSelf
-                                                  triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleLight];
-                             if ([strongSelf tagAssignmentHandler]) {
-                                 [strongSelf tagAssignmentHandler](item, historyKey);
-                             }
-                           }];
+                             forItem:item
+                          historyKey:historyKey
+                          completion:^(BOOL success) {
+                            __strong typeof(weakSelf) strongSelf = weakSelf;
+                            if (!strongSelf) {
+                                return;
+                            }
+                            if (!success) {
+                                [item setTagUUID:previousTagUUID];
+                                [[strongSelf wordSelectionView] setSelectedTagUUID:previousTagUUID];
+                                return;
+                            }
+                            [[strongSelf delegate] wordSelectionViewController:strongSelf
+                                                triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleLight];
+                            if ([strongSelf tagAssignmentHandler]) {
+                                [strongSelf tagAssignmentHandler](item, historyKey);
+                            }
+                          }];
 }
 
 - (void)prepareToHideWordSelection {

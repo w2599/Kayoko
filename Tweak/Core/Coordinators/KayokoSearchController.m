@@ -217,8 +217,8 @@ NS_ASSUME_NONNULL_END
         KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[token value]];
         return [KayokoTagColorFormatter dotImageWithHexColor:[tag hexColor]
                                                     diameter:14.0
-                                               canvasDiameter:20
-                                                  borderWidth:1.25];
+                                              canvasDiameter:20
+                                                 borderWidth:1.25];
     }
     if ([[token imageName] length] > 0) {
         return [UIImage systemImageNamed:[token imageName]];

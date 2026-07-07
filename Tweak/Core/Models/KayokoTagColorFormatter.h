@@ -17,12 +17,12 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIColor *)borderColorFromHexColor:(nullable NSString *)hexColor;
 + (UIImage *)dotImageWithHexColor:(nullable NSString *)hexColor diameter:(CGFloat)diameter;
 + (UIImage *)dotImageWithHexColor:(nullable NSString *)hexColor
-                          diameter:(CGFloat)diameter
-                     canvasDiameter:(CGFloat)canvasDiameter;
+                         diameter:(CGFloat)diameter
+                   canvasDiameter:(CGFloat)canvasDiameter;
 + (UIImage *)dotImageWithHexColor:(nullable NSString *)hexColor
-                          diameter:(CGFloat)diameter
-                     canvasDiameter:(CGFloat)canvasDiameter
-                        borderWidth:(CGFloat)borderWidth;
+                         diameter:(CGFloat)diameter
+                   canvasDiameter:(CGFloat)canvasDiameter
+                      borderWidth:(CGFloat)borderWidth;
 
 @end
 

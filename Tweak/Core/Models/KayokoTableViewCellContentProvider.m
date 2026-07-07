@@ -7,9 +7,9 @@
 #import "KayokoApplicationMetadataProvider.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
+#import "KayokoTableViewCellContent.h"
 #import "KayokoTag.h"
 #import "KayokoTagCatalog.h"
-#import "KayokoTableViewCellContent.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

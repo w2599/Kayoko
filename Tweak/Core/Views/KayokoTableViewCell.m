@@ -6,8 +6,8 @@
 //
 
 #import "KayokoTableViewCell.h"
-#import "KayokoTagColorFormatter.h"
 #import "KayokoTableViewCellContent.h"
+#import "KayokoTagColorFormatter.h"
 
 static CGFloat const kKayokoTableViewCellTagDotSize = 7;
 
@@ -82,7 +82,8 @@ static CGFloat const kKayokoTableViewCellTagDotSize = 7;
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];
         [[self headerLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
-        [[self headerLabel] setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+        [[self headerLabel] setContentHuggingPriority:UILayoutPriorityDefaultHigh
+                                              forAxis:UILayoutConstraintAxisHorizontal];
         [[self headerLabel] setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                             forAxis:UILayoutConstraintAxisHorizontal];
         [self addSubview:[self headerLabel]];
@@ -94,14 +95,14 @@ static CGFloat const kKayokoTableViewCellTagDotSize = 7;
                                                                constant:16]
         ]];
 
-        NSLayoutXAxisAnchor *textTrailingAnchor = [self contentImageView]
-                                                      ? [[self contentImageView] leadingAnchor]
-                                                      : [self trailingAnchor];
+        NSLayoutXAxisAnchor *textTrailingAnchor =
+            [self contentImageView] ? [[self contentImageView] leadingAnchor] : [self trailingAnchor];
         CGFloat textTrailingConstant = [self contentImageView] ? -16 : -24;
 
         if ([[content tagHexColor] length] > 0) {
             [self setTagDotView:[[UIView alloc] init]];
-            [[self tagDotView] setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[content tagHexColor]]];
+            [[self tagDotView]
+                setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[content tagHexColor]]];
             [[[self tagDotView] layer] setCornerRadius:kKayokoTableViewCellTagDotSize / 2.0];
             [self addSubview:[self tagDotView]];
             [[self tagDotView] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -143,7 +144,8 @@ static CGFloat const kKayokoTableViewCellTagDotSize = 7;
             [[[self contentLabel] topAnchor] constraintEqualToAnchor:[[self headerLabel] bottomAnchor] constant:2],
             [[[self contentLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[self bottomAnchor] constant:-10],
             [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
-            [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor constant:textTrailingConstant]
+            [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor
+                                                                 constant:textTrailingConstant]
         ]];
     }
 

@@ -54,9 +54,9 @@ typedef void (^KayokoHistoryAppBundleIdentifiersCompletion)(NSArray<NSString *> 
               toHistoryKey:(NSString *)destinationHistoryKey
                 completion:(nullable void (^)(BOOL success))completion;
 - (void)setTagUUID:(nullable NSString *)tagUUID
-  forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
-       inHistoryKey:(NSString *)historyKey
-         completion:(nullable void (^)(BOOL success))completion;
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+           completion:(nullable void (^)(BOOL success))completion;
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                        completion:(nullable void (^)(BOOL success))completion;

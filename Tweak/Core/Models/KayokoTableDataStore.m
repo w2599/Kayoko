@@ -126,7 +126,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSDictionary<NSString *, id> *)dictionaryBySettingTagUUID:(NSString *)tagUUID
-                                                 inDictionary:(NSDictionary<NSString *, id> *)dictionary {
+                                                inDictionary:(NSDictionary<NSString *, id> *)dictionary {
     NSMutableDictionary<NSString *, id> *updatedDictionary = [dictionary mutableCopy];
     if ([tagUUID length] > 0) {
         updatedDictionary[kKayokoItemKeyTagUUID] = tagUUID;
@@ -158,8 +158,8 @@ NS_ASSUME_NONNULL_END
         return KayokoTableDataStoreDisplayedItemUpdateNotFound;
     }
 
-    NSDictionary<NSString *, id> *updatedDictionary =
-        [self dictionaryBySettingTagUUID:tagUUID inDictionary:[self items][itemIndex]];
+    NSDictionary<NSString *, id> *updatedDictionary = [self dictionaryBySettingTagUUID:tagUUID
+                                                                          inDictionary:[self items][itemIndex]];
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[self items] mutableCopy];
     items[itemIndex] = updatedDictionary;
     [self setItems:items];

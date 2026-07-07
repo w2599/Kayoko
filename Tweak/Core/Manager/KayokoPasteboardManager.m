@@ -615,9 +615,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)setTagUUID:(NSString *)tagUUID
- forPasteboardItem:(KayokoPasteboardItem *)item
-  inHistoryWithKey:(NSString *)historyKey
-        completion:(void (^)(BOOL success))completion {
+    forPasteboardItem:(KayokoPasteboardItem *)item
+     inHistoryWithKey:(NSString *)historyKey
+           completion:(void (^)(BOOL success))completion {
     if (_maintenanceMode) {
         if (completion) {
             completion(NO);
