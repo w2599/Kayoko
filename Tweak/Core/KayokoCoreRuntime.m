@@ -206,6 +206,10 @@ NS_ASSUME_NONNULL_END
     return self.panelVisible && [self.mainViewController isFullscreenSearchActive];
 }
 
+- (BOOL)systemMultitaskingGestureSuppressed {
+    return self.panelVisible && [self.mainViewController shouldSuppressSystemMultitaskingGesture];
+}
+
 #pragma mark - Panel
 
 - (void)installPanelInStatusBarWindow:(UIWindow *)window {

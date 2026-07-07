@@ -89,6 +89,10 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
 }
 
+- (BOOL)hasVisibleTagBar {
+    return [self visibleTagBarHeight] > 0;
+}
+
 - (CGFloat)safeAreaBottomInsetForScrollContent {
     UIView *view = self;
     while (view) {

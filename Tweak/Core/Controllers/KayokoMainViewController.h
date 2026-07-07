@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)handleApplicationMetadataChanged;
 - (void)preloadHistoryIfNeeded;
 - (BOOL)isFullscreenSearchActive;
+- (BOOL)shouldSuppressSystemMultitaskingGesture;
 - (void)show;
 - (void)hide;
 - (void)hideRestoringFocus;

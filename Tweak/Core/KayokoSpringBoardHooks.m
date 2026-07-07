@@ -91,7 +91,9 @@ CHDeclareClass(_UISystemGestureWindow);
 @end
 
 static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
+static const NSInteger kKayokoSystemGestureTypeMultitasking = 0x2;
 static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
+
 static CGFloat const kKayokoSystemKeyboardFrameEdgeTolerance = 1.0;
 static NSString *const kKayokoExternalKeyboardDiscoverabilityTitle = @"Kayoko";
 
@@ -337,8 +339,12 @@ CHOptimizedMethod1(self, void, SBApplicationController, applicationsUpdated, id,
 }
 
 CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
     if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter) &&
-        [[KayokoCoreRuntime sharedRuntime] fullscreenSearchActive]) {
+        [runtime fullscreenSearchActive]) {
+        return NO;
+    }
+    if (type == kKayokoSystemGestureTypeMultitasking && [runtime systemMultitaskingGestureSuppressed]) {
         return NO;
     }
 

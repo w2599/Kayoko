@@ -311,6 +311,15 @@ NS_ASSUME_NONNULL_END
     return [[self searchController] isSearchActive];
 }
 
+- (BOOL)shouldSuppressSystemMultitaskingGesture {
+    if ([self isHidden]) {
+        return NO;
+    }
+
+    KayokoPreviewView *previewView = [[self previewViewController] previewView];
+    return ![previewView isHidden] && [previewView hasVisibleTagBar];
+}
+
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
     handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     [[self searchController] handleFullscreenPanGestureRecognizer:recognizer];
