@@ -620,7 +620,7 @@ NS_ASSUME_NONNULL_END
         [[self searchController]
             refreshAfterTransientContentForListViewController:[self activeListViewController]
                                        restoresFirstResponder:[self restoresSearchFirstResponderAfterTransientContent]
-                                       targetContentOffset:targetContentOffset];
+                                          targetContentOffset:targetContentOffset];
     }
     [self setRestoresSearchFirstResponderAfterTransientContent:NO];
     [self setHasSearchContentOffsetBeforeTransientContent:NO];
@@ -908,16 +908,16 @@ NS_ASSUME_NONNULL_END
     }
 
     [[self mainView] showContentView:sourceView
-                      hideContentView:previewView
-                                title:[self titleForContentView:sourceView]
-                            direction:KayokoContentTransitionDirectionBackward
-                          willAnimate:^{
-                            [self refreshSearchAfterEndingTransientContentIfNeeded];
-                          }
-                           completion:^{
-                             [[self previewViewController] hidePreview];
-                             [self setActiveSourceContentView:nil];
-                           }];
+        hideContentView:previewView
+        title:[self titleForContentView:sourceView]
+        direction:KayokoContentTransitionDirectionBackward
+        willAnimate:^{
+          [self refreshSearchAfterEndingTransientContentIfNeeded];
+        }
+        completion:^{
+          [[self previewViewController] hidePreview];
+          [self setActiveSourceContentView:nil];
+        }];
 }
 
 - (void)hideWordSelection {
@@ -936,16 +936,16 @@ NS_ASSUME_NONNULL_END
     }
 
     [[self mainView] showContentView:sourceView
-                      hideContentView:wordSelectionView
-                                title:[self titleForContentView:sourceView]
-                            direction:KayokoContentTransitionDirectionBackward
-                          willAnimate:^{
-                            [self refreshSearchAfterEndingTransientContentIfNeeded];
-                          }
-                           completion:^{
-                             [[self wordSelectionViewController] hideWordSelection];
-                             [self setActiveSourceContentView:nil];
-                           }];
+        hideContentView:wordSelectionView
+        title:[self titleForContentView:sourceView]
+        direction:KayokoContentTransitionDirectionBackward
+        willAnimate:^{
+          [self refreshSearchAfterEndingTransientContentIfNeeded];
+        }
+        completion:^{
+          [[self wordSelectionViewController] hideWordSelection];
+          [self setActiveSourceContentView:nil];
+        }];
 }
 
 - (void)clearConfirmationViewControllerDidCancel:(KayokoClearConfirmationViewController *)controller {

@@ -248,8 +248,7 @@ NS_ASSUME_NONNULL_END
                       (int64_t)(kKayokoHistoryListViewTransientContentOffsetPreservationDuration * NSEC_PER_SEC)),
         dispatch_get_main_queue(), ^{
           __strong typeof(weakSelf) strongSelf = weakSelf;
-          if (!strongSelf ||
-              [strongSelf transientContentOffsetPreservationIdentifier] != preservationIdentifier) {
+          if (!strongSelf || [strongSelf transientContentOffsetPreservationIdentifier] != preservationIdentifier) {
               return;
           }
           [strongSelf endTransientContentOffsetPreservationIfNeeded];
