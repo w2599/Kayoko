@@ -28,7 +28,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 使用共享实例创建管理器。
+ * Creates the shared instance.
  */
 + (instancetype)sharedInstance {
     static PasteboardManager *sharedInstance;
@@ -85,7 +85,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 使用共享实例创建管理器。
+ * Creates the manager using the shared instance.
  */
 - (instancetype)init {
     self = [super init];
@@ -118,7 +118,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 从剪贴板中拉取新的更改。
+ * Pulls new changes from the pasteboard.
  */
 - (void)pullPasteboardChangesWithCompletion:(void (^)(BOOL didSaveAnyItem))completion {
 
@@ -192,10 +192,10 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 向指定历史记录中添加一个项目。
+ * Adds an item to a specified history.
  *
- * @param item 要保存的条目。
- * @param historyKey 要保存到的历史记录的键。
+ * @param item The item to save.
+ * @param historyKey The key for the history which to save to.
  */
 - (BOOL)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
     NSString *content = [item content] ?: @"";
@@ -208,10 +208,8 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 
     [self ensureResourcesExist];
 
-    // 收藏夹应保持去重，但历史记录允许保留重复条目
-    if ([historyKey isEqualToString:kHistoryKeyFavorites]) {
-        [self deleteItemsWithContent:content fromListKey:historyKey];
-    }
+    // Remove duplicates.
+    [self deleteItemsWithContent:content fromListKey:historyKey];
 
     NSTimeInterval recordedAt = [item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970];
     [self insertItemAtFrontWithBundleIdentifier:[item bundleIdentifier] ?: @"com.apple.springboard"
@@ -222,7 +220,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
                                      recordedAt:recordedAt
                                     intoListKey:historyKey];
 
-    // 截断历史记录以符合设置的限制。
+    // Truncate the history corresponding the set limit.
     [self truncateListKey:historyKey toMaximumCount:[self maximumHistoryAmount]];
 
     [self notifyReload];
@@ -231,24 +229,19 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 从指定历史记录中移除一个项目。
+ * Removes an item from a specified history.
  *
- * @param item 要移除的条目。
- * @param historyKey 要从中移除条目的历史记录的键。
- * @param shouldRemoveImage 是否应移除条目对应的图片。
+ * @param item The item to remove.
+ * @param historyKey The key for the history from which to remove from.
+ * @param shouldRemoveImage Whether to remove the item's corresponding image or not.
  */
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
     [self ensureResourcesExist];
 
-    BOOL didDelete;
-    if ([item rowId] > 0) {
-        didDelete = [self deleteItemWithRowId:[item rowId] fromListKey:historyKey];
-    } else {
-        NSString *content = [item content] ?: @"";
-        didDelete = [self deleteItemsWithContent:content fromListKey:historyKey];
-    }
+    NSString *content = [item content] ?: @"";
+    BOOL didDelete = [self deleteItemsWithContent:content fromListKey:historyKey];
 
     if (didDelete && ![[item imageName] isEqualToString:@""]) {
         // 无论是否需要删除磁盘文件，该条目已不在这个列表中，对应的缓存项都应该从这个列表的缓存中清除。
@@ -273,25 +266,15 @@ static NSUInteger kKayokoImageCacheLimit = 15;
     [self ensureResourcesExist];
 
     NSString *safeRemark = remark ?: @"";
+    NSString *content = [item content] ?: @"";
 
     sqlite3_stmt *statement = NULL;
-    if ([item rowId] > 0) {
-        const char *sql = "UPDATE items SET remark = ? WHERE list_key = ? AND id = ?;";
-        if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
-            sqlite3_bind_text(statement, 1, [safeRemark UTF8String], -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 2, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
-            sqlite3_bind_int64(statement, 3, (sqlite3_int64)[item rowId]);
-            sqlite3_step(statement);
-        }
-    } else {
-        NSString *content = [item content] ?: @"";
-        const char *sql = "UPDATE items SET remark = ? WHERE list_key = ? AND content = ?;";
-        if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
-            sqlite3_bind_text(statement, 1, [safeRemark UTF8String], -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 2, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 3, [content UTF8String], -1, SQLITE_TRANSIENT);
-            sqlite3_step(statement);
-        }
+    const char *sql = "UPDATE items SET remark = ? WHERE list_key = ? AND content = ?;";
+    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(statement, 1, [safeRemark UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 2, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 3, [content UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_step(statement);
     }
     sqlite3_finalize(statement);
 
@@ -313,11 +296,11 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 使用项目内容更新剪贴板。
+ * Updates the pasteboard with an item's content.
  *
- * @param item 要从中设置内容的条目。
- * @param historyKey 条目所属历史记录的键。
- * @param shouldAutoPaste 是否应自动粘贴新内容。
+ * @param item The item from which to set the content from.
+ * @param historyKey The key for the history which the item is from.
+ * @param shouldAutoPaste Whether the helper should automatically paste the new content.
  */
 - (void)_reallyUpdatePasteboardWithItem:(PasteboardItem *)item
                      fromHistoryWithKey:(NSString *)historyKey
@@ -345,7 +328,6 @@ static NSUInteger kKayokoImageCacheLimit = 15;
                                                               andContent:[item content]
                                                               withImageNamed:[item imageName]
                                                               remark:[item remark]];
-        [updatedItem setRowId:[item rowId]];
         [self moveItemToFront:updatedItem inHistoryWithKey:historyKey];
     }
 }
@@ -360,11 +342,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
     [self ensureResourcesExist];
 
     NSString *content = [item content] ?: @"";
-    if ([item rowId] > 0) {
-        [self deleteItemWithRowId:[item rowId] fromListKey:historyKey];
-    } else {
-        [self deleteItemsWithContent:content fromListKey:historyKey];
-    }
+    [self deleteItemsWithContent:content fromListKey:historyKey];
 
     NSTimeInterval recordedAt = [item recordedAt] > 0 ? [item recordedAt] : [[NSDate date] timeIntervalSince1970];
     [self insertItemAtFrontWithBundleIdentifier:[item bundleIdentifier] ?: @"com.apple.springboard"
@@ -381,11 +359,11 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 返回指定历史记录中的所有条目。
+ * Returns all items from a specified history.
  *
- * @param historyKey 要获取条目的历史记录的键。
+ * @param historyKey The key for the history from which to get the items from.
  *
- * @return 历史记录的条目。
+ * @return The history's items.
  */
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
     [self ensureResourcesExist];
@@ -393,7 +371,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
     NSMutableArray *items = [[NSMutableArray alloc] init];
 
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT id, bundle_identifier, content, image_name, remark, has_link, recorded_at "
+    const char *sql = "SELECT bundle_identifier, content, image_name, remark, has_link, recorded_at "
                        "FROM items WHERE list_key = ? ORDER BY position ASC;";
     if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
         sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
@@ -460,7 +438,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 在给定列表的最前面（即所有现有行之前）插入一个新行。
+ * Inserts a new row for the given list at the very front (i.e. before every existing row).
  */
 - (void)insertItemAtFrontWithBundleIdentifier:(NSString *)bundleIdentifier
                                        content:(NSString *)content
@@ -505,9 +483,9 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 删除列表中所有匹配给定内容的行。
+ * Deletes every row matching the given content within a list.
  *
- * @return 是否实际删除了任何行。
+ * @return Whether any row was actually deleted.
  */
 - (BOOL)deleteItemsWithContent:(NSString *)content fromListKey:(NSString *)listKey {
     sqlite3_stmt *statement = NULL;
@@ -523,27 +501,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 删除列表中由唯一行 ID 标识的单行。
- * 当允许重复内容共存时，用于精确定位一次出现。
- *
- * @return 是否实际删除了该行。
- */
-- (BOOL)deleteItemWithRowId:(long long)rowId fromListKey:(NSString *)listKey {
-    sqlite3_stmt *statement = NULL;
-    const char *sql = "DELETE FROM items WHERE list_key = ? AND id = ?;";
-    if (sqlite3_prepare_v2(_database, sql, -1, &statement, NULL) == SQLITE_OK) {
-        sqlite3_bind_text(statement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
-        sqlite3_bind_int64(statement, 2, (sqlite3_int64)rowId);
-        sqlite3_step(statement);
-    }
-    sqlite3_finalize(statement);
-
-    return sqlite3_changes(_database) > 0;
-}
-
-/**
- * 删除溢出的行，以便给定列表中最多只保留 maximumCount 行，按最旧的顺序。
- * 溢出行对应的缩略图缓存与磁盘图片文件也会一并清理，避免残留。
+ * Removes overflow rows so at most maximumCount rows remain for the given list, oldest first.
  */
 - (void)truncateListKey:(NSString *)listKey toMaximumCount:(NSUInteger)maximumCount {
     NSMutableArray *overflowImageNames = [[NSMutableArray alloc] init];
@@ -609,16 +567,14 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 - (NSDictionary *)dictionaryFromRowStatement:(sqlite3_stmt *)statement {
-    sqlite3_int64 rowId = sqlite3_column_int64(statement, 0);
-    const char *bundleIdentifierText = (const char *)sqlite3_column_text(statement, 1);
-    const char *contentText = (const char *)sqlite3_column_text(statement, 2);
-    const char *imageNameText = (const char *)sqlite3_column_text(statement, 3);
-    const char *remarkText = (const char *)sqlite3_column_text(statement, 4);
-    BOOL hasLink = sqlite3_column_int(statement, 5) != 0;
-    double recordedAt = sqlite3_column_double(statement, 6);
+    const char *bundleIdentifierText = (const char *)sqlite3_column_text(statement, 0);
+    const char *contentText = (const char *)sqlite3_column_text(statement, 1);
+    const char *imageNameText = (const char *)sqlite3_column_text(statement, 2);
+    const char *remarkText = (const char *)sqlite3_column_text(statement, 3);
+    BOOL hasLink = sqlite3_column_int(statement, 4) != 0;
+    double recordedAt = sqlite3_column_double(statement, 5);
 
     return @{
-        kItemKeyRowId : @(rowId),
         kItemKeyBundleIdentifier : bundleIdentifierText ? [NSString stringWithUTF8String:bundleIdentifierText] : @"",
         kItemKeyContent : contentText ? [NSString stringWithUTF8String:contentText] : @"",
         kItemKeyImageName : imageNameText ? [NSString stringWithUTF8String:imageNameText] : @"",
@@ -634,9 +590,10 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 立即将历史记录缩减到新的最大数量，而不是等待下一次剪贴板更改触发延迟截断。
+ * Immediately shrinks the history down to a new maximum amount, instead of waiting for the next
+ * pasteboard change to trigger the truncation lazily.
  *
- * @param maximumAmount 要保留的历史记录条目的新最大数量。
+ * @param maximumAmount The new maximum amount of history items to keep.
  */
 - (void)truncateHistoryToMaximumAmount:(NSUInteger)maximumAmount {
     [self setMaximumHistoryAmount:maximumAmount];
@@ -648,9 +605,9 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 
 
 /**
- * 返回条目的图像。
+ * Returns the image for an item.
  *
- * @param item 要获取图像的条目。
+ * @param item The item from which to get the image from.
  *
  * @return The image.
  */
@@ -729,7 +686,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
     return thumbnail;
 }
 /**
- * 创建数据库和镜像目录，并在存在旧版 plist 数据时进行迁移。
+ * Creates the database and image directory, and migrates legacy plist data if present.
  */
 - (void)ensureResourcesExist {
     if (_didEnsureResourcesExist) {
@@ -753,7 +710,7 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 打开（并按需创建）用于存储历史记录和收藏的 SQLite 数据库。
+ * Opens (and lazily creates) the SQLite database used to store history and favorites.
  */
 - (void)openDatabaseIfNeeded {
     if (_database) {
@@ -785,7 +742,8 @@ static NSUInteger kKayokoImageCacheLimit = 15;
 }
 
 /**
- * 将任何预先存在的 history.plist/favorites.plist 数据迁移到 SQLite 数据库中，
+ * Migrates any pre-existing history.plist/favorites.plist data into the SQLite database,
+ * then removes the legacy plist files.
  */
 - (void)migrateLegacyPlistDataIfNeeded {
     if ([self hasItemsForListKey:kHistoryKeyHistory] || [self hasItemsForListKey:kHistoryKeyFavorites]) {
