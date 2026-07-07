@@ -48,33 +48,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
 @property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
+@property(nonatomic, assign) BOOL restoresSearchFirstResponderAfterTransientContent;
+@property(nonatomic, assign) BOOL hasSearchContentOffsetBeforeTransientContent;
+@property(nonatomic, assign) CGPoint searchContentOffsetBeforeTransientContent;
 @property(nonatomic, weak, nullable) UIView *activeSourceContentView;
-
-- (void)showContentForItem:(KayokoPasteboardItem *)item;
-- (nullable NSString *)historyKeyForInitialViewMode;
-- (void)hideAfterDirectPaste;
-- (void)hideWordSelection;
-- (void)restoreActiveSourceContentView;
-- (void)refreshSearchAfterEndingTransientContentIfNeeded;
-- (BOOL)isPreviewActive;
-- (BOOL)isWordSelectionActive;
-- (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey;
-- (void)handleTitleTapControlPressed;
-- (KayokoEmptyStateView *)emptyStateViewForHistoryKey:(NSString *)historyKey;
-- (BOOL)cancelSearchForEmptyActiveHistoryIfNeededHidingView:(UIView *)viewToHide
-                                                  direction:(KayokoContentTransitionDirection)direction
-                                                 completion:(nullable void (^)(void))completion;
-- (void)showContentView:(UIView *)viewToShow
-        hideContentView:(UIView *)viewToHide
-              direction:(KayokoContentTransitionDirection)direction
-             completion:(nullable void (^)(void))completion;
-- (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
-                   movedFromHistoryKey:(NSString *)sourceHistoryKey
-                          toHistoryKey:(NSString *)destinationHistoryKey;
-- (void)handleTagAssignmentForItem:(KayokoPasteboardItem *)item historyKey:(NSString *)historyKey;
-- (void)updateContentState;
-- (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
-- (void)showStorageError:(NSError *)error;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -636,8 +613,17 @@ NS_ASSUME_NONNULL_END
 
 - (void)refreshSearchAfterEndingTransientContentIfNeeded {
     if ([[self searchController] isSearchActive]) {
-        [[self searchController] refreshForListViewController:[self activeListViewController]];
+        CGPoint targetContentOffset = [[[self activeListViewController] tableView] contentOffset];
+        if ([self hasSearchContentOffsetBeforeTransientContent]) {
+            targetContentOffset = [self searchContentOffsetBeforeTransientContent];
+        }
+        [[self searchController]
+            refreshAfterTransientContentForListViewController:[self activeListViewController]
+                                       restoresFirstResponder:[self restoresSearchFirstResponderAfterTransientContent]
+                                       targetContentOffset:targetContentOffset];
     }
+    [self setRestoresSearchFirstResponderAfterTransientContent:NO];
+    [self setHasSearchContentOffsetBeforeTransientContent:NO];
 }
 
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
@@ -871,6 +857,14 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)showContentForItem:(KayokoPasteboardItem *)item {
+    BOOL restoresSearchFirstResponder = [[self searchController] isActiveSearchFirstResponder];
+    [self setRestoresSearchFirstResponderAfterTransientContent:restoresSearchFirstResponder];
+    if (restoresSearchFirstResponder) {
+        [self setSearchContentOffsetBeforeTransientContent:[[[self activeListViewController] tableView] contentOffset]];
+        [self setHasSearchContentOffsetBeforeTransientContent:YES];
+    } else {
+        [self setHasSearchContentOffsetBeforeTransientContent:NO];
+    }
     [[self searchController] resignSearchFirstResponder];
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];

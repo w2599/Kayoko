@@ -610,6 +610,11 @@ NS_ASSUME_NONNULL_END
     [self setIsResettingSearch:wasResettingSearch];
 }
 
+- (void)restoreContentOffset:(CGPoint)contentOffset
+       forListViewController:(KayokoHistoryListViewController *)listViewController {
+    [[listViewController tableView] setContentOffset:contentOffset animated:NO];
+}
+
 - (void)refreshForListViewController:(KayokoHistoryListViewController *)listViewController {
     [self attachToListViewController:listViewController hidesSearchBar:![self isSearchActive]];
     if ([self isSearchActive]) {
@@ -626,8 +631,37 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)refreshAfterTransientContentForListViewController:(KayokoHistoryListViewController *)listViewController
+                                   restoresFirstResponder:(BOOL)restoresFirstResponder
+                                      targetContentOffset:(CGPoint)targetContentOffset {
+    CGPoint currentContentOffset = [[listViewController tableView] contentOffset];
+    [[self presentationController] layout];
+    if ([self isSearchActive]) {
+        [self reloadTagTokens];
+    }
+    [self syncSearchBarForListViewController:listViewController];
+    [self updateTokenListForListViewController:listViewController];
+    [self updateSearchTokenHeaderHeights];
+    [self restoreContentOffset:currentContentOffset forListViewController:listViewController];
+    if ([self isSearchActive] && listViewController == [self activeListViewController]) {
+        [[self historySearchBar] setShowsCancelButton:NO animated:NO];
+        [[self favoritesSearchBar] setShowsCancelButton:NO animated:NO];
+        [[self activeSearchBar] setShowsCancelButton:YES animated:NO];
+        if (restoresFirstResponder) {
+            [[listViewController tableView] beginTransientContentOffsetPreservationAtContentOffset:targetContentOffset];
+            [[self activeSearchBar] becomeFirstResponder];
+        }
+    }
+}
+
 - (void)resignSearchFirstResponder {
     [[self activeSearchBar] resignFirstResponder];
+}
+
+- (BOOL)isActiveSearchFirstResponder {
+    UISearchBar *searchBar = [self activeSearchBar];
+    UITextField *searchTextField = [searchBar searchTextField];
+    return [searchBar isFirstResponder] || [searchTextField isFirstResponder];
 }
 
 - (void)beginSearchIfNeeded {
