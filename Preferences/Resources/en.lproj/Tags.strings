@@ -1,4 +1,4 @@
-"Tag Management" = "Tag Management";
+"Custom Tags…" = "Custom Tags…";
 "Tags" = "Tags";
 "Search Tags…" = "Search Tags…";
 "Edit" = "Edit";
@@ -14,6 +14,7 @@
 "Color" = "Color";
 "Untitled" = "Untitled";
 "Unable to Save Tags" = "Unable to Save Tags";
+"No Tags" = "No Tags";
 "Red" = "Red";
 "Orange" = "Orange";
 "Yellow" = "Yellow";

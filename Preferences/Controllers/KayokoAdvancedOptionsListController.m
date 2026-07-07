@@ -7,6 +7,7 @@
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoRespringControllerSupport.h"
+#import "KayokoTagStore.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
@@ -75,6 +76,39 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
               @"Are you sure you want to clear all history items? This action cannot be undone."
                                   actionTitleKey:@"Clear History"
                                 notificationName:kKayokoNotificationKeyCoreClearHistory];
+}
+
+- (void)restoreTagsPrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *restoreAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:@"Are you sure you want to restore the default tags? "
+                                                               @"Existing tags will be replaced. This action cannot be "
+                                                               @"undone."
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *restoreAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Restore Tags"
+                                                                                          value:nil
+                                                                                          table:@"AdvancedOptions"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            (void)action;
+                                                            [self restoreTags];
+                                                          }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [restoreAlert addAction:restoreAction];
+    [restoreAlert addAction:cancelAction];
+
+    [self presentViewController:restoreAlert animated:YES completion:nil];
 }
 
 - (void)presentClearConfirmationWithMessageKey:(NSString *)messageKey
@@ -177,6 +211,38 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [self reloadSpecifiers];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kKayokoNotificationKeyPreferencesReload, nil, nil, YES);
+}
+
+- (void)restoreTags {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    KayokoTagStore *tagStore = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
+                                                     localizationBundle:bundle];
+
+    NSError *error = nil;
+    if (![tagStore restoreDefaultTagsWithError:&error]) {
+        [self presentRestoreTagsError:error];
+    }
+}
+
+- (void)presentRestoreTagsError:(NSError *)error {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *message = [error localizedDescription]
+                            ?: [bundle localizedStringForKey:@"Unable to Restore Tags"
+                                                       value:nil
+                                                       table:@"AdvancedOptions"];
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Unable to Restore Tags"
+                                                                            value:nil
+                                                                            table:@"AdvancedOptions"]
+                                            message:message
+                                     preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"OK"
+                                                                                   value:nil
+                                                                                   table:@"AdvancedOptions"]
+                                                     style:UIAlertActionStyleDefault
+                                                   handler:nil];
+    [alert addAction:action];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {

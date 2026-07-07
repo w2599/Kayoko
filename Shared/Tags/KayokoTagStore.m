@@ -81,20 +81,25 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
         return NO;
     }
 
-    NSMutableArray<NSDictionary<NSString *, id> *> *propertyList = [[NSMutableArray alloc] initWithCapacity:[tags count]];
+    NSMutableArray<NSDictionary<NSString *, id> *> *propertyList =
+        [[NSMutableArray alloc] initWithCapacity:[tags count]];
     for (KayokoTag *tag in tags) {
         [propertyList addObject:[tag dictionaryRepresentation]];
     }
 
     NSData *plistData = [NSPropertyListSerialization dataWithPropertyList:propertyList
-                                                                    format:NSPropertyListXMLFormat_v1_0
-                                                                   options:0
-                                                                     error:error];
+                                                                   format:NSPropertyListXMLFormat_v1_0
+                                                                  options:0
+                                                                    error:error];
     if (!plistData) {
         return NO;
     }
 
     return [plistData writeToFile:[self tagsPath] options:NSDataWritingAtomic error:error];
+}
+
+- (BOOL)restoreDefaultTagsWithError:(NSError **)error {
+    return [self saveTags:[self defaultTags] error:error];
 }
 
 #pragma mark - Private
@@ -122,10 +127,7 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
         return YES;
     }
 
-    return [fileManager createDirectoryAtPath:directoryPath
-                  withIntermediateDirectories:YES
-                                   attributes:nil
-                                        error:error];
+    return [fileManager createDirectoryAtPath:directoryPath withIntermediateDirectories:YES attributes:nil error:error];
 }
 
 - (void)populateError:(NSError **)error code:(NSInteger)code message:(NSString *)message {
@@ -135,7 +137,7 @@ static NSString *const kKayokoTagStoreFileName = @"tags-v4.plist";
 
     *error = [NSError errorWithDomain:kKayokoTagStoreErrorDomain
                                  code:code
-                             userInfo:@{ NSLocalizedDescriptionKey : message ?: @"Kayoko tag store error" }];
+                             userInfo:@{NSLocalizedDescriptionKey : message ?: @"Kayoko tag store error"}];
 }
 
 @end

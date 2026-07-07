@@ -81,7 +81,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)configureTagManagementSpecifierInSpecifiers:(NSArray<PSSpecifier *> *)specifiers {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    NSString *localizedTitle = [bundle localizedStringForKey:@"Tag Management" value:nil table:@"Tags"];
+    NSString *localizedTitle = [bundle localizedStringForKey:@"Custom Tags…" value:nil table:@"Tags"];
     for (PSSpecifier *specifier in specifiers) {
         NSString *detail = [specifier propertyForKey:@"detail"];
         if (![detail isEqualToString:@"KayokoTagManagementViewController"]) {
@@ -276,7 +276,7 @@ NS_ASSUME_NONNULL_END
         if ([detail isEqualToString:@"KayokoTagManagementViewController"]) {
             UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
             NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-            cell.textLabel.text = [bundle localizedStringForKey:@"Tag Management" value:nil table:@"Tags"];
+            cell.textLabel.text = [bundle localizedStringForKey:@"Custom Tags…" value:nil table:@"Tags"];
             return cell;
         }
     }

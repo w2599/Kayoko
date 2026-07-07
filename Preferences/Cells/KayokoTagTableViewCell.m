@@ -5,28 +5,13 @@
 
 #import "KayokoTagTableViewCell.h"
 #import "KayokoTag.h"
-
-static UIColor *KayokoTagCellColorFromHex(NSString *hexColor);
+#import "KayokoTagColorFormatter.h"
 
 @interface KayokoTagTableViewCell ()
 @property(nonatomic, strong) UIView *colorSwatchView;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UILabel *hexColorLabel;
 @end
-
-static UIColor *KayokoTagCellColorFromHex(NSString *hexColor) {
-    NSString *candidate = [KayokoTag normalizedHexColorFromString:hexColor] ?: @"#00000000";
-    NSString *valueString = [candidate substringFromIndex:1];
-    unsigned long long value = 0;
-    NSScanner *scanner = [NSScanner scannerWithString:valueString];
-    [scanner scanHexLongLong:&value];
-
-    CGFloat red = (CGFloat)((value >> 24) & 0xFF) / 255.0;
-    CGFloat green = (CGFloat)((value >> 16) & 0xFF) / 255.0;
-    CGFloat blue = (CGFloat)((value >> 8) & 0xFF) / 255.0;
-    CGFloat alpha = (CGFloat)(value & 0xFF) / 255.0;
-    return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
-}
 
 @implementation KayokoTagTableViewCell
 
@@ -78,14 +63,14 @@ static UIColor *KayokoTagCellColorFromHex(NSString *hexColor) {
         [[_hexColorLabel trailingAnchor] constraintEqualToAnchor:[_titleLabel trailingAnchor]],
         [[_hexColorLabel topAnchor] constraintEqualToAnchor:[_titleLabel bottomAnchor] constant:2.0],
         [[_hexColorLabel bottomAnchor] constraintLessThanOrEqualToAnchor:[[self contentView] bottomAnchor]
-                                                                 constant:-8.0]
+                                                                constant:-8.0]
     ]];
 }
 
 - (void)configureWithTag:(KayokoTag *)tag editing:(BOOL)editing {
     [[self titleLabel] setText:[tag title]];
     [[self hexColorLabel] setText:[tag hexColor]];
-    [[self colorSwatchView] setBackgroundColor:KayokoTagCellColorFromHex([tag hexColor])];
+    [[self colorSwatchView] setBackgroundColor:[KayokoTagColorFormatter colorFromHexColor:[tag hexColor]]];
     [self setAccessoryType:editing ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator];
 }
 

@@ -61,8 +61,8 @@ NSString *const kKayokoTagDictionaryKeyHexColor = @"hexColor";
         return nil;
     }
 
-    NSCharacterSet *nonHexCharacters = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEFabcdef"]
-        invertedSet];
+    NSCharacterSet *nonHexCharacters =
+        [[NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEFabcdef"] invertedSet];
     if ([candidate rangeOfCharacterFromSet:nonHexCharacters].location != NSNotFound) {
         return nil;
     }

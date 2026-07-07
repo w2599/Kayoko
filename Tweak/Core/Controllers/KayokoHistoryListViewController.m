@@ -172,9 +172,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)shouldRestoreContentOffsetAfterMovingRowToTopFromOffset:(CGPoint)contentOffset {
-    return ![self hasActiveSearch] &&
-           ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset] ||
-            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset]);
+    return ![self hasActiveSearch] && ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset] ||
+                                       [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset]);
 }
 
 - (UITableViewRowAnimation)rowAnimationForTopInsertionFromContentOffset:(CGPoint)contentOffset {

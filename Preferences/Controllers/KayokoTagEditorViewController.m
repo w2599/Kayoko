@@ -4,12 +4,9 @@
 //
 
 #import "KayokoTagEditorViewController.h"
+#import "KayokoKeyboardAvoidanceCoordinator.h"
 #import "KayokoTag.h"
-
-#import <math.h>
-
-static UIColor *KayokoTagEditorColorFromHex(NSString *hexColor);
-static NSString *KayokoTagEditorHexColorFromColor(UIColor *color);
+#import "KayokoTagColorFormatter.h"
 
 @interface KayokoTagEditorViewController () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate>
 @property(nonatomic, strong) KayokoTag *tag;
@@ -17,38 +14,8 @@ static NSString *KayokoTagEditorHexColorFromColor(UIColor *color);
 @property(nonatomic, strong) UITableView *tableView;
 @property(nonatomic, strong) UITextField *titleTextField;
 @property(nonatomic, strong) UIColorWell *colorWell;
+@property(nonatomic, strong) KayokoKeyboardAvoidanceCoordinator *keyboardAvoidanceCoordinator;
 @end
-
-static UIColor *KayokoTagEditorColorFromHex(NSString *hexColor) {
-    NSString *candidate = [KayokoTag normalizedHexColorFromString:hexColor] ?: @"#00000000";
-    NSString *valueString = [candidate substringFromIndex:1];
-    unsigned long long value = 0;
-    NSScanner *scanner = [NSScanner scannerWithString:valueString];
-    [scanner scanHexLongLong:&value];
-
-    CGFloat red = (CGFloat)((value >> 24) & 0xFF) / 255.0;
-    CGFloat green = (CGFloat)((value >> 16) & 0xFF) / 255.0;
-    CGFloat blue = (CGFloat)((value >> 8) & 0xFF) / 255.0;
-    CGFloat alpha = (CGFloat)(value & 0xFF) / 255.0;
-    return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
-}
-
-static NSString *KayokoTagEditorHexColorFromColor(UIColor *color) {
-    CGFloat red = 0.0;
-    CGFloat green = 0.0;
-    CGFloat blue = 0.0;
-    CGFloat alpha = 0.0;
-    if (![color getRed:&red green:&green blue:&blue alpha:&alpha]) {
-        return @"#00000000";
-    }
-
-    NSInteger redValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, red)) * 255.0);
-    NSInteger greenValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, green)) * 255.0);
-    NSInteger blueValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, blue)) * 255.0);
-    NSInteger alphaValue = (NSInteger)lrint(MAX(0.0, MIN(1.0, alpha)) * 255.0);
-    return [NSString stringWithFormat:@"#%02lX%02lX%02lX%02lX", (long)redValue, (long)greenValue,
-                                      (long)blueValue, (long)alphaValue];
-}
 
 @implementation KayokoTagEditorViewController
 
@@ -82,6 +49,19 @@ static NSString *KayokoTagEditorHexColorFromColor(UIColor *color) {
     [self configureTableView];
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [[self keyboardAvoidanceCoordinator] startObserving];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [[self keyboardAvoidanceCoordinator] stopObservingAndRestoreInsets];
+    if ([self isBeingDismissed] || [[self navigationController] isBeingDismissed]) {
+        [self notifyDismissalTransitionIfNeeded];
+    }
+}
+
 - (void)configureTableView {
     _titleTextField = [[UITextField alloc] init];
     [_titleTextField setText:[[self tag] title]];
@@ -94,7 +74,7 @@ static NSString *KayokoTagEditorHexColorFromColor(UIColor *color) {
 
     _colorWell = [[UIColorWell alloc] init];
     [_colorWell setSupportsAlpha:YES];
-    [_colorWell setSelectedColor:KayokoTagEditorColorFromHex([[self tag] hexColor])];
+    [_colorWell setSelectedColor:[KayokoTagColorFormatter colorFromHexColor:[[self tag] hexColor]]];
     [_colorWell setFrame:CGRectMake(0.0, 0.0, 44.0, 44.0)];
 
     _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
@@ -110,7 +90,12 @@ static NSString *KayokoTagEditorHexColorFromColor(UIColor *color) {
         [[_tableView trailingAnchor] constraintEqualToAnchor:[[self view] trailingAnchor]],
         [[_tableView bottomAnchor] constraintEqualToAnchor:[[self view] bottomAnchor]]
     ]];
+
+    _keyboardAvoidanceCoordinator = [[KayokoKeyboardAvoidanceCoordinator alloc] initWithView:[self view]
+                                                                                  scrollView:_tableView];
 }
+
+#pragma mark - UITextFieldDelegate
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
     [textField resignFirstResponder];
@@ -158,7 +143,7 @@ static NSString *KayokoTagEditorHexColorFromColor(UIColor *color) {
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    (void)tableView;
     if ([indexPath row] == 0) {
         [[self titleTextField] becomeFirstResponder];
     }
@@ -169,24 +154,39 @@ static NSString *KayokoTagEditorHexColorFromColor(UIColor *color) {
 }
 
 - (void)finishEditing {
-    NSString *title = [[[self titleTextField] text] stringByTrimmingCharactersInSet:
-                                                    [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *title = [[[self titleTextField] text]
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if ([title length] == 0) {
         title = [self localizedStringForKey:@"Untitled"];
     }
 
-    KayokoTag *updatedTag = [[KayokoTag alloc] initWithUUID:[[self tag] uuid]
-                                                      title:title
-                                                   hexColor:KayokoTagEditorHexColorFromColor([[self colorWell]
-                                                                                                 selectedColor])];
-    if ([self completionHandler]) {
-        [self completionHandler](updatedTag);
-    }
-    [self dismissViewControllerAnimated:YES completion:nil];
+    KayokoTag *updatedTag =
+        [[KayokoTag alloc] initWithUUID:[[self tag] uuid]
+                                  title:title
+                               hexColor:[KayokoTagColorFormatter hexColorFromColor:[[self colorWell] selectedColor]]];
+    void (^completionHandler)(KayokoTag *) = [self completionHandler];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                               if (completionHandler) {
+                                   completionHandler(updatedTag);
+                               }
+                             }];
 }
 
 - (NSString *)localizedStringForKey:(NSString *)key {
     return [[self localizationBundle] localizedStringForKey:key value:key table:@"Tags"] ?: key;
+}
+
+- (void)notifyDismissalTransitionIfNeeded {
+    if (![self dismissalTransitionHandler]) {
+        return;
+    }
+
+    id<UIViewControllerTransitionCoordinator> transitionCoordinator = [self transitionCoordinator];
+    if (!transitionCoordinator) {
+        transitionCoordinator = [[self navigationController] transitionCoordinator];
+    }
+    [self dismissalTransitionHandler](transitionCoordinator);
 }
 
 @end

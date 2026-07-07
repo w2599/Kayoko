@@ -92,11 +92,10 @@ NS_ASSUME_NONNULL_END
         setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
                                                                                             value:nil
                                                                                             table:@"Tweak"]];
-    [[self backButton]
-        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
-                                  localizedStringForKey:[self actionAccessibilityLabelKeyForItem:item]
-                                                  value:nil
-                                                  table:@"Tweak"]];
+    [[self backButton] setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
+                                                 localizedStringForKey:[self actionAccessibilityLabelKeyForItem:item]
+                                                                 value:nil
+                                                                 table:@"Tweak"]];
     [[self clearButton] setHidden:YES];
     [[self backButton] setHidden:NO];
     [[self backButton] setEnabled:YES];

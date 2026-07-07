@@ -4,10 +4,12 @@
 //
 
 #import "KayokoTagManagementViewController.h"
-#import "KayokoTagEditorViewController.h"
-#import "KayokoTagTableViewCell.h"
+#import "KayokoKeyboardAvoidanceCoordinator.h"
 #import "KayokoTag.h"
+#import "KayokoTagEditorViewController.h"
+#import "KayokoTagPlaceholderView.h"
 #import "KayokoTagStore.h"
+#import "KayokoTagTableViewCell.h"
 
 #import <UIKit/UIKit.h>
 
@@ -16,12 +18,21 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 @interface KayokoTagManagementViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating,
                                                  UISearchControllerDelegate>
 @property(nonatomic, strong) UITableView *tableView;
+@property(nonatomic, strong) KayokoTagPlaceholderView *placeholderView;
 @property(nonatomic, strong) UISearchController *searchController;
 @property(nonatomic, strong) NSMutableArray<KayokoTag *> *tags;
 @property(nonatomic, strong) NSMutableArray<KayokoTag *> *filteredTags;
 @property(nonatomic, strong) NSMutableSet<NSString *> *selectedTagUUIDs;
 @property(nonatomic, strong) KayokoTagStore *tagStore;
 @property(nonatomic, strong) NSBundle *localizationBundle;
+@property(nonatomic, strong) KayokoKeyboardAvoidanceCoordinator *keyboardAvoidanceCoordinator;
+@property(nonatomic, strong) UIBarButtonItem *toolbarFlexibleSpaceItem;
+@property(nonatomic, strong) UIBarButtonItem *addToolbarItem;
+@property(nonatomic, strong) UIBarButtonItem *selectToolbarItem;
+@property(nonatomic, strong) UIBarButtonItem *deleteToolbarItem;
+@property(nonatomic, assign, getter=isSearchInterfaceActive) BOOL searchInterfaceActive;
+@property(nonatomic, assign) CGFloat keyboardBottomInset;
+@property(nonatomic, assign, getter=isUpdatingPlaceholderLayout) BOOL updatingPlaceholderLayout;
 @end
 
 @implementation KayokoTagManagementViewController
@@ -46,16 +57,26 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     [self configureNavigationItem];
     [self configureSearchController];
     [self configureTableView];
+    [self configurePlaceholderView];
+    [self configureToolbarItems];
     [self updateToolbarItems];
+    [self updatePlaceholderVisibility];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self updatePlaceholderLayout];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [[self navigationController] setToolbarHidden:NO animated:animated];
+    [[self keyboardAvoidanceCoordinator] startObserving];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [[self keyboardAvoidanceCoordinator] stopObservingAndRestoreInsets];
     if ([self isMovingFromParentViewController] || [[self navigationController] isBeingDismissed]) {
         [[self navigationController] setToolbarHidden:YES animated:animated];
     }
@@ -114,6 +135,38 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
         [[_tableView trailingAnchor] constraintEqualToAnchor:[[self view] trailingAnchor]],
         [[_tableView bottomAnchor] constraintEqualToAnchor:[[self view] bottomAnchor]]
     ]];
+
+    _keyboardAvoidanceCoordinator = [[KayokoKeyboardAvoidanceCoordinator alloc] initWithView:[self view]
+                                                                                  scrollView:_tableView];
+    __weak typeof(self) weakSelf = self;
+    [_keyboardAvoidanceCoordinator setKeyboardBottomInsetChangeHandler:^(CGFloat keyboardBottomInset) {
+      [weakSelf setKeyboardBottomInset:keyboardBottomInset];
+      [[weakSelf placeholderView] setKeyboardBottomInset:keyboardBottomInset];
+      [[weakSelf placeholderView] layoutIfNeeded];
+    }];
+}
+
+- (void)configurePlaceholderView {
+    _placeholderView = [[KayokoTagPlaceholderView alloc] initWithMessage:[self localizedStringForKey:@"No Tags"]];
+}
+
+- (void)configureToolbarItems {
+    _toolbarFlexibleSpaceItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+                                                                              target:nil
+                                                                              action:nil];
+    _addToolbarItem = [[UIBarButtonItem alloc] initWithTitle:[self localizedStringForKey:@"Add"]
+                                                       style:UIBarButtonItemStylePlain
+                                                      target:self
+                                                      action:@selector(addTag)];
+    _selectToolbarItem = [[UIBarButtonItem alloc] initWithTitle:[self localizedStringForKey:@"Select All"]
+                                                          style:UIBarButtonItemStylePlain
+                                                         target:self
+                                                         action:@selector(toggleSelectAll)];
+    _deleteToolbarItem = [[UIBarButtonItem alloc] initWithTitle:[self localizedStringForKey:@"Delete"]
+                                                          style:UIBarButtonItemStylePlain
+                                                         target:self
+                                                         action:@selector(deleteSelectedTags)];
+    [_deleteToolbarItem setTintColor:[UIColor systemRedColor]];
 }
 
 - (void)toggleEditing {
@@ -127,9 +180,6 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 
     if (!editing) {
         [[self selectedTagUUIDs] removeAllObjects];
-        for (NSIndexPath *indexPath in [[self tableView] indexPathsForSelectedRows]) {
-            [[self tableView] deselectRowAtIndexPath:indexPath animated:animated];
-        }
     }
 
     [self updateToolbarItems];
@@ -138,30 +188,22 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 #pragma mark - Toolbar
 
 - (void)updateToolbarItems {
-    UIBarButtonItem *flexibleSpace =
-        [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    NSArray<UIBarButtonItem *> *toolbarItems = nil;
     if (![self isEditing]) {
-        UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithTitle:[self localizedStringForKey:@"Add"]
-                                                                      style:UIBarButtonItemStylePlain
-                                                                     target:self
-                                                                     action:@selector(addTag)];
-        [self setToolbarItems:@[ flexibleSpace, addButton ] animated:YES];
-        return;
+        toolbarItems = [self isSearching] ? @[] : @[ [self toolbarFlexibleSpaceItem], [self addToolbarItem] ];
+    } else {
+        BOOL hasDisplayedTags = [[self displayedTags] count] > 0;
+        NSString *selectTitle = [self allDisplayedTagsSelected] ? [self localizedStringForKey:@"Deselect All"]
+                                                                : [self localizedStringForKey:@"Select All"];
+        [[self selectToolbarItem] setTitle:selectTitle];
+        [[self selectToolbarItem] setEnabled:hasDisplayedTags];
+        [[self deleteToolbarItem] setEnabled:[[self selectedDisplayedTagUUIDs] count] > 0];
+        toolbarItems = @[ [self selectToolbarItem], [self toolbarFlexibleSpaceItem], [self deleteToolbarItem] ];
     }
 
-    NSString *selectTitle = [self allDisplayedTagsSelected] ? [self localizedStringForKey:@"Deselect All"]
-                                                            : [self localizedStringForKey:@"Select All"];
-    UIBarButtonItem *selectButton = [[UIBarButtonItem alloc] initWithTitle:selectTitle
-                                                                     style:UIBarButtonItemStylePlain
-                                                                    target:self
-                                                                    action:@selector(toggleSelectAll)];
-    UIBarButtonItem *deleteButton = [[UIBarButtonItem alloc] initWithTitle:[self localizedStringForKey:@"Delete"]
-                                                                     style:UIBarButtonItemStylePlain
-                                                                    target:self
-                                                                    action:@selector(deleteSelectedTags)];
-    [deleteButton setTintColor:[UIColor systemRedColor]];
-    [deleteButton setEnabled:[[self selectedTagUUIDs] count] > 0];
-    [self setToolbarItems:@[ selectButton, flexibleSpace, deleteButton ] animated:YES];
+    if (![[self toolbarItems] isEqualToArray:toolbarItems]) {
+        [self setToolbarItems:toolbarItems animated:YES];
+    }
 }
 
 #pragma mark - Actions
@@ -170,7 +212,6 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     if ([self isFiltering]) {
         [[[self searchController] searchBar] setText:@""];
         [[self searchController] setActive:NO];
-        [self refreshFilteredTags];
         [[self tableView] reloadData];
     }
 
@@ -183,6 +224,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 
     NSUInteger insertedIndex = [updatedTags count] - 1;
     [self setTags:updatedTags];
+    [self updatePlaceholderVisibility];
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:insertedIndex inSection:0];
     [[self tableView] insertRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
     [[self tableView] scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
@@ -203,20 +245,18 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
             [[self tableView] deselectRowAtIndexPath:indexPath animated:YES];
         } else {
             [[self selectedTagUUIDs] addObject:[tag uuid]];
-            [[self tableView] selectRowAtIndexPath:indexPath
-                                          animated:YES
-                                    scrollPosition:UITableViewScrollPositionNone];
+            [[self tableView] selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionNone];
         }
     }
     [self updateToolbarItems];
 }
 
 - (void)deleteSelectedTags {
-    if ([[self selectedTagUUIDs] count] == 0) {
+    NSSet<NSString *> *selectedUUIDs = [self selectedDisplayedTagUUIDs];
+    if ([selectedUUIDs count] == 0) {
         return;
     }
 
-    NSSet<NSString *> *selectedUUIDs = [[self selectedTagUUIDs] copy];
     NSArray<KayokoTag *> *displayedTagsBeforeDeletion = [[self displayedTags] copy];
     NSMutableArray<NSIndexPath *> *deletedIndexPaths = [[NSMutableArray alloc] init];
     for (NSUInteger index = 0; index < [displayedTagsBeforeDeletion count]; index++) {
@@ -237,18 +277,19 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     }
 
     [self setTags:updatedTags];
-    [[self selectedTagUUIDs] removeAllObjects];
+    [[self selectedTagUUIDs] minusSet:selectedUUIDs];
     [self refreshFilteredTags];
+    [self updatePlaceholderVisibility];
     if ([deletedIndexPaths count] > 0) {
         [[self tableView] deleteRowsAtIndexPaths:deletedIndexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
     }
     [self updateToolbarItems];
 }
 
-- (void)deleteTagAtIndexPath:(NSIndexPath *)indexPath {
+- (BOOL)deleteTagAtIndexPath:(NSIndexPath *)indexPath {
     NSArray<KayokoTag *> *displayedTags = [self displayedTags];
     if ((NSUInteger)[indexPath row] >= [displayedTags count]) {
-        return;
+        return NO;
     }
 
     KayokoTag *deletedTag = displayedTags[(NSUInteger)[indexPath row]];
@@ -259,14 +300,16 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
         }
     }
     if (![self saveTags:updatedTags]) {
-        return;
+        return NO;
     }
 
     [self setTags:updatedTags];
     [[self selectedTagUUIDs] removeObject:[deletedTag uuid]];
     [self refreshFilteredTags];
+    [self updatePlaceholderVisibility];
     [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
     [self updateToolbarItems];
+    return YES;
 }
 
 #pragma mark - UITableViewDataSource
@@ -278,8 +321,8 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    KayokoTagTableViewCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:kKayokoTagCellReuseIdentifier forIndexPath:indexPath];
+    KayokoTagTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:kKayokoTagCellReuseIdentifier
+                                                                   forIndexPath:indexPath];
     [cell configureWithTag:[self displayedTags][(NSUInteger)[indexPath row]] editing:[self isEditing]];
     return cell;
 }
@@ -316,12 +359,11 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     UIContextualAction *deleteAction =
         [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
                                                 title:[self localizedStringForKey:@"Delete"]
-                                              handler:^(__kindof UIContextualAction *action, __kindof UIView *sourceView,
-                                                        void (^completionHandler)(BOOL)) {
+                                              handler:^(__kindof UIContextualAction *action,
+                                                        __kindof UIView *sourceView, void (^completionHandler)(BOOL)) {
                                                 (void)action;
                                                 (void)sourceView;
-                                                [self deleteTagAtIndexPath:indexPath];
-                                                completionHandler(YES);
+                                                completionHandler([self deleteTagAtIndexPath:indexPath]);
                                               }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];
     return [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
@@ -330,14 +372,14 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
     (void)indexPath;
-    return [self isEditing] && ![self isFiltering];
+    return [self isEditing] && ![self isSearching];
 }
 
 - (void)tableView:(UITableView *)tableView
     moveRowAtIndexPath:(NSIndexPath *)sourceIndexPath
            toIndexPath:(NSIndexPath *)destinationIndexPath {
     (void)tableView;
-    if ([self isFiltering] || [sourceIndexPath row] == [destinationIndexPath row]) {
+    if ([self isSearching] || [sourceIndexPath row] == [destinationIndexPath row]) {
         return;
     }
 
@@ -362,7 +404,6 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
         return;
     }
 
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
     [self presentEditorForTag:tag];
 }
 
@@ -376,19 +417,16 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     [self updateToolbarItems];
 }
 
-- (void)tableView:(UITableView *)tableView
-     willDisplayCell:(UITableViewCell *)cell
-   forRowAtIndexPath:(NSIndexPath *)indexPath {
-    (void)cell;
-    if (![self isEditing]) {
-        return;
-    }
+- (BOOL)tableView:(UITableView *)tableView shouldBeginMultipleSelectionInteractionAtIndexPath:(NSIndexPath *)indexPath {
+    (void)tableView;
+    return (NSUInteger)[indexPath row] < [[self displayedTags] count];
+}
 
-    KayokoTag *tag = [self displayedTags][(NSUInteger)[indexPath row]];
-    if ([[self selectedTagUUIDs] containsObject:[tag uuid]]) {
-        [tableView selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
-    } else {
-        [tableView deselectRowAtIndexPath:indexPath animated:NO];
+- (void)tableView:(UITableView *)tableView didBeginMultipleSelectionInteractionAtIndexPath:(NSIndexPath *)indexPath {
+    (void)tableView;
+    (void)indexPath;
+    if (![self isEditing]) {
+        [self setEditing:YES animated:YES];
     }
 }
 
@@ -398,6 +436,25 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     (void)searchController;
     [self refreshFilteredTags];
     [[self tableView] reloadData];
+    [self syncDisplayedSelectionState];
+    [self updateToolbarItems];
+}
+
+#pragma mark - UISearchControllerDelegate
+
+- (void)willPresentSearchController:(UISearchController *)searchController {
+    (void)searchController;
+    BOOL wasSearching = [self isSearching];
+    [self setSearchInterfaceActive:YES];
+    [self reloadTableForSearchStateChangeFromSearching:wasSearching];
+    [self updateToolbarItems];
+}
+
+- (void)didDismissSearchController:(UISearchController *)searchController {
+    (void)searchController;
+    BOOL wasSearching = [self isSearching];
+    [self setSearchInterfaceActive:NO];
+    [self reloadTableForSearchStateChangeFromSearching:wasSearching];
     [self updateToolbarItems];
 }
 
@@ -410,10 +467,64 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     [editor setCompletionHandler:^(KayokoTag *updatedTag) {
       [weakSelf updateTag:updatedTag];
     }];
+    [editor setDismissalTransitionHandler:^(id<UIViewControllerTransitionCoordinator> transitionCoordinator) {
+      [weakSelf deselectTagWithUUID:[tag uuid] transitionCoordinator:transitionCoordinator];
+    }];
 
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:editor];
     [navigationController setModalPresentationStyle:UIModalPresentationPageSheet];
     [self presentViewController:navigationController animated:YES completion:nil];
+}
+
+- (void)deselectTagWithUUID:(NSString *)tagUUID
+      transitionCoordinator:(id<UIViewControllerTransitionCoordinator>)transitionCoordinator {
+    if ([tagUUID length] == 0) {
+        return;
+    }
+
+    NSUInteger row = [self indexOfTagWithUUID:tagUUID inTags:[self displayedTags]];
+    if (row == NSNotFound || (NSInteger)row >= [[self tableView] numberOfRowsInSection:0]) {
+        return;
+    }
+
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
+    void (^deselectRow)(void) = ^{
+      [[self tableView] deselectRowAtIndexPath:indexPath animated:YES];
+    };
+    if (!transitionCoordinator) {
+        deselectRow();
+        return;
+    }
+
+    BOOL scheduled = [transitionCoordinator
+        animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+          (void)context;
+          deselectRow();
+        }
+        completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+          if (![context isCancelled]) {
+              return;
+          }
+
+          [self selectTagWithUUID:tagUUID];
+        }];
+    if (!scheduled) {
+        deselectRow();
+    }
+}
+
+- (void)selectTagWithUUID:(NSString *)tagUUID {
+    if ([tagUUID length] == 0) {
+        return;
+    }
+
+    NSUInteger row = [self indexOfTagWithUUID:tagUUID inTags:[self displayedTags]];
+    if (row == NSNotFound || (NSInteger)row >= [[self tableView] numberOfRowsInSection:0]) {
+        return;
+    }
+
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
+    [[self tableView] selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
 }
 
 - (void)updateTag:(KayokoTag *)updatedTag {
@@ -433,6 +544,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 
     [self setTags:updatedTags];
     [self refreshFilteredTags];
+    [self updatePlaceholderVisibility];
 
     if (visibleIndexBeforeUpdate == NSNotFound) {
         return;
@@ -443,7 +555,12 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     if (visibleIndexAfterUpdate == NSNotFound) {
         [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
     } else {
-        [[self tableView] reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
+        NSIndexPath *updatedIndexPath = [NSIndexPath indexPathForRow:visibleIndexAfterUpdate inSection:0];
+        KayokoTagTableViewCell *cell =
+            (KayokoTagTableViewCell *)[[self tableView] cellForRowAtIndexPath:updatedIndexPath];
+        if ([cell isKindOfClass:[KayokoTagTableViewCell class]]) {
+            [cell configureWithTag:updatedTag editing:[self isEditing]];
+        }
     }
 }
 
@@ -454,14 +571,16 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 }
 
 - (BOOL)isFiltering {
-    NSString *searchText = [[[self searchController] searchBar] text];
-    return [searchText length] > 0;
+    return [[self normalizedSearchText] length] > 0;
+}
+
+- (BOOL)isSearching {
+    return [self isSearchInterfaceActive] || [self isFiltering];
 }
 
 - (void)refreshFilteredTags {
     [[self filteredTags] removeAllObjects];
-    NSString *searchText = [[[[self searchController] searchBar] text]
-        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *searchText = [self normalizedSearchText];
     if ([searchText length] == 0) {
         return;
     }
@@ -486,6 +605,111 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
         }
     }
     return YES;
+}
+
+- (NSSet<NSString *> *)selectedDisplayedTagUUIDs {
+    NSMutableSet<NSString *> *selectedUUIDs = [[NSMutableSet alloc] init];
+    for (KayokoTag *tag in [self displayedTags]) {
+        if ([[self selectedTagUUIDs] containsObject:[tag uuid]]) {
+            [selectedUUIDs addObject:[tag uuid]];
+        }
+    }
+    return [selectedUUIDs copy];
+}
+
+- (NSString *)normalizedSearchText {
+    NSString *searchText = [[[[self searchController] searchBar] text]
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return searchText ?: @"";
+}
+
+- (void)reloadTableForSearchStateChangeFromSearching:(BOOL)wasSearching {
+    if (![self isEditing] || wasSearching == [self isSearching]) {
+        return;
+    }
+
+    [[self tableView] reloadData];
+    [self syncDisplayedSelectionState];
+}
+
+- (void)syncDisplayedSelectionState {
+    if (![self isEditing]) {
+        return;
+    }
+
+    NSArray<KayokoTag *> *displayedTags = [self displayedTags];
+    NSSet<NSIndexPath *> *selectedIndexPaths = [NSSet setWithArray:[[self tableView] indexPathsForSelectedRows] ?: @[]];
+    for (NSUInteger index = 0; index < [displayedTags count]; index++) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:(NSInteger)index inSection:0];
+        BOOL shouldSelect = [[self selectedTagUUIDs] containsObject:[displayedTags[index] uuid]];
+        BOOL isSelected = [selectedIndexPaths containsObject:indexPath];
+        if (shouldSelect == isSelected) {
+            continue;
+        }
+
+        if (shouldSelect) {
+            [[self tableView] selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+        } else {
+            [[self tableView] deselectRowAtIndexPath:indexPath animated:NO];
+        }
+    }
+}
+
+- (void)updatePlaceholderVisibility {
+    BOOL shouldShowPlaceholder = [[self tags] count] == 0;
+    UIView *footerView = [[self tableView] tableFooterView];
+    BOOL isShowingPlaceholder = footerView == [self placeholderView];
+    if (!shouldShowPlaceholder) {
+        if (isShowingPlaceholder) {
+            [[self tableView] setTableFooterView:nil];
+        }
+        return;
+    }
+
+    if (!isShowingPlaceholder) {
+        [[self tableView] setTableFooterView:[self placeholderView]];
+    }
+    [[self placeholderView] setKeyboardBottomInset:[self keyboardBottomInset]];
+    [self updatePlaceholderLayout];
+}
+
+- (void)updatePlaceholderLayout {
+    if ([self isUpdatingPlaceholderLayout] || [[self tableView] tableFooterView] != [self placeholderView]) {
+        return;
+    }
+
+    CGRect targetFrame = CGRectMake(0.0, 0.0, CGRectGetWidth([[self tableView] bounds]), [self placeholderHeight]);
+    if (CGRectEqualToRect([[self placeholderView] frame], targetFrame)) {
+        return;
+    }
+
+    [self setUpdatingPlaceholderLayout:YES];
+    [[self placeholderView] setFrame:targetFrame];
+    [[self tableView] setTableFooterView:[self placeholderView]];
+    [self setUpdatingPlaceholderLayout:NO];
+}
+
+- (CGFloat)placeholderHeight {
+    CGFloat availableHeight = CGRectGetHeight([[self tableView] bounds]) - [self automaticTopInset] -
+                              [self automaticBottomInset] - [self placeholderTopOffset];
+    return floor(MAX(availableHeight, 1.0));
+}
+
+- (CGFloat)placeholderTopOffset {
+    UIView *footerView = [[self tableView] tableFooterView];
+    if (footerView != [self placeholderView]) {
+        return 0.0;
+    }
+
+    return MAX([[self tableView] contentSize].height - CGRectGetHeight([footerView frame]), 0.0);
+}
+
+- (CGFloat)automaticTopInset {
+    return MAX([[self tableView] adjustedContentInset].top - [[self tableView] contentInset].top, 0.0);
+}
+
+- (CGFloat)automaticBottomInset {
+    return MAX([[self tableView] adjustedContentInset].bottom - [[self tableView] contentInset].bottom, 0.0);
 }
 
 - (NSUInteger)indexOfTagWithUUID:(NSString *)uuid inTags:(NSArray<KayokoTag *> *)tags {

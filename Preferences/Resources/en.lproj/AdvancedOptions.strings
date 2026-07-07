@@ -10,6 +10,10 @@
 "Classic" = "Classic";
 "System" = "System";
 "Dangerous Zone" = "Dangerous Zone";
+"Restore Tags" = "Restore Tags";
+"Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone." = "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone.";
+"Unable to Restore Tags" = "Unable to Restore Tags";
+"OK" = "OK";
 "Reset Preferences" = "Reset Preferences";
 "Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Reset" = "Reset";

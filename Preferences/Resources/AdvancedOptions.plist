@@ -98,6 +98,16 @@
 			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
+			<string>Restore Tags</string>
+			<key>action</key>
+			<string>restoreTagsPrompt</string>
+			<key>isDestructive</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
 			<string>Reset Preferences</string>
 			<key>action</key>
 			<string>resetPrompt</string>

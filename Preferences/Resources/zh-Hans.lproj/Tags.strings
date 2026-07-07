@@ -1,4 +1,4 @@
-"Tag Management" = "标签管理";
+"Custom Tags…" = "自定义标签…";
 "Tags" = "标签";
 "Search Tags…" = "搜索标签…";
 "Edit" = "编辑";
@@ -14,6 +14,7 @@
 "Color" = "颜色";
 "Untitled" = "未命名";
 "Unable to Save Tags" = "无法保存标签";
+"No Tags" = "没有标签";
 "Red" = "红色";
 "Orange" = "橙色";
 "Yellow" = "黄色";
