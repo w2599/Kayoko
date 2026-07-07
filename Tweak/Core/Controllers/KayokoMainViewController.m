@@ -21,10 +21,6 @@
 #import "KayokoTagCatalog.h"
 #import "KayokoWordSelectionViewController.h"
 
-static NSString *kayokoMainPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
-    return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-}
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoMainViewController () <KayokoClearConfirmationViewControllerDelegate, KayokoHistoryControllerDelegate,
@@ -258,6 +254,26 @@ NS_ASSUME_NONNULL_END
 
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
     return [[self searchController] isSearchActive];
+}
+
+- (BOOL)panelPresentationController:(KayokoPanelPresentationController *)controller
+    shouldBeginExpandedPanelPanFromView:(nullable UIView *)view
+                               velocity:(CGPoint)velocity {
+    (void)controller;
+    (void)view;
+    (void)velocity;
+    if ([self isHidden] || [[self panelPresentationController] isAnimating]) {
+        return NO;
+    }
+    if ([self isShowingClearConfirmation] || [self isPreviewActive] || [self isWordSelectionActive]) {
+        return NO;
+    }
+
+    UIView *activeContentView = [self activeHistoryContentView];
+    return activeContentView == [[self historyListViewController] tableView] ||
+           activeContentView == [[self favoritesListViewController] tableView] ||
+           activeContentView == [self historyEmptyStateView] || activeContentView == [self favoritesEmptyStateView] ||
+           activeContentView == [self storageErrorView];
 }
 
 - (BOOL)isFullscreenSearchActive {
@@ -869,7 +885,8 @@ NS_ASSUME_NONNULL_END
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];
     [self setActiveSourceContentView:sourceTableView];
-    NSString *previewText = kayokoMainPreviewTextByTrimmingBoundaryNewlines([item content]);
+    NSString *previewText =
+        [([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     BOOL canUseWordSelection = [self swipeToSelectWords] && [[item imageName] isEqualToString:@""] &&
                                [[self wordSelectionViewController] canShowText:previewText];
     if (canUseWordSelection) {

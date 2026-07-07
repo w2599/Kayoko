@@ -7,12 +7,16 @@
 
 #import "KayokoMainView.h"
 
+static CGFloat const kKayokoPanelPanScrollViewTopTolerance = 0.5;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPanelPresentationController () <UIGestureRecognizerDelegate>
 @property(nonatomic, weak) KayokoMainView *panelView;
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, strong) UITapGestureRecognizer *grabberTapGestureRecognizer;
+@property(nonatomic, weak, nullable) UIView *panGestureTouchView;
+@property(nonatomic, strong) NSHashTable<UIGestureRecognizer *> *scrollViewPanGestureRecognizersRequiringPanelPanFailure;
 @property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL panGestureDidReachZeroAlpha;
@@ -30,7 +34,9 @@ NS_ASSUME_NONNULL_END
         _panelView = panelView;
         _panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self
                                                                         action:@selector(handlePanGestureRecognizer:)];
-        [[panelView headerView] addGestureRecognizer:_panGestureRecognizer];
+        [_panGestureRecognizer setDelegate:self];
+        [panelView addGestureRecognizer:_panGestureRecognizer];
+        _scrollViewPanGestureRecognizersRequiringPanelPanFailure = [NSHashTable weakObjectsHashTable];
         _grabberTapGestureRecognizer =
             [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleGrabberTapGestureRecognizer:)];
         [_grabberTapGestureRecognizer setCancelsTouchesInView:NO];
@@ -136,6 +142,80 @@ NS_ASSUME_NONNULL_END
     [self setPendingDismissVelocityY:MAX(velocity.y, 0)];
 }
 
+- (UIView *)viewForPanelPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
+    UIView *touchView = [self panGestureTouchView];
+    if (touchView) {
+        return touchView;
+    }
+
+    return [[self panelView] hitTest:[recognizer locationInView:[self panelView]] withEvent:nil];
+}
+
+- (nullable UIScrollView *)nearestScrollViewFromView:(UIView *)view {
+    UIView *currentView = view;
+    while (currentView && currentView != [self panelView]) {
+        if ([currentView isKindOfClass:[UIScrollView class]]) {
+            return (UIScrollView *)currentView;
+        }
+        currentView = [currentView superview];
+    }
+
+    return nil;
+}
+
+- (void)makeScrollViewPanGestureRecognizerWaitForPanelPanIfNeeded:(UIScrollView *)scrollView {
+    UIGestureRecognizer *scrollViewPanGestureRecognizer = [scrollView panGestureRecognizer];
+    if (!scrollViewPanGestureRecognizer ||
+        [[self scrollViewPanGestureRecognizersRequiringPanelPanFailure] containsObject:scrollViewPanGestureRecognizer]) {
+        return;
+    }
+
+    [scrollViewPanGestureRecognizer requireGestureRecognizerToFail:[self panGestureRecognizer]];
+    [[self scrollViewPanGestureRecognizersRequiringPanelPanFailure] addObject:scrollViewPanGestureRecognizer];
+}
+
+- (BOOL)view:(UIView *)view isDescendantOfView:(UIView *)ancestorView {
+    UIView *currentView = view;
+    while (currentView) {
+        if (currentView == ancestorView) {
+            return YES;
+        }
+        currentView = [currentView superview];
+    }
+
+    return NO;
+}
+
+- (BOOL)isScrollViewAtTopBoundary:(UIScrollView *)scrollView {
+    CGFloat topBoundary = -[scrollView adjustedContentInset].top;
+    return [scrollView contentOffset].y <= topBoundary + kKayokoPanelPanScrollViewTopTolerance;
+}
+
+- (BOOL)shouldBeginPanelPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
+    if ([[self panelView] isHidden] || [self isAnimating]) {
+        return NO;
+    }
+
+    CGPoint velocity = [recognizer velocityInView:[self panelView]];
+    if (velocity.y <= 0 || fabs(velocity.x) >= fabs(velocity.y)) {
+        return NO;
+    }
+
+    UIView *touchView = [self viewForPanelPanGestureRecognizer:recognizer];
+    if ([self view:touchView isDescendantOfView:[[self panelView] headerView]]) {
+        return YES;
+    }
+
+    if (![[self delegate] panelPresentationController:self
+                    shouldBeginExpandedPanelPanFromView:touchView
+                                               velocity:velocity]) {
+        return NO;
+    }
+
+    UIScrollView *scrollView = [self nearestScrollViewFromView:touchView];
+    return !scrollView || ![scrollView isScrollEnabled] || [self isScrollViewAtTopBoundary:scrollView];
+}
+
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
     if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
         [[self delegate] panelPresentationController:self handleFullscreenSearchPanGestureRecognizer:recognizer];
@@ -217,12 +297,29 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    if (gestureRecognizer == [self panGestureRecognizer]) {
+        [self setPanGestureTouchView:[touch view]];
+        UIScrollView *scrollView = [self nearestScrollViewFromView:[touch view]];
+        if (scrollView) {
+            [self makeScrollViewPanGestureRecognizerWaitForPanelPanIfNeeded:scrollView];
+        }
+        return YES;
+    }
+
     if (gestureRecognizer != [self grabberTapGestureRecognizer]) {
         return YES;
     }
 
     CGPoint location = [touch locationInView:[[self panelView] headerView]];
     return CGRectContainsPoint([self grabberTapTargetFrame], location);
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer == [self panGestureRecognizer]) {
+        return [self shouldBeginPanelPanGestureRecognizer:(UIPanGestureRecognizer *)gestureRecognizer];
+    }
+
+    return YES;
 }
 
 - (void)handleGrabberTapGestureRecognizer:(UITapGestureRecognizer *)recognizer {
