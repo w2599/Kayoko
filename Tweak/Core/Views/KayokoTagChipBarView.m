@@ -40,6 +40,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
                    tagUUID:(nullable NSString *)tagUUID
                   hexColor:(nullable NSString *)hexColor
                   selected:(BOOL)selected;
+- (UIColor *)colorByResolvingColor:(UIColor *)color alpha:(CGFloat)alpha;
 - (UIColor *)resolvedColorForCurrentTrait:(UIColor *)color;
 - (CGFloat)preferredWidth;
 @end
@@ -99,11 +100,12 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
         return [[KayokoTagColorFormatter borderColorFromHexColor:[self hexColor]] colorWithAlphaComponent:0.78];
     }
     if ([self isSelected]) {
-        return [[UIColor labelColor] colorWithAlphaComponent:0.24];
+        return [self colorByResolvingColor:[UIColor labelColor] alpha:0.24];
     }
     return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
       BOOL dark = [traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark;
-      return [[UIColor separatorColor] colorWithAlphaComponent:(dark ? 0.32 : 0.24)];
+      UIColor *separatorColor = [[UIColor separatorColor] resolvedColorWithTraitCollection:traitCollection];
+      return [separatorColor colorWithAlphaComponent:(dark ? 0.32 : 0.24)];
     }];
 }
 
@@ -124,9 +126,16 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
         return;
     }
 
-    UIColor *tintColor = [self isSelected] ? [[UIColor labelColor] colorWithAlphaComponent:0.64]
-                                           : [[UIColor secondaryLabelColor] colorWithAlphaComponent:0.54];
+    UIColor *tintColor = [self isSelected] ? [self colorByResolvingColor:[UIColor labelColor] alpha:0.64]
+                                           : [self colorByResolvingColor:[UIColor secondaryLabelColor] alpha:0.54];
     [[self dotView] configureNoTagWithTintColor:tintColor];
+}
+
+- (UIColor *)colorByResolvingColor:(UIColor *)color alpha:(CGFloat)alpha {
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+      UIColor *resolvedColor = [color resolvedColorWithTraitCollection:traitCollection];
+      return [resolvedColor colorWithAlphaComponent:alpha];
+    }];
 }
 
 - (UIColor *)resolvedColorForCurrentTrait:(UIColor *)color {
@@ -140,6 +149,11 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 
 - (void)setHighlighted:(BOOL)highlighted {
     [super setHighlighted:highlighted];
+    [self updateStyle];
+}
+
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
     [self updateStyle];
 }
 
@@ -393,10 +407,10 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     KayokoTagChipButton *button = [[KayokoTagChipButton alloc] initWithFrame:CGRectZero];
     BOOL selected = ([tagUUID length] == 0 && [[self selectedTagUUID] length] == 0) ||
                     [[self selectedTagUUID] isEqualToString:tagUUID ?: @""];
-    [button configureWithTitle:title tagUUID:tagUUID hexColor:hexColor selected:selected];
-    [button addTarget:self action:@selector(handleChipPressed:) forControlEvents:UIControlEventTouchUpInside];
     [[self scrollView] addSubview:button];
     [[self chipButtons] addObject:button];
+    [button configureWithTitle:title tagUUID:tagUUID hexColor:hexColor selected:selected];
+    [button addTarget:self action:@selector(handleChipPressed:) forControlEvents:UIControlEventTouchUpInside];
 }
 
 - (void)setSelectedTagUUID:(NSString *)selectedTagUUID {

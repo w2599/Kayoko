@@ -14,7 +14,12 @@ static CGFloat const kKayokoTagDotDefaultBorderWidth = 1.25;
 @property(nonatomic, strong) CAShapeLayer *dotLayer;
 @property(nonatomic, strong) CAShapeLayer *noTagRingLayer;
 @property(nonatomic, strong) CAShapeLayer *noTagSlashLayer;
+@property(nonatomic, strong, nullable) UIColor *fillColor;
+@property(nonatomic, strong, nullable) UIColor *borderColor;
+@property(nonatomic, strong, nullable) UIColor *noTagTintColor;
+@property(nonatomic, assign) BOOL showsNoTagGlyph;
 - (nullable UIColor *)resolvedColorForCurrentTrait:(nullable UIColor *)color;
+- (void)updateLayerColors;
 @end
 
 @implementation KayokoTagDotView
@@ -48,36 +53,54 @@ static CGFloat const kKayokoTagDotDefaultBorderWidth = 1.25;
 }
 
 - (void)configureWithFillColor:(nullable UIColor *)fillColor borderColor:(nullable UIColor *)borderColor {
-    UIColor *resolvedFillColor = [self resolvedColorForCurrentTrait:fillColor];
-    UIColor *resolvedBorderColor = [self resolvedColorForCurrentTrait:borderColor];
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    [[self dotLayer] setHidden:fillColor == nil];
-    [[self dotLayer] setFillColor:[resolvedFillColor CGColor]];
-    [[self dotLayer] setStrokeColor:[resolvedBorderColor CGColor]];
-    [[self noTagRingLayer] setHidden:YES];
-    [[self noTagSlashLayer] setHidden:YES];
-    [CATransaction commit];
+    [self setFillColor:fillColor];
+    [self setBorderColor:borderColor];
+    [self setNoTagTintColor:nil];
+    [self setShowsNoTagGlyph:NO];
+    [self updateLayerColors];
     [self setNeedsLayout];
 }
 
 - (void)configureNoTagWithTintColor:(UIColor *)tintColor {
-    UIColor *resolvedTintColor = [self resolvedColorForCurrentTrait:tintColor];
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    [[self dotLayer] setHidden:YES];
-    [[self noTagRingLayer] setHidden:NO];
-    [[self noTagRingLayer] setStrokeColor:[resolvedTintColor CGColor]];
-    [[self noTagSlashLayer] setHidden:NO];
-    [[self noTagSlashLayer] setStrokeColor:[resolvedTintColor CGColor]];
-    [CATransaction commit];
+    [self setFillColor:nil];
+    [self setBorderColor:nil];
+    [self setNoTagTintColor:tintColor];
+    [self setShowsNoTagGlyph:YES];
+    [self updateLayerColors];
     [self setNeedsLayout];
 }
 
 - (nullable UIColor *)resolvedColorForCurrentTrait:(nullable UIColor *)color {
     return [color resolvedColorWithTraitCollection:[self traitCollection]];
+}
+
+- (void)updateLayerColors {
+    UIColor *resolvedFillColor = [self resolvedColorForCurrentTrait:[self fillColor]];
+    UIColor *resolvedBorderColor = [self resolvedColorForCurrentTrait:[self borderColor]];
+    UIColor *resolvedNoTagTintColor = [self resolvedColorForCurrentTrait:[self noTagTintColor]];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [[self dotLayer] setHidden:[self showsNoTagGlyph] || [self fillColor] == nil];
+    [[self dotLayer] setFillColor:[resolvedFillColor CGColor]];
+    [[self dotLayer] setStrokeColor:[resolvedBorderColor CGColor]];
+    [[self noTagRingLayer] setHidden:![self showsNoTagGlyph]];
+    [[self noTagRingLayer] setStrokeColor:[resolvedNoTagTintColor CGColor]];
+    [[self noTagSlashLayer] setHidden:![self showsNoTagGlyph]];
+    [[self noTagSlashLayer] setStrokeColor:[resolvedNoTagTintColor CGColor]];
+    [CATransaction commit];
+}
+
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    [self updateLayerColors];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([[self traitCollection] hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self updateLayerColors];
+    }
 }
 
 - (void)setDotDiameter:(CGFloat)dotDiameter {
