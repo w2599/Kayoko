@@ -77,8 +77,7 @@ NS_ASSUME_NONNULL_END
             contentsAtPath:[NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath],
                                                       [item imageName]]];
         [[self previewView] reset];
-        [[[self previewView] imageView] setImage:[UIImage imageWithData:imageData]];
-        [[[self previewView] imageView] setHidden:NO];
+        [[self previewView] showImage:[UIImage imageWithData:imageData]];
     } else {
         NSString *previewText = kayokoPreviewTextByTrimmingBoundaryNewlines([item content]);
         [[self previewView] showText:previewText];

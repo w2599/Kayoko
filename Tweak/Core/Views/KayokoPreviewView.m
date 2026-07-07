@@ -12,9 +12,14 @@
 #import "KayokoTagChipBarView.h"
 
 static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
+static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
-@interface KayokoPreviewView () <UITextViewDelegate>
+@interface KayokoPreviewView () <UITextViewDelegate, UIScrollViewDelegate>
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
+@property(nonatomic, strong) UIScrollView *imageScrollView;
+@property(nonatomic, assign) BOOL imageScrollViewNeedsReset;
+@property(nonatomic, assign) CGSize imageScrollViewLayoutSize;
+@property(nonatomic, assign) CGFloat imageScrollViewLayoutBottomInset;
 @end
 
 @implementation KayokoPreviewView
@@ -49,18 +54,29 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
             [[[self textView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
+        [self setImageScrollView:[[UIScrollView alloc] init]];
+        [[self imageScrollView] setBackgroundColor:[UIColor clearColor]];
+        [[self imageScrollView] setHidden:YES];
+        [[self imageScrollView] setDelegate:self];
+        [[self imageScrollView] setBounces:NO];
+        [[self imageScrollView] setBouncesZoom:NO];
+        [[self imageScrollView] setShowsHorizontalScrollIndicator:NO];
+        [[self imageScrollView] setShowsVerticalScrollIndicator:NO];
+        [[self imageScrollView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
+        [[self imageScrollView] setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
+        [self addSubview:[self imageScrollView]];
+
+        [[self imageScrollView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self imageScrollView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
+            [[[self imageScrollView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self imageScrollView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self imageScrollView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
+
         [self setImageView:[[UIImageView alloc] init]];
         [[self imageView] setContentMode:UIViewContentModeScaleAspectFit];
-        [[self imageView] setHidden:YES];
-        [self addSubview:[self imageView]];
-
-        [[self imageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self imageView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self imageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-            [[[self imageView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
-            [[[self imageView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
-        ]];
+        [[self imageScrollView] addSubview:[self imageView]];
 
         [self setTagChipBarView:[[KayokoTagChipBarView alloc] initWithFrame:CGRectZero]];
         [self addSubview:[self tagChipBarView]];
@@ -90,6 +106,10 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
     return tagBarHeight > 0 ? tagBarHeight : [self safeAreaBottomInsetForScrollContent];
 }
 
+- (CGFloat)imageScrollBottomInset {
+    return [self visibleTagBarHeight];
+}
+
 - (void)layoutTagChipBarView {
     CGFloat tagBarHeight = [self visibleTagBarHeight];
     if (tagBarHeight <= 0) {
@@ -113,6 +133,8 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
     CGFloat floatingProgress = 0.0;
     if (![[self textView] isHidden]) {
         floatingProgress = [KayokoTagChipBarView floatingProgressForScrollView:[self textView]];
+    } else if (![[self imageScrollView] isHidden]) {
+        floatingProgress = [KayokoTagChipBarView floatingProgressForScrollView:[self imageScrollView]];
     }
 
     [[self tagChipBarView] setFloatingProgress:floatingProgress animated:animated];
@@ -131,11 +153,140 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
     [(KayokoEdgeFadingTextView *)[self textView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, tagBarHeight, 0)];
 }
 
+- (void)updateImageScrollInsets {
+    CGFloat bottomInset = [self imageScrollBottomInset];
+    UIEdgeInsets contentInset = [[self imageScrollView] contentInset];
+    if (fabs(contentInset.bottom - bottomInset) <= 0.5 && contentInset.top == 0 && contentInset.left == 0 &&
+        contentInset.right == 0) {
+        return;
+    }
+
+    contentInset = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+    [[self imageScrollView] setContentInset:contentInset];
+    [[self imageScrollView] setScrollIndicatorInsets:contentInset];
+}
+
+- (CGSize)imageSizeForCurrentImage {
+    UIImage *image = [[self imageView] image];
+    CGSize imageSize = [image size];
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return CGSizeZero;
+    }
+    return imageSize;
+}
+
+- (CGFloat)minimumImageZoomScaleForImageSize:(CGSize)imageSize {
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return 1.0;
+    }
+
+    UIScrollView *scrollView = [self imageScrollView];
+    UIEdgeInsets contentInset = [scrollView contentInset];
+    CGSize boundsSize = [scrollView bounds].size;
+    CGFloat availableWidth = MAX(boundsSize.width - contentInset.left - contentInset.right, 1.0);
+    CGFloat availableHeight = MAX(boundsSize.height - contentInset.top - contentInset.bottom, 1.0);
+    CGFloat widthScale = availableWidth / imageSize.width;
+    CGFloat heightScale = availableHeight / imageSize.height;
+    return MAX(MIN(widthScale, heightScale), 0.01);
+}
+
+- (void)updateImageViewFrameForCurrentZoom {
+    UIScrollView *scrollView = [self imageScrollView];
+    UIImageView *imageView = [self imageView];
+    if (![imageView image]) {
+        return;
+    }
+
+    CGRect imageFrame = [imageView frame];
+    UIEdgeInsets contentInset = [scrollView contentInset];
+    CGSize boundsSize = [scrollView bounds].size;
+    CGFloat availableWidth = MAX(boundsSize.width - contentInset.left - contentInset.right, 0);
+    CGFloat availableHeight = MAX(boundsSize.height - contentInset.top - contentInset.bottom, 0);
+
+    if (imageFrame.size.width < availableWidth) {
+        imageFrame.origin.x = contentInset.left + floor((availableWidth - imageFrame.size.width) / 2.0);
+    } else {
+        imageFrame.origin.x = 0;
+    }
+
+    if (imageFrame.size.height < availableHeight) {
+        imageFrame.origin.y = contentInset.top + floor((availableHeight - imageFrame.size.height) / 2.0);
+    } else {
+        imageFrame.origin.y = 0;
+    }
+    [imageView setFrame:imageFrame];
+}
+
+- (CGPoint)defaultImageContentOffset {
+    UIEdgeInsets contentInset = [[self imageScrollView] contentInset];
+    return CGPointMake(-contentInset.left, -contentInset.top);
+}
+
+- (void)resetImageScrollViewForCurrentLayout {
+    CGSize imageSize = [self imageSizeForCurrentImage];
+    CGSize boundsSize = [[self imageScrollView] bounds].size;
+    if (imageSize.width <= 0 || imageSize.height <= 0 || boundsSize.width <= 0 || boundsSize.height <= 0) {
+        return;
+    }
+
+    UIScrollView *scrollView = [self imageScrollView];
+    UIImageView *imageView = [self imageView];
+    CGFloat minimumZoomScale = [self minimumImageZoomScaleForImageSize:imageSize];
+    CGFloat maximumZoomScale =
+        MAX(minimumZoomScale * kKayokoPreviewImageMaximumZoomMultiplier, minimumZoomScale + 0.01);
+
+    [UIView performWithoutAnimation:^{
+      [scrollView setMinimumZoomScale:1.0];
+      [scrollView setMaximumZoomScale:1.0];
+      [scrollView setZoomScale:1.0 animated:NO];
+      [imageView setFrame:CGRectMake(0, 0, imageSize.width, imageSize.height)];
+      [scrollView setContentSize:imageSize];
+      [scrollView setMinimumZoomScale:minimumZoomScale];
+      [scrollView setMaximumZoomScale:maximumZoomScale];
+      [scrollView setZoomScale:minimumZoomScale animated:NO];
+      [self updateImageViewFrameForCurrentZoom];
+      [scrollView setContentOffset:[self defaultImageContentOffset] animated:NO];
+    }];
+}
+
+- (void)layoutImageScrollViewIfNeeded {
+    if ([[self imageScrollView] isHidden] || ![[self imageView] image]) {
+        return;
+    }
+
+    [self updateImageScrollInsets];
+
+    CGSize boundsSize = [[self imageScrollView] bounds].size;
+    CGFloat bottomInset = [[self imageScrollView] contentInset].bottom;
+    BOOL layoutSizeChanged = !CGSizeEqualToSize(boundsSize, [self imageScrollViewLayoutSize]);
+    BOOL bottomInsetChanged = fabs(bottomInset - [self imageScrollViewLayoutBottomInset]) > 0.5;
+    if ([self imageScrollViewNeedsReset] || layoutSizeChanged || bottomInsetChanged) {
+        [self resetImageScrollViewForCurrentLayout];
+        [self setImageScrollViewNeedsReset:NO];
+        [self setImageScrollViewLayoutSize:boundsSize];
+        [self setImageScrollViewLayoutBottomInset:bottomInset];
+    } else {
+        [self updateImageViewFrameForCurrentZoom];
+    }
+}
+
 - (void)showText:(NSString *)text {
     [[self textView] setText:text];
     [[self textView] setHidden:NO];
-    [[self imageView] setHidden:YES];
+    [[self imageScrollView] setHidden:YES];
+    [[self imageView] setImage:nil];
     [self updateTextViewScrollInsets];
+    [self updateTagBarFloatingProgressAnimated:NO];
+}
+
+- (void)showImage:(nullable UIImage *)image {
+    [[self textView] setHidden:YES];
+    [[self imageView] setImage:image];
+    [[self imageScrollView] setHidden:(image == nil)];
+    [self setImageScrollViewNeedsReset:YES];
+    [self updateImageScrollInsets];
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
     [self updateTagBarFloatingProgressAnimated:NO];
 }
 
@@ -146,6 +297,11 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
     [[self tagChipBarView] configureWithTags:tags ?: @[] selectedTagUUID:selectedTagUUID];
     [self layoutTagChipBarView];
     [self updateTextViewScrollInsets];
+    if (![[self imageScrollView] isHidden]) {
+        [self setImageScrollViewNeedsReset:YES];
+        [self updateImageScrollInsets];
+        [self layoutImageScrollViewIfNeeded];
+    }
     [self updateTagBarFloatingProgressAnimated:NO];
 }
 
@@ -156,26 +312,36 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
 - (void)reset {
     [[self textView] setHidden:YES];
     [[self textView] setText:@""];
-    [[self imageView] setHidden:YES];
+    [[self imageScrollView] setHidden:YES];
     [[self imageView] setImage:nil];
+    [[self imageScrollView] setMinimumZoomScale:1.0];
+    [[self imageScrollView] setMaximumZoomScale:1.0];
+    [[self imageScrollView] setZoomScale:1.0 animated:NO];
+    [[self imageScrollView] setContentSize:CGSizeZero];
+    [[self imageScrollView] setContentInset:UIEdgeInsetsZero];
+    [[self imageScrollView] setScrollIndicatorInsets:UIEdgeInsetsZero];
+    [self setImageScrollViewNeedsReset:NO];
+    [self setImageScrollViewLayoutSize:CGSizeZero];
+    [self setImageScrollViewLayoutBottomInset:0];
     [[self tagChipBarView] configureWithTags:@[] selectedTagUUID:nil];
     [[self tagChipBarView] setSelectionHandler:nil];
 }
 
 - (void)scrollToTopAnimated:(BOOL)animated {
-    if ([[self textView] isHidden]) {
-        return;
+    if (![[self textView] isHidden]) {
+        CGPoint contentOffset = [[self textView] contentOffset];
+        contentOffset.y = -[[self textView] adjustedContentInset].top;
+        [[self textView] setContentOffset:contentOffset animated:animated];
+    } else if (![[self imageScrollView] isHidden]) {
+        [[self imageScrollView] setContentOffset:[self defaultImageContentOffset] animated:animated];
     }
-
-    CGPoint contentOffset = [[self textView] contentOffset];
-    contentOffset.y = -[[self textView] adjustedContentInset].top;
-    [[self textView] setContentOffset:contentOffset animated:animated];
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self layoutTagChipBarView];
     [self updateTextViewScrollInsets];
+    [self layoutImageScrollViewIfNeeded];
     [self updateTagBarFloatingProgressAnimated:NO];
 }
 
@@ -183,11 +349,27 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
     [super safeAreaInsetsDidChange];
     [self layoutTagChipBarView];
     [self updateTextViewScrollInsets];
+    [self updateImageScrollInsets];
+    [self layoutImageScrollViewIfNeeded];
     [self updateTagBarFloatingProgressAnimated:NO];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    if (scrollView == [self textView]) {
+    if (scrollView == [self textView] || scrollView == [self imageScrollView]) {
+        [self updateTagBarFloatingProgressAnimated:NO];
+    }
+}
+
+- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView {
+    if (scrollView == [self imageScrollView]) {
+        return [self imageView];
+    }
+    return nil;
+}
+
+- (void)scrollViewDidZoom:(UIScrollView *)scrollView {
+    if (scrollView == [self imageScrollView]) {
+        [self updateImageViewFrameForCurrentZoom];
         [self updateTagBarFloatingProgressAnimated:NO];
     }
 }
