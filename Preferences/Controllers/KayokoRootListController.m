@@ -117,6 +117,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    id<UIViewControllerTransitionCoordinator> transitionCoordinator = [self transitionCoordinator];
+    if (![transitionCoordinator isInteractive]) {
+        [[self navigationController] setToolbarHidden:YES animated:animated];
+    }
 
     ActivationMethod currentActivationMethod = [self currentActivationMethod];
     if (!_hasActivationMethodSnapshot) {
@@ -129,6 +133,11 @@ NS_ASSUME_NONNULL_END
         _lastActivationMethod = currentActivationMethod;
         [self promptToRespring];
     }
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [[self navigationController] setToolbarHidden:YES animated:animated];
 }
 
 - (ActivationMethod)currentActivationMethod {
