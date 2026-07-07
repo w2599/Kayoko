@@ -60,6 +60,14 @@
     [[self edgeFadeMaskController] setFadeWidth:edgeFadeWidth];
 }
 
+- (CGFloat)edgeFadeLeadingScrollOffset {
+    return [[self edgeFadeMaskController] leadingFadeScrollOffset];
+}
+
+- (void)setEdgeFadeLeadingScrollOffset:(CGFloat)edgeFadeLeadingScrollOffset {
+    [[self edgeFadeMaskController] setLeadingFadeScrollOffset:edgeFadeLeadingScrollOffset];
+}
+
 - (KayokoEdgeFadeAxis)edgeFadeAxis {
     return [[self edgeFadeMaskController] axis];
 }

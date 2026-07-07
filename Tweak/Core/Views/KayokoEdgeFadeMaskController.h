@@ -15,6 +15,7 @@ typedef NS_ENUM(NSInteger, KayokoEdgeFadeAxis) {
 @interface KayokoEdgeFadeMaskController : NSObject
 @property(nonatomic, assign) CGFloat fadeWidth;
 @property(nonatomic, assign) UIEdgeInsets edgeInsets;
+@property(nonatomic, assign) CGFloat leadingFadeScrollOffset;
 @property(nonatomic, assign) KayokoEdgeFadeAxis axis;
 @property(nonatomic, assign, getter=isEnabled) BOOL enabled;
 - (instancetype)initWithScrollView:(UIScrollView *)scrollView NS_DESIGNATED_INITIALIZER;

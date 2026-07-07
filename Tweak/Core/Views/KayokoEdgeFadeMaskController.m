@@ -58,6 +58,16 @@
     [self updateMask];
 }
 
+- (void)setLeadingFadeScrollOffset:(CGFloat)leadingFadeScrollOffset {
+    CGFloat normalizedOffset = MAX(leadingFadeScrollOffset, 0);
+    if (fabs(_leadingFadeScrollOffset - normalizedOffset) < 0.5) {
+        return;
+    }
+
+    _leadingFadeScrollOffset = normalizedOffset;
+    [self updateMask];
+}
+
 - (void)setAxis:(KayokoEdgeFadeAxis)axis {
     if (_axis == axis) {
         return;
@@ -112,7 +122,7 @@
         CGFloat fadeEnd = visibleLength - trailingEdgeInset;
         CGFloat fadeLength = MAX(fadeEnd - fadeStart, 0);
 
-        CGFloat leadingScrolledWidth = contentOffsetValue + leadingInset;
+        CGFloat leadingScrolledWidth = contentOffsetValue + leadingInset - [self leadingFadeScrollOffset];
         CGFloat leadingFadeWidth = MIN(MIN([self fadeWidth], fadeLength), MAX(leadingScrolledWidth, 0));
 
         CGFloat visibleMaxX = contentOffsetValue + visibleLength;

@@ -183,6 +183,11 @@ NS_ASSUME_NONNULL_END
     [self setContentOffset:contentOffset animated:animated];
 }
 
+- (void)updateEdgeFadeMask {
+    [self setEdgeFadeLeadingScrollOffset:[self hiddenHeaderOffsetY]];
+    [super updateEdgeFadeMask];
+}
+
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
 

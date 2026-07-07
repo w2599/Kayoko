@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoEdgeFadingTableView : UITableView
 @property(nonatomic, assign) CGFloat edgeFadeWidth;
+@property(nonatomic, assign) CGFloat edgeFadeLeadingScrollOffset;
 @property(nonatomic, assign) KayokoEdgeFadeAxis edgeFadeAxis;
 @property(nonatomic, assign, getter=isEdgeFadeEnabled) BOOL edgeFadeEnabled;
 - (void)updateEdgeFadeMask;
