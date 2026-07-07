@@ -15,6 +15,9 @@
 @property(nonatomic, assign) BOOL itemHasImage;
 @property(nonatomic, copy) NSString *itemContentText;
 @property(nonatomic, assign) NSTimeInterval itemRecordedAt;
+@property(nonatomic, strong) PasteboardItem *pendingImageItem;
+@property(nonatomic, copy) NSString *pendingImageHistoryKey;
+@property(nonatomic, assign) BOOL didRequestImage;
 @property(nonatomic, strong) UILabel *iconTimeLabel;
 @property(nonatomic, strong) NSLayoutConstraint *remarkWidthConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerTrailingToRemarkConstraint;
@@ -49,12 +52,13 @@
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       andItem:(PasteboardItem *)item
           showRecordedTime:(BOOL)showRecordedTime
+               historyKey:(NSString *)historyKey
               reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
         [self configureStaticSubviews];
-        [self configureWithItem:item showRecordedTime:showRecordedTime];
+        [self configureWithItem:item showRecordedTime:showRecordedTime historyKey:historyKey];
     }
 
     return self;
@@ -161,7 +165,7 @@
     [[self contentTrailingToEdgeConstraint] setActive:YES];
 }
 
-- (void)configureWithItem:(PasteboardItem *)item showRecordedTime:(BOOL)showRecordedTime {
+- (void)configureWithItem:(PasteboardItem *)item showRecordedTime:(BOOL)showRecordedTime historyKey:(NSString *)historyKey {
     NSString *bundleIdentifier = [item bundleIdentifier] ?: @"com.apple.WebSheet";
     UIImage *icon = [self cachedIconForBundleIdentifier:bundleIdentifier];
     [[self iconImageView] setImage:icon];
@@ -185,14 +189,41 @@
     [[self contentTrailingToEdgeConstraint] setActive:!hasRemark];
 
     if (hasImage) {
-        [[PasteboardManager sharedInstance] getImageForItem:item completion:^(UIImage *image) {
-            [self setContentImage:image];
-        }];
+        [self setPendingImageItem:item];
+        [self setPendingImageHistoryKey:historyKey];
+        [self setDidRequestImage:NO];
+        [self setContentImage:nil];
     } else {
+        [self setPendingImageItem:nil];
+        [self setPendingImageHistoryKey:nil];
+        [self setDidRequestImage:NO];
         [self setContentImage:nil];
     }
 
     [self updateContentDisplayMode];
+}
+
+/**
+ * 在 cell 即将展示给用户时才真正去请求图片缩略图（并写入对应列表的图片缓存）。
+ * 避免在后台预热整个列表时就把所有行都拉图，挤掉首屏（包括刚刚新复制的）的缓存额度。
+ */
+- (void)loadImageIfNeeded {
+    if ([self didRequestImage] || ![self itemHasImage]) {
+        return;
+    }
+    [self setDidRequestImage:YES];
+
+    PasteboardItem *item = [self pendingImageItem];
+    NSString *historyKey = [self pendingImageHistoryKey];
+    if (!item) {
+        return;
+    }
+
+    [[PasteboardManager sharedInstance] getImageForItem:item
+                                      fromHistoryWithKey:historyKey
+                                              completion:^(UIImage *image) {
+        [self setContentImage:image];
+    }];
 }
 
 - (void)setContentImage:(UIImage *)image {
@@ -203,13 +234,7 @@
         return;
     }
 
-    imageView.alpha = 0.0;
-    imageView.hidden = NO;
     imageView.image = image;
-
-    [UIView animateWithDuration:0.2 animations:^{
-        imageView.alpha = 1.0;
-    }];
 }
 
 - (UIImage *)cachedIconForBundleIdentifier:(NSString *)bundleIdentifier {
@@ -257,6 +282,9 @@
     [[self remarkLabel] setText:@""];
     [self setContentImage:nil];
     [[self iconTimeLabel] setText:nil];
+    [self setPendingImageItem:nil];
+    [self setPendingImageHistoryKey:nil];
+    [self setDidRequestImage:NO];
 }
 
 - (void)updateContentDisplayMode {

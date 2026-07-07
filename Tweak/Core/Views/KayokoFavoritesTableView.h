@@ -8,4 +8,5 @@
 #import "KayokoTableView.h"
 
 @interface KayokoFavoritesTableView : KayokoTableView
+- (NSString *)historyKey;
 @end

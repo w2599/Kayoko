@@ -18,8 +18,11 @@
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       andItem:(PasteboardItem *)item
               showRecordedTime:(BOOL)showRecordedTime
+                   historyKey:(NSString *)historyKey
               reuseIdentifier:(NSString *)reuseIdentifier;
-- (void)configureWithItem:(PasteboardItem *)item showRecordedTime:(BOOL)showRecordedTime;
+- (void)configureWithItem:(PasteboardItem *)item showRecordedTime:(BOOL)showRecordedTime historyKey:(NSString *)historyKey;
+// 在 cell 真正要展示时才去请求/缓存图片缩略图（预热阶段只构建文字/布局，不提前拉图）。
+- (void)loadImageIfNeeded;
 @end
 
 @interface UIImage (Private)

@@ -28,6 +28,9 @@
 - (void)reloadDataWithItems:(NSArray *)items;
 - (UIContextualAction *)tokenSelectionActionForItem:(PasteboardItem *)item;
 
+// 子类返回自己对应的历史记录键（history/favorites），用于图片缓存等场景。
+- (NSString *)historyKey;
+
 // 子类在“删除/移除”等操作时，同步维护 allItems。
 - (void)removeItemDictionaryFromAllItems:(NSDictionary *)dictionary;
 @end

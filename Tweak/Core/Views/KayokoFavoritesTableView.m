@@ -17,6 +17,10 @@
 
 @implementation KayokoFavoritesTableView
 
+- (NSString *)historyKey {
+    return kHistoryKeyFavorites;
+}
+
 - (UIWindow *)currentKeyWindow {
   if (@available(iOS 13.0, *)) {
     for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {

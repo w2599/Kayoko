@@ -50,6 +50,10 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
     return [preparedCell isKindOfClass:[KayokoTableViewCell class]] ? preparedCell : nil;
 }
 
+- (NSString *)historyKey {
+    return kHistoryKeyHistory;
+}
+
 - (KayokoTableViewCell *)buildPreparedCellForRow:(NSUInteger)row {
     if (row >= [[self items] count]) {
         return nil;
@@ -60,6 +64,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
     KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                                    andItem:item
                                                           showRecordedTime:[self showRecordedTime]
+                                                                historyKey:[self historyKey]
                                                             reuseIdentifier:@"KayokoTableViewCell"];
     UILongPressGestureRecognizer *gesture =
         [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPressGestureRecognizer:)];
@@ -331,6 +336,9 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
     if (!cell) {
         cell = [self buildPreparedCellForRow:[indexPath row]];
     }
+
+    // 只有在 cell 真的要展示给用户时才去请求/缓存图片缩略图，
+    [cell loadImageIfNeeded];
 
     return cell;
 }

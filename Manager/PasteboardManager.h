@@ -46,7 +46,9 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)setItems:(NSArray *)items forHistoryWithKey:(NSString *)historyKey;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;
-- (void)getImageForItem:(PasteboardItem *)item completion:(void (^)(UIImage *image))completion;
+- (void)getImageForItem:(PasteboardItem *)item
+      fromHistoryWithKey:(NSString *)historyKey
+              completion:(void (^)(UIImage *image))completion;
 
 @end
 

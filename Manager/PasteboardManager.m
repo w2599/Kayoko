@@ -16,12 +16,14 @@
 #import <roothide.h>
 #import <sqlite3.h>
 
-static int kKayokoImageCacheLimit = 20;
+// 每个列表（历史/收藏）各自只缓存“第一页”这么多张缩略图。
+static NSUInteger kKayokoImageCacheLimit = 15;
 
 @implementation PasteboardManager {
     dispatch_queue_t _queue;
     BOOL _didEnsureResourcesExist;
-    NSMutableDictionary *_historyImageCache;
+    NSCache *_historyImageCache;
+    NSCache *_favoritesImageCache;
     sqlite3 *_database;
 }
 
@@ -90,7 +92,10 @@ static int kKayokoImageCacheLimit = 20;
     if (self) {
         _fileManager = [NSFileManager defaultManager];
         _didEnsureResourcesExist = NO;
-        _historyImageCache = [[NSMutableDictionary alloc] init];
+        _historyImageCache = [[NSCache alloc] init];
+        [_historyImageCache setCountLimit:kKayokoImageCacheLimit];
+        _favoritesImageCache = [[NSCache alloc] init];
+        [_favoritesImageCache setCountLimit:kKayokoImageCacheLimit];
         [self preparePasteboardQueue];
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
@@ -245,11 +250,14 @@ static int kKayokoImageCacheLimit = 20;
         didDelete = [self deleteItemsWithContent:content fromListKey:historyKey];
     }
 
-    if (didDelete && shouldRemoveImage && ![[item imageName] isEqualToString:@""]) {
-        NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+    if (didDelete && ![[item imageName] isEqualToString:@""]) {
+        // 无论是否需要删除磁盘文件，该条目已不在这个列表中，对应的缓存项都应该从这个列表的缓存中清除。
+        [[self imageCacheForHistoryKey:historyKey] removeObjectForKey:[item imageName]];
 
-        [_historyImageCache removeObjectForKey:[item imageName]];
-        [_fileManager removeItemAtPath:filePath error:nil];
+        if (shouldRemoveImage) {
+            NSString *filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+            [_fileManager removeItemAtPath:filePath error:nil];
+        }
     }
 
     [self notifyReload];
@@ -535,8 +543,28 @@ static int kKayokoImageCacheLimit = 20;
 
 /**
  * 删除溢出的行，以便给定列表中最多只保留 maximumCount 行，按最旧的顺序。
+ * 溢出行对应的缩略图缓存与磁盘图片文件也会一并清理，避免残留。
  */
 - (void)truncateListKey:(NSString *)listKey toMaximumCount:(NSUInteger)maximumCount {
+    NSMutableArray *overflowImageNames = [[NSMutableArray alloc] init];
+
+    sqlite3_stmt *selectStatement = NULL;
+    const char *selectSQL = "SELECT image_name FROM items WHERE list_key = ? AND id NOT IN "
+                             "(SELECT id FROM items WHERE list_key = ? ORDER BY position ASC LIMIT ?) "
+                             "AND image_name IS NOT NULL AND image_name != '';";
+    if (sqlite3_prepare_v2(_database, selectSQL, -1, &selectStatement, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(selectStatement, 1, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(selectStatement, 2, [listKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int64(selectStatement, 3, (sqlite3_int64)maximumCount);
+        while (sqlite3_step(selectStatement) == SQLITE_ROW) {
+            const char *imageNameText = (const char *)sqlite3_column_text(selectStatement, 0);
+            if (imageNameText) {
+                [overflowImageNames addObject:[NSString stringWithUTF8String:imageNameText]];
+            }
+        }
+    }
+    sqlite3_finalize(selectStatement);
+
     sqlite3_stmt *statement = NULL;
     const char *sql = "DELETE FROM items WHERE list_key = ? AND id NOT IN "
                        "(SELECT id FROM items WHERE list_key = ? ORDER BY position ASC LIMIT ?);";
@@ -547,6 +575,23 @@ static int kKayokoImageCacheLimit = 20;
         sqlite3_step(statement);
     }
     sqlite3_finalize(statement);
+
+    if ([overflowImageNames count] > 0) {
+        [self removeImageFilesAndCacheEntriesNamed:overflowImageNames forHistoryWithKey:listKey];
+    }
+}
+
+/**
+ * 删除给定图片名对应的缓存缩略图与磁盘文件。
+ */
+- (void)removeImageFilesAndCacheEntriesNamed:(NSArray *)imageNames forHistoryWithKey:(NSString *)historyKey {
+    NSCache *cache = [self imageCacheForHistoryKey:historyKey];
+    NSString *imagesPath = [PasteboardManager historyImagesPath];
+    for (NSString *imageName in imageNames) {
+        [cache removeObjectForKey:imageName];
+        NSString *filePath = [NSString stringWithFormat:@"%@/%@", imagesPath, imageName];
+        [_fileManager removeItemAtPath:filePath error:nil];
+    }
 }
 
 - (BOOL)hasItemsForListKey:(NSString *)listKey {
@@ -621,14 +666,22 @@ static int kKayokoImageCacheLimit = 20;
     return image;
 }
 
-- (void)getImageForItem:(PasteboardItem *)item completion:(void (^)(UIImage *image))completion {
+- (NSCache *)imageCacheForHistoryKey:(NSString *)historyKey {
+    return [historyKey isEqualToString:kHistoryKeyFavorites] ? _favoritesImageCache : _historyImageCache;
+}
+
+- (void)getImageForItem:(PasteboardItem *)item
+      fromHistoryWithKey:(NSString *)historyKey
+              completion:(void (^)(UIImage *image))completion {
     NSString *imageName = item.imageName ?: @"";
     if (imageName.length == 0) {
         if (completion) completion(nil);
         return;
     }
 
-    UIImage *cachedImage = [_historyImageCache objectForKey:imageName];
+    NSCache *cache = [self imageCacheForHistoryKey:historyKey];
+
+    UIImage *cachedImage = [cache objectForKey:imageName];
     if (cachedImage) {
         if (completion) completion(cachedImage);
         return;
@@ -637,8 +690,8 @@ static int kKayokoImageCacheLimit = 20;
     dispatch_async(_queue, ^{
       UIImage *image = [self getThumbnailForItem:item];
       dispatch_async(dispatch_get_main_queue(), ^{
-        if (image && [_historyImageCache count] <= kKayokoImageCacheLimit) {
-            [_historyImageCache setObject:image forKey:imageName];
+        if (image) {
+            [cache setObject:image forKey:imageName];
         }
         if (completion) completion(image);
       });
