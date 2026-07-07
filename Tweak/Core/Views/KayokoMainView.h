@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
+@property(nonatomic, strong) UIView *contentContainerView;
 @property(nonatomic, strong) KayokoGrabberView *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIControl *titleTapControl;

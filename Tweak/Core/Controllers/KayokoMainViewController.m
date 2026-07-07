@@ -685,7 +685,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (CGFloat)progressForTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
-    CGFloat width = MAX(CGRectGetWidth([[self mainView] bounds]), 1);
+    CGFloat width = MAX(CGRectGetWidth([[[self mainView] contentContainerView] bounds]), 1);
     CGFloat progress = [recognizer translationInView:[self mainView]].x / width;
     return MIN(MAX(progress, 0), 1);
 }
