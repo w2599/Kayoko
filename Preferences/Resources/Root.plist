@@ -148,6 +148,14 @@
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>KayokoTagManagementViewController</string>
+			<key>label</key>
+			<string>Tag Management</string>
+		</dict>
 
 		<dict>
 			<key>cell</key>

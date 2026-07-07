@@ -34,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readwrite) NSString *imagesPath;
 @property(nonatomic, assign, readwrite) KayokoHistoryStoreLockingMode lockingMode;
 @property(nonatomic, assign, readwrite) NSInteger busyTimeoutMilliseconds;
+- (BOOL)ensureTagUUIDColumnWithError:(NSError **)error;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -90,6 +91,7 @@ NS_ASSUME_NONNULL_END
                                              "created_at REAL NOT NULL,"
                                              "updated_at REAL NOT NULL,"
                                              "sequence INTEGER NOT NULL,"
+                                             "tag_uuid TEXT NULL,"
                                              "search_index_version INTEGER NOT NULL DEFAULT 0"
                                              ")";
     NSString *createSearchTokensStatement = @"CREATE TABLE IF NOT EXISTS history_item_search_tokens ("
@@ -136,7 +138,15 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    if (![self ensureTagUUIDColumnWithError:error]) {
+        return NO;
+    }
+
     return YES;
+}
+
+- (BOOL)upgradeTagReferencesWithError:(NSError **)error {
+    return [self prepareStoreWithError:error];
 }
 
 - (BOOL)prepareStorageDirectoriesWithError:(NSError **)error {
@@ -578,6 +588,13 @@ NS_ASSUME_NONNULL_END
         return YES;
     }
     return [self executeStatement:alterStatement error:error];
+}
+
+- (BOOL)ensureTagUUIDColumnWithError:(NSError **)error {
+    return [self ensureColumnNamed:@"tag_uuid"
+                           inTable:@"history_items"
+               usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN tag_uuid TEXT NULL"
+                             error:error];
 }
 
 - (NSInteger)staleSearchIndexItemCountWithError:(NSError **)error {

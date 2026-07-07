@@ -38,14 +38,23 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     NSError *migrationError = nil;
     BOOL migrated = [migrator migrateIfNeededWithError:&migrationError];
 
+    NSError *tagReferenceError = nil;
+    BOOL upgradedTagReferences = migrated && [store upgradeTagReferencesWithError:&tagReferenceError];
+
     NSError *searchIndexError = nil;
-    BOOL upgradedSearchIndex = migrated && [store upgradeSearchIndexWithError:&searchIndexError];
+    BOOL upgradedSearchIndex = upgradedTagReferences && [store upgradeSearchIndexWithError:&searchIndexError];
 
     NSError *ownershipError = nil;
     BOOL repairedOwnership = [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
     if (!migrated) {
         if (error) {
             *error = migrationError;
+        }
+        return NO;
+    }
+    if (!upgradedTagReferences) {
+        if (error) {
+            *error = tagReferenceError;
         }
         return NO;
     }

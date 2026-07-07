@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 - (void)closeDatabase;
 - (BOOL)verifyExclusiveAccessWithError:(NSError **)error;
 - (BOOL)checkpointWriteAheadLogWithError:(NSError **)error;
+- (BOOL)upgradeTagReferencesWithError:(NSError **)error;
 - (BOOL)upgradeSearchIndexWithError:(NSError **)error;
 - (BOOL)validateSearchIndexWithError:(NSError *_Nullable *_Nullable)error;
 - (BOOL)isMigrationCompletedWithError:(NSError **)error;

@@ -73,9 +73,24 @@ NS_ASSUME_NONNULL_END
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
         [self configureConditionalFootersInSpecifiers:_specifiers];
+        [self configureTagManagementSpecifierInSpecifiers:_specifiers];
     }
 
     return _specifiers;
+}
+
+- (void)configureTagManagementSpecifierInSpecifiers:(NSArray<PSSpecifier *> *)specifiers {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *localizedTitle = [bundle localizedStringForKey:@"Tag Management" value:nil table:@"Tags"];
+    for (PSSpecifier *specifier in specifiers) {
+        NSString *detail = [specifier propertyForKey:@"detail"];
+        if (![detail isEqualToString:@"KayokoTagManagementViewController"]) {
+            continue;
+        }
+
+        [specifier setProperty:localizedTitle forKey:@"label"];
+        break;
+    }
 }
 
 - (void)configureConditionalFootersInSpecifiers:(NSArray<PSSpecifier *> *)specifiers {
@@ -253,6 +268,15 @@ NS_ASSUME_NONNULL_END
             }
 
             cell.detailTextLabel.text = detailText;
+            return cell;
+        }
+    }
+    if ([key isEqualToString:@"PSLinkCell"]) {
+        NSString *detail = [specifier propertyForKey:@"detail"];
+        if ([detail isEqualToString:@"KayokoTagManagementViewController"]) {
+            UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+            NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+            cell.textLabel.text = [bundle localizedStringForKey:@"Tag Management" value:nil table:@"Tags"];
             return cell;
         }
     }
