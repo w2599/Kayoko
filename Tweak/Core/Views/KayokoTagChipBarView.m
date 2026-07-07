@@ -40,6 +40,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
                    tagUUID:(nullable NSString *)tagUUID
                   hexColor:(nullable NSString *)hexColor
                   selected:(BOOL)selected;
+- (UIColor *)resolvedColorForCurrentTrait:(UIColor *)color;
 - (CGFloat)preferredWidth;
 @end
 
@@ -111,7 +112,7 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [[self textLabel] setTextColor:textColor];
     [self setBackgroundColor:[self isSelected] ? [self selectedFillColor] : [self normalFillColor]];
     [[self layer] setBorderWidth:[self isSelected] ? 1.0 : 1.0 / [UIScreen mainScreen].scale];
-    [[self layer] setBorderColor:[[self borderColor] CGColor]];
+    [[self layer] setBorderColor:[[self resolvedColorForCurrentTrait:[self borderColor]] CGColor]];
     [self updateDotStyle];
     [self setAlpha:[self isHighlighted] ? 0.72 : 1.0];
 }
@@ -126,6 +127,10 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     UIColor *tintColor = [self isSelected] ? [[UIColor labelColor] colorWithAlphaComponent:0.64]
                                            : [[UIColor secondaryLabelColor] colorWithAlphaComponent:0.54];
     [[self dotView] configureNoTagWithTintColor:tintColor];
+}
+
+- (UIColor *)resolvedColorForCurrentTrait:(UIColor *)color {
+    return [color resolvedColorWithTraitCollection:[self traitCollection]];
 }
 
 - (void)setSelected:(BOOL)selected {

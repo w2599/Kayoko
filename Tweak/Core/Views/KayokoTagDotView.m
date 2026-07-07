@@ -14,6 +14,7 @@ static CGFloat const kKayokoTagDotDefaultBorderWidth = 1.25;
 @property(nonatomic, strong) CAShapeLayer *dotLayer;
 @property(nonatomic, strong) CAShapeLayer *noTagRingLayer;
 @property(nonatomic, strong) CAShapeLayer *noTagSlashLayer;
+- (nullable UIColor *)resolvedColorForCurrentTrait:(nullable UIColor *)color;
 @end
 
 @implementation KayokoTagDotView
@@ -47,11 +48,14 @@ static CGFloat const kKayokoTagDotDefaultBorderWidth = 1.25;
 }
 
 - (void)configureWithFillColor:(nullable UIColor *)fillColor borderColor:(nullable UIColor *)borderColor {
+    UIColor *resolvedFillColor = [self resolvedColorForCurrentTrait:fillColor];
+    UIColor *resolvedBorderColor = [self resolvedColorForCurrentTrait:borderColor];
+
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     [[self dotLayer] setHidden:fillColor == nil];
-    [[self dotLayer] setFillColor:[fillColor CGColor]];
-    [[self dotLayer] setStrokeColor:[borderColor CGColor]];
+    [[self dotLayer] setFillColor:[resolvedFillColor CGColor]];
+    [[self dotLayer] setStrokeColor:[resolvedBorderColor CGColor]];
     [[self noTagRingLayer] setHidden:YES];
     [[self noTagSlashLayer] setHidden:YES];
     [CATransaction commit];
@@ -59,15 +63,21 @@ static CGFloat const kKayokoTagDotDefaultBorderWidth = 1.25;
 }
 
 - (void)configureNoTagWithTintColor:(UIColor *)tintColor {
+    UIColor *resolvedTintColor = [self resolvedColorForCurrentTrait:tintColor];
+
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     [[self dotLayer] setHidden:YES];
     [[self noTagRingLayer] setHidden:NO];
-    [[self noTagRingLayer] setStrokeColor:[tintColor CGColor]];
+    [[self noTagRingLayer] setStrokeColor:[resolvedTintColor CGColor]];
     [[self noTagSlashLayer] setHidden:NO];
-    [[self noTagSlashLayer] setStrokeColor:[tintColor CGColor]];
+    [[self noTagSlashLayer] setStrokeColor:[resolvedTintColor CGColor]];
     [CATransaction commit];
     [self setNeedsLayout];
+}
+
+- (nullable UIColor *)resolvedColorForCurrentTrait:(nullable UIColor *)color {
+    return [color resolvedColorWithTraitCollection:[self traitCollection]];
 }
 
 - (void)setDotDiameter:(CGFloat)dotDiameter {
