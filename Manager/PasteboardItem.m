@@ -52,6 +52,12 @@
     } else {
         [item setRecordedAt:0];
     }
+
+    NSNumber *rowIdNumber = dictionary[kItemKeyRowId];
+    if ([rowIdNumber isKindOfClass:[NSNumber class]]) {
+        [item setRowId:[rowIdNumber longLongValue]];
+    }
+
     return item;
 }
 
