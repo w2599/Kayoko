@@ -23,6 +23,10 @@
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification;
 @end
 
+@interface LSApplicationProxy : NSObject
++ (instancetype)applicationProxyForIdentifier:(NSString *)identifier;
+@end
+
 @interface NSTask : NSObject
 - (void)setLaunchPath:(NSString *)launchPath;
 - (void)setArguments:(NSArray<NSString *> *)arguments;
@@ -38,6 +42,11 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
+
+static NSString *const kKayokoSileoStoreBundleIdentifier = @"org.coolstar.SileoStore";
+static NSString *const kKayokoSileoBundleIdentifier = @"org.coolstar.Sileo";
+static NSString *const kKayokoZebraBundleIdentifier = @"com.getzbra.zebra2";
+static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 
 @implementation KayokoRootListController {
     ActivationMethod _lastActivationMethod;
@@ -334,6 +343,7 @@ NS_ASSUME_NONNULL_END
 - (void)handleAuthorizationResult:(KayokoPurchaseAuthorizationResult *)result {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     _authorizationCheckInProgress = NO;
+    BOOL useZebraInstructions = [self shouldUseZebraAuthorizationInstructions];
 
     switch (result.state) {
     case KayokoPurchaseAuthorizationStatePurchased: {
@@ -343,13 +353,14 @@ NS_ASSUME_NONNULL_END
         break;
     }
     case KayokoPurchaseAuthorizationStateMissingCredential: {
+        NSString *subtitleKey = useZebraInstructions
+                                    ? @"Please check the following: open Zebra → select the Sources tab → tap Havoc → "
+                                      @"make sure it is signed in"
+                                    : @"Please check the following: open Sileo → tap the avatar in the top-right "
+                                      @"corner → make sure the Havoc payment provider is signed in";
         [[self authorizationOverlayView]
             setFailureTitle:[bundle localizedStringForKey:@"Read Account Failed" value:nil table:@"Root"]
-                   subtitle:[bundle localizedStringForKey:@"Please check the following: open Sileo → tap the "
-                                                          @"avatar in the top-right corner → make sure the Havoc "
-                                                          @"payment provider is signed in"
-                                                    value:nil
-                                                    table:@"Root"]
+                   subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
                retryEnabled:NO];
         break;
     }
@@ -380,17 +391,57 @@ NS_ASSUME_NONNULL_END
         break;
     }
     case KayokoPurchaseAuthorizationStateNotPurchased: {
+        NSString *subtitleKey = useZebraInstructions
+                                    ? @"Please check the following: open Zebra → select the Sources tab → tap Havoc → "
+                                      @"tap My Account in the top-right corner → make sure Kayoko is in your purchases"
+                                    : @"Please check the following: open Sileo → tap the avatar in the top-right "
+                                      @"corner → tap Havoc → make sure Kayoko is in your purchases";
         [[self authorizationOverlayView]
             setFailureTitle:[bundle localizedStringForKey:@"Authorization Not Found" value:nil table:@"Root"]
-                   subtitle:[bundle localizedStringForKey:@"Please check the following: open Sileo → tap the "
-                                                          @"avatar in the top-right corner → tap Havoc → make sure "
-                                                          @"Kayoko is in your purchases"
-                                                    value:nil
-                                                    table:@"Root"]
+                   subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
                retryEnabled:NO];
         break;
     }
     }
+}
+
+- (BOOL)shouldUseZebraAuthorizationInstructions {
+    BOOL hasSileo = [self isApplicationInstalledWithBundleIdentifiers:@[
+        kKayokoSileoStoreBundleIdentifier, kKayokoSileoBundleIdentifier
+    ]];
+    if (hasSileo) {
+        return NO;
+    }
+
+    return [self isApplicationInstalledWithBundleIdentifiers:@[
+        kKayokoZebraBundleIdentifier, kKayokoLegacyZebraBundleIdentifier
+    ]];
+}
+
+- (BOOL)isApplicationInstalledWithBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
+    Class proxyClass = NSClassFromString(@"LSApplicationProxy");
+    if (![proxyClass respondsToSelector:@selector(applicationProxyForIdentifier:)]) {
+        return NO;
+    }
+    typedef LSApplicationProxy *(*KayokoApplicationProxyForIdentifierIMP)(Class, SEL, NSString *);
+    KayokoApplicationProxyForIdentifierIMP proxyForIdentifier = (KayokoApplicationProxyForIdentifierIMP)
+        [proxyClass methodForSelector:@selector(applicationProxyForIdentifier:)];
+    if (!proxyForIdentifier) {
+        return NO;
+    }
+
+    for (NSString *bundleIdentifier in bundleIdentifiers) {
+        if ([bundleIdentifier length] == 0) {
+            continue;
+        }
+
+        LSApplicationProxy *proxy =
+            proxyForIdentifier(proxyClass, @selector(applicationProxyForIdentifier:), bundleIdentifier);
+        if (proxy) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 - (void)dismissAuthorizationOverlayAnimated:(BOOL)animated {
