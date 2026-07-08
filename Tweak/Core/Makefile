@@ -4,6 +4,7 @@ KayokoCore_USE_MODULES := 0
 
 KayokoCore_FILES += KayokoCore.m
 KayokoCore_FILES += KayokoCoreRuntime.m
+KayokoCore_FILES += KayokoKeyboardHostResolver.m
 KayokoCore_FILES += KayokoSpringBoardHooks.m
 KayokoCore_FILES += KayokoPasteTipHooks.m
 KayokoCore_FILES += ../Helper/KayokoSwipeUpGestureRecognizer.m
@@ -11,6 +12,7 @@ KayokoCore_FILES += $(wildcard Manager/*.m Actions/*.m Controllers/*.m Coordinat
 KayokoCore_FILES += $(wildcard ../../Shared/Tags/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc
+KayokoCore_CFLAGS += -I.
 KayokoCore_CFLAGS += -IManager
 KayokoCore_CFLAGS += -I../../Preferences
 KayokoCore_CFLAGS += -I../Helper

@@ -349,6 +349,16 @@ CHOptimizedMethod3(self, void, UIKeyboardImpl, setDelegate, id, delegate, force,
     [[KayokoHelperRuntime sharedRuntime] keyboardImplDidSetDelegate:delegate];
 }
 
+CHOptimizedMethod2(self, void, UIKeyboardImpl, setDelegate, id, delegate, force, BOOL, force) {
+    CHSuper2(UIKeyboardImpl, setDelegate, delegate, force, force);
+    [[KayokoHelperRuntime sharedRuntime] keyboardImplDidSetDelegate:delegate];
+}
+
+CHOptimizedMethod1(self, void, UIKeyboardImpl, setDelegate, id, delegate) {
+    CHSuper1(UIKeyboardImpl, setDelegate, delegate);
+    [[KayokoHelperRuntime sharedRuntime] keyboardImplDidSetDelegate:delegate];
+}
+
 CHOptimizedMethod1(self, void, FBSScene, updateClientSettingsWithBlock, FBSSceneClientSettingsUpdateBlock, block) {
     FBSSceneClientSettingsUpdateBlock wrappedBlock = ^(FBSMutableSceneClientSettings *mutableClientSettings) {
       if (block) {
@@ -481,8 +491,14 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     }
 
     BOOL hasPendingPaste = [self beginPendingPaste];
+    NSUInteger pendingPasteToken = self.pendingPasteSession.token;
     HBLogDebug(@"Kayoko: helper paste started process=%@ hasPendingPaste=%@", [[NSProcessInfo processInfo] processName],
                hasPendingPaste ? @"YES" : @"NO");
+
+    if (hasPendingPaste) {
+        self.pendingPasteSession.canExecute = YES;
+    }
+
     [self restoreCapturedFirstResponder];
 
     if (!hasPendingPaste && self.isSpringBoardRuntime) {
@@ -490,11 +506,12 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         return;
     }
 
-    if (hasPendingPaste) {
-        self.pendingPasteSession.canExecute = YES;
-        HBLogDebug(@"Kayoko: helper paste scheduled pending check token=%lu",
-                   (unsigned long)self.pendingPasteSession.token);
+    if (hasPendingPaste && self.pendingPasteSession.hasPendingPaste &&
+        self.pendingPasteSession.token == pendingPasteToken) {
+        HBLogDebug(@"Kayoko: helper paste scheduled pending check token=%lu", (unsigned long)pendingPasteToken);
         [self schedulePendingPasteCheck];
+    } else if (hasPendingPaste) {
+        HBLogDebug(@"Kayoko: helper paste completed before pending check token=%lu", (unsigned long)pendingPasteToken);
     } else {
         dispatch_async(dispatch_get_main_queue(), ^{
           HBLogDebug(@"Kayoko: helper paste scheduled immediate perform");
@@ -570,7 +587,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     if ([delegate isKindOfClass:[UIResponder class]] && self.isSpringBoardRuntime) {
         [self clearLastKayokoKeyboardInput];
     }
-    [self attemptPendingPaste];
+    [self schedulePendingPasteCheck];
 }
 
 - (void)rememberResponderWillResign:(UIResponder *)responder {
@@ -1354,7 +1371,19 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
       CHHook1(UIKeyboardImpl, applicationDidBecomeActive);
       CHHook1(UIKeyboardImpl, applicationWillResignActive);
       CHHook1(UIKeyboardImpl, applicationWillSuspend);
-      CHHook3(UIKeyboardImpl, setDelegate, force, fromBecomeFirstResponder);
+      Class keyboardImplClass = NSClassFromString(@"UIKeyboardImpl");
+      if (class_getInstanceMethod(keyboardImplClass, @selector(setDelegate:force:fromBecomeFirstResponder:))) {
+          CHHook3(UIKeyboardImpl, setDelegate, force, fromBecomeFirstResponder);
+          HBLogDebug(@"Kayoko: installed UIKeyboardImpl setDelegate:force:fromBecomeFirstResponder: hook");
+      } else if (class_getInstanceMethod(keyboardImplClass, @selector(setDelegate:force:))) {
+          CHHook2(UIKeyboardImpl, setDelegate, force);
+          HBLogDebug(@"Kayoko: installed UIKeyboardImpl setDelegate:force: hook");
+      } else if (class_getInstanceMethod(keyboardImplClass, @selector(setDelegate:))) {
+          CHHook1(UIKeyboardImpl, setDelegate);
+          HBLogDebug(@"Kayoko: installed UIKeyboardImpl setDelegate: hook");
+      } else {
+          HBLogDebug(@"Kayoko: unable to install UIKeyboardImpl setDelegate hook");
+      }
     });
 }
 

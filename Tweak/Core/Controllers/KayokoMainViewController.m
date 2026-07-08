@@ -1318,7 +1318,13 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)hideAfterDirectPaste {
-    [self hide];
+    BOOL shouldRestoreFocusAfterHide = [self isFullscreenSearchActive];
+    [self hideWithCompletion:^{
+      if (!shouldRestoreFocusAfterHide || ![self focusRestoreRequestHandler]) {
+          return;
+      }
+      [self focusRestoreRequestHandler]();
+    }];
 }
 
 - (void)hideRestoringFocus {

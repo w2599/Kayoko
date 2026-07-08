@@ -9,22 +9,19 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
-#import <objc/runtime.h>
 
 #import <HBLog.h>
 #import <notify.h>
 #import <roothide.h>
 
 #import "Controllers/KayokoMainViewController.h"
+#import "KayokoKeyboardHostResolver.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreferenceKeys.h"
 
 static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
 static NSTimeInterval const kKayokoPasteSuppressionExpirationDelay = 1.0;
-static NSString *const kKayokoSpotlightSceneIdentifier = @"searchScreen";
-static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
-static NSString *const kKayokoSpringBoardProcessName = @"SpringBoard";
 
 @interface UIApplication (KayokoPrivate)
 - (UIInterfaceOrientation)_frontMostAppOrientation;
@@ -32,39 +29,6 @@ static NSString *const kKayokoSpringBoardProcessName = @"SpringBoard";
 
 @interface UIApplicationSceneSettings : NSObject
 - (UIUserInterfaceStyle)userInterfaceStyle;
-@end
-
-@class FBSSceneIdentityToken;
-
-@interface FBSSceneClientSettings : NSObject
-- (FBSSceneIdentityToken *)preferredSceneHostIdentity;
-@end
-
-@interface FBSSceneIdentityToken : NSObject
-- (NSString *)identifier;
-@end
-
-@interface FBProcess : NSObject
-- (NSString *)bundleIdentifier;
-- (NSString *)name;
-@end
-
-@interface FBScene : NSObject
-- (FBSSceneClientSettings *)clientSettings;
-- (FBProcess *)clientProcess;
-- (UIApplicationSceneSettings *)settings;
-- (NSString *)identifier;
-@end
-
-@interface FBSceneManager : NSObject
-+ (FBScene *)keyboardScene;
-+ (instancetype)sharedInstance;
-- (FBScene *)sceneWithIdentifier:(NSString *)identifier;
-@end
-
-@protocol KayokoFBSceneManagerClass <NSObject>
-+ (FBScene *)keyboardScene;
-+ (FBSceneManager *)sharedInstance;
 @end
 
 @interface SBLockScreenManager : NSObject
@@ -495,88 +459,6 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
-- (nullable FBScene *)currentKeyboardHostScene {
-    Class<KayokoFBSceneManagerClass> managerClass =
-        (Class<KayokoFBSceneManagerClass>)NSClassFromString(@"FBSceneManager");
-    if (![managerClass respondsToSelector:@selector(keyboardScene)] ||
-        ![managerClass respondsToSelector:@selector(sharedInstance)]) {
-        return nil;
-    }
-
-    FBScene *keyboardScene = [managerClass keyboardScene];
-    FBSceneManager *sceneManager = [managerClass sharedInstance];
-    if (![keyboardScene respondsToSelector:@selector(clientSettings)] ||
-        ![sceneManager respondsToSelector:@selector(sceneWithIdentifier:)]) {
-        return nil;
-    }
-
-    FBSSceneClientSettings *keyboardClientSettings = [keyboardScene clientSettings];
-    if (![keyboardClientSettings respondsToSelector:@selector(preferredSceneHostIdentity)]) {
-        return nil;
-    }
-
-    FBSSceneIdentityToken *hostIdentity = [keyboardClientSettings preferredSceneHostIdentity];
-    if (![hostIdentity respondsToSelector:@selector(identifier)]) {
-        return nil;
-    }
-
-    NSString *hostSceneIdentifier = [hostIdentity identifier];
-    if (![hostSceneIdentifier isKindOfClass:[NSString class]] || [hostSceneIdentifier length] == 0) {
-        return nil;
-    }
-
-    FBScene *hostScene = [sceneManager sceneWithIdentifier:hostSceneIdentifier];
-    return [hostScene respondsToSelector:@selector(settings)] ? hostScene : nil;
-}
-
-- (nullable NSString *)identifierForScene:(FBScene *)scene {
-    if (!scene) {
-        return nil;
-    }
-
-    if (![scene respondsToSelector:@selector(identifier)]) {
-        return nil;
-    }
-
-    NSString *identifier = [scene identifier];
-    return [identifier isKindOfClass:[NSString class]] && [identifier length] > 0 ? identifier : nil;
-}
-
-- (BOOL)sceneIsSpotlightScene:(FBScene *)scene {
-    return [[self identifierForScene:scene] isEqualToString:kKayokoSpotlightSceneIdentifier];
-}
-
-- (BOOL)stringMatchesSpringBoard:(NSString *)string {
-    if (![string isKindOfClass:[NSString class]] || [string length] == 0) {
-        return NO;
-    }
-
-    return [string caseInsensitiveCompare:kKayokoSpringBoardBundleIdentifier] == NSOrderedSame ||
-           [string caseInsensitiveCompare:kKayokoSpringBoardProcessName] == NSOrderedSame;
-}
-
-- (BOOL)sceneIsHostedBySpringBoard:(FBScene *)scene {
-    if (!scene) {
-        return NO;
-    }
-
-    NSString *identifier = [self identifierForScene:scene];
-    if ([self stringMatchesSpringBoard:identifier]) {
-        return YES;
-    }
-
-    if (![scene respondsToSelector:@selector(clientProcess)]) {
-        return NO;
-    }
-
-    FBProcess *process = [scene clientProcess];
-    if ([process respondsToSelector:@selector(bundleIdentifier)] &&
-        [self stringMatchesSpringBoard:[process bundleIdentifier]]) {
-        return YES;
-    }
-    return [process respondsToSelector:@selector(name)] && [self stringMatchesSpringBoard:[process name]];
-}
-
 - (UIUserInterfaceStyle)userInterfaceStyleFromSceneSettings:(UIApplicationSceneSettings *)settings {
     if (![settings respondsToSelector:@selector(userInterfaceStyle)]) {
         return UIUserInterfaceStyleUnspecified;
@@ -639,23 +521,20 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIUserInterfaceStyle)currentKeyboardHostUserInterfaceStyle {
-    FBScene *hostScene = [self currentKeyboardHostScene];
-    if ([self sceneIsHostedBySpringBoard:hostScene]) {
+    KayokoKeyboardHostResolver *resolver = [KayokoKeyboardHostResolver sharedResolver];
+    FBScene *hostScene = [resolver currentKeyboardHostScene];
+    if ([resolver sceneIsHostedBySpringBoard:hostScene]) {
         UIUserInterfaceStyle style = [self currentSpringBoardKeyboardUserInterfaceStyle];
         if (style == UIUserInterfaceStyleLight || style == UIUserInterfaceStyleDark) {
             return style;
         }
     }
 
-    if ([self sceneIsSpotlightScene:hostScene]) {
+    if ([resolver sceneIsSpotlightScene:hostScene]) {
         return UIUserInterfaceStyleDark;
     }
 
-    if (![hostScene respondsToSelector:@selector(settings)]) {
-        return UIUserInterfaceStyleUnspecified;
-    }
-
-    return [self userInterfaceStyleFromSceneSettings:[hostScene settings]];
+    return [self userInterfaceStyleFromSceneSettings:[resolver settingsForScene:hostScene]];
 }
 
 - (void)applyKeyboardHostUserInterfaceStyle:(UIUserInterfaceStyle)style {
@@ -671,11 +550,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)sceneIsCurrentKeyboardHostScene:(FBScene *)scene {
-    if (!scene) {
-        return NO;
-    }
-
-    return scene == [self currentKeyboardHostScene];
+    return [[KayokoKeyboardHostResolver sharedResolver] sceneIsCurrentKeyboardHostScene:scene];
 }
 
 - (void)handleScene:(FBScene *)scene didUpdateSettings:(UIApplicationSceneSettings *)settings {
@@ -690,13 +565,14 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    KayokoKeyboardHostResolver *resolver = [KayokoKeyboardHostResolver sharedResolver];
     UIUserInterfaceStyle style = UIUserInterfaceStyleUnspecified;
-    if ([self sceneIsHostedBySpringBoard:scene]) {
+    if ([resolver sceneIsHostedBySpringBoard:scene]) {
         style = [self currentSpringBoardKeyboardUserInterfaceStyle];
     }
     if (style != UIUserInterfaceStyleLight && style != UIUserInterfaceStyleDark) {
-        style = [self sceneIsSpotlightScene:scene] ? UIUserInterfaceStyleDark
-                                                   : [self userInterfaceStyleFromSceneSettings:settings];
+        style = [resolver sceneIsSpotlightScene:scene] ? UIUserInterfaceStyleDark
+                                                       : [self userInterfaceStyleFromSceneSettings:settings];
     }
     [self applyKeyboardHostUserInterfaceStyle:style];
 }
