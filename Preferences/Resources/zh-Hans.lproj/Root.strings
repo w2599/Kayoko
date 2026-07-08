@@ -5,11 +5,11 @@
 "Activation Methods" = "激活方法";
 "Advanced Options" = "高级选项";
 "Appearance" = "外观";
+"Authorization Not Found" = "找不到授权";
 "Automatically Paste" = "自动粘贴";
 "Behaviors" = "行为";
 "CUSTOM_TAGS" = "自定义标签…";
 "Cancel" = "取消";
-"Authorization Not Found" = "找不到授权";
 "Check Product Authorization" = "检查产品授权";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "选择唤醒 Kayoko 时打开哪个列表。“先前的选择” 会保留上次使用的列表。";
 "Credits" = "致谢";
@@ -54,8 +54,8 @@
 "Single Line" = "单行";
 "Supports" = "支持";
 "Swipe to Select Words" = "滑动选词";
-"The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "The network request failed." = "网络请求失败。";
+"The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "此选项需要重新启动 SpringBoard 才能生效。你现在要重新启动吗？";
 "Tools" = "工具";
 "Touch Outside to Dismiss" = "触摸外部收起";

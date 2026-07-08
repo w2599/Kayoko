@@ -24,8 +24,8 @@
 "Restore Tags" = "Restore Tags";
 "Simulated" = "Simulated";
 "System" = "System";
+"Unable to Deactivate" = "Unable to Deactivate";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Unable to Restore Tags" = "Unable to Restore Tags";
-"Unable to Deactivate" = "Unable to Deactivate";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable.";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.";

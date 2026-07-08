@@ -24,8 +24,8 @@
 "Restore Tags" = "还原标签";
 "Simulated" = "模拟";
 "System" = "系统";
+"Unable to Deactivate" = "无法反激活";
 "Unable to Open Filza" = "无法打开 Filza";
 "Unable to Restore Tags" = "无法还原标签";
-"Unable to Deactivate" = "无法反激活";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“经典” 使用原有的 App 内键盘手势识别。“系统” 会改由 SpringBoard 侧监听，因此在 App 侧注入不可用时仍可使用单指上划。";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“模拟” 模式会通过硬件组合键模拟粘贴快捷键。“自动” 模式会在当前 App 可配合时使用 “经典”，需要时再退回 “模拟”。";

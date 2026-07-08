@@ -28,6 +28,11 @@ static CGFloat const kKayokoTransientEdgeBackCompletionVelocity = 650;
 static NSTimeInterval const kKayokoTransientEdgeBackMinimumAnimationDuration = 0.08;
 static NSTimeInterval const kKayokoTransientEdgeBackMaximumAnimationDuration = 0.22;
 
+@interface LSApplicationWorkspace : NSObject
++ (instancetype)defaultWorkspace;
+- (BOOL)openSensitiveURL:(NSURL *)url withOptions:(NSDictionary *)options error:(NSError **)error;
+@end
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoMainViewController () <KayokoClearConfirmationViewControllerDelegate, KayokoHistoryControllerDelegate,
@@ -42,6 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoEmptyStateView *historyEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *favoritesEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *storageErrorView;
+@property(nonatomic, strong) KayokoEmptyStateView *authorizationRequiredView;
 @property(nonatomic, strong, nullable) NSError *storageError;
 @property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
@@ -69,6 +75,7 @@ NS_ASSUME_NONNULL_END
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
+        _authorizationPassed = YES;
         _mainView = [[KayokoMainView alloc] initWithFrame:frame];
         [self setView:_mainView];
         _historyListViewController = [[KayokoHistoryListViewController alloc]
@@ -132,6 +139,12 @@ NS_ASSUME_NONNULL_END
 
         _storageErrorView = [[KayokoEmptyStateView alloc] init];
         [_mainView installContentView:_storageErrorView hidden:YES];
+
+        _authorizationRequiredView = [[KayokoEmptyStateView alloc] init];
+        [_authorizationRequiredView updateWithAuthorizationRequiredActionHandler:^{
+          [weakSelf openAuthorizationSettings];
+        }];
+        [_mainView installContentView:_authorizationRequiredView hidden:YES];
 
         _previewViewController =
             [[KayokoPreviewViewController alloc] initWithFavoritesButton:[_mainView favoritesButton]
@@ -201,6 +214,7 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setOverrideUserInterfaceStyle:style];
     [[self favoritesEmptyStateView] setOverrideUserInterfaceStyle:style];
     [[self storageErrorView] setOverrideUserInterfaceStyle:style];
+    [[self authorizationRequiredView] setOverrideUserInterfaceStyle:style];
 }
 
 - (void)setDismissOnOutsideTouch:(BOOL)dismissOnOutsideTouch {
@@ -217,6 +231,27 @@ NS_ASSUME_NONNULL_END
 - (void)setShouldPlayFeedback:(BOOL)shouldPlayFeedback {
     _shouldPlayFeedback = shouldPlayFeedback;
     [[self panelPresentationController] setShouldPlayFeedback:shouldPlayFeedback];
+}
+
+- (void)setAuthorizationPassed:(BOOL)authorizationPassed {
+    if (_authorizationPassed == authorizationPassed) {
+        return;
+    }
+
+    _authorizationPassed = authorizationPassed;
+    if ([self isHidden]) {
+        return;
+    }
+
+    if (authorizationPassed) {
+        [self reload];
+    } else {
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+    }
+}
+
+- (BOOL)isAuthorizationRequired {
+    return ![self isAuthorizationPassed];
 }
 
 - (void)handleViewLayout {
@@ -261,6 +296,7 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self favoritesEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self storageErrorView] setKeyboardBottomInset:keyboardBottomInset];
+    [[self authorizationRequiredView] setKeyboardBottomInset:keyboardBottomInset];
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
@@ -304,7 +340,7 @@ NS_ASSUME_NONNULL_END
     return activeContentView == [[self historyListViewController] tableView] ||
            activeContentView == [[self favoritesListViewController] tableView] ||
            activeContentView == [self historyEmptyStateView] || activeContentView == [self favoritesEmptyStateView] ||
-           activeContentView == [self storageErrorView];
+           activeContentView == [self storageErrorView] || activeContentView == [self authorizationRequiredView];
 }
 
 - (BOOL)isFullscreenSearchActive {
@@ -398,6 +434,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
+    if ([self isAuthorizationRequired]) {
+        [[self authorizationRequiredView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
+        return [self authorizationRequiredView];
+    }
+
     if ([self storageError]) {
         [[self storageErrorView] updateWithStorageError:[self storageError]];
         [[self storageErrorView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
@@ -433,6 +474,10 @@ NS_ASSUME_NONNULL_END
 
     if (![[self storageErrorView] isHidden]) {
         return [self storageErrorView];
+    }
+
+    if (![[self authorizationRequiredView] isHidden]) {
+        return [self authorizationRequiredView];
     }
 
     return [self emptyStateViewForHistoryKey:[self effectiveActiveHistoryKey]];
@@ -471,12 +516,17 @@ NS_ASSUME_NONNULL_END
         return [[self storageErrorView] name];
     }
 
+    if (view == [self authorizationRequiredView]) {
+        return [[self authorizationRequiredView] name];
+    }
+
     return nil;
 }
 
 - (void)setHistoryContentVisibleForKey:(NSString *)historyKey {
     [[self historyController] setActiveHistoryKey:historyKey];
     UIView *contentView = [self contentViewForHistoryKey:historyKey];
+    BOOL showsAuthorizationRequired = contentView == [self authorizationRequiredView];
     [[[self historyListViewController] tableView]
         setHidden:contentView != [[self historyListViewController] tableView]];
     [[[self favoritesListViewController] tableView]
@@ -484,13 +534,28 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setHidden:contentView != [self historyEmptyStateView]];
     [[self favoritesEmptyStateView] setHidden:contentView != [self favoritesEmptyStateView]];
     [[self storageErrorView] setHidden:contentView != [self storageErrorView]];
+    [[self authorizationRequiredView] setHidden:!showsAuthorizationRequired];
     [contentView setAlpha:1];
     [contentView setTransform:CGAffineTransformIdentity];
+    if (showsAuthorizationRequired) {
+        [[self searchController] resetBeforeHide];
+        [self showAuthorizationRequiredHeaderIcon];
+        [[[self mainView] clearButton] setHidden:YES];
+        [[[self mainView] backButton] setHidden:YES];
+        [[[self mainView] titleTapControl] setEnabled:NO];
+        [[self mainView] setTitleText:[self titleForContentView:contentView]];
+        [[self mainView] setClearButtonEnabledForItemCount:0];
+        return;
+    }
+
+    [self restoreHistoryHeaderIconForHistoryKey:historyKey];
+    [[[self mainView] clearButton] setHidden:NO];
+    [[[self mainView] backButton] setHidden:YES];
+    [[[self mainView] titleTapControl] setEnabled:YES];
     [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:historyKey]
                                          hidesSearchBar:![[self searchController] isSearchActive]];
     [[self searchController] refreshForListViewController:[self activeListViewController]];
     [[self mainView] setTitleText:[self titleForContentView:contentView]];
-    [self updateFavoritesButtonForHistoryKey:historyKey];
 }
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey {
@@ -498,6 +563,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateActiveTableViewState:(KayokoHistoryListView *)tableView {
+    if ([self isAuthorizationRequired]) {
+        return;
+    }
+
     if (tableView == [self activeTableView]) {
         KayokoHistoryListViewController *activeListViewController = [self activeListViewController];
         if ([self cancelSearchForEmptyActiveHistoryIfNeededHidingView:[self activeHistoryContentView]
@@ -616,6 +685,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateClearButtonState {
+    if ([self isAuthorizationRequired]) {
+        [[self mainView] setClearButtonEnabledForItemCount:0];
+        return;
+    }
+
     if ([self storageError]) {
         [[self mainView] setClearButtonEnabledForItemCount:0];
         return;
@@ -899,6 +973,42 @@ NS_ASSUME_NONNULL_END
                                    andTintColor:tintColor];
 }
 
+- (nullable UIImage *)authorizationHeaderIconImage {
+    UIImage *bundleIcon = [UIImage imageNamed:@"Icon"
+                                     inBundle:[KayokoPasteboardManager localizationBundle]
+                compatibleWithTraitCollection:nil];
+    if (bundleIcon) {
+        return [bundleIcon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
+
+    UIImageSymbolConfiguration *configuration =
+        [UIImageSymbolConfiguration configurationWithPointSize:kKayokoFavoritesButtonImageSize
+                                                        weight:UIImageSymbolWeightMedium];
+    return [[UIImage systemImageNamed:@"keyboard"] imageWithConfiguration:configuration];
+}
+
+- (void)showAuthorizationRequiredHeaderIcon {
+    UIButton *favoritesButton = [[self mainView] favoritesButton];
+    UIImage *icon = [self authorizationHeaderIconImage];
+    [favoritesButton setHidden:NO];
+    [favoritesButton setEnabled:YES];
+    [favoritesButton setUserInteractionEnabled:NO];
+    [favoritesButton setTintColor:[UIColor labelColor]];
+    [favoritesButton setImage:icon forState:UIControlStateNormal];
+    [[[favoritesButton imageView] layer] setCornerRadius:6];
+    [[favoritesButton imageView] setClipsToBounds:YES];
+}
+
+- (void)restoreHistoryHeaderIconForHistoryKey:(NSString *)historyKey {
+    UIButton *favoritesButton = [[self mainView] favoritesButton];
+    [favoritesButton setHidden:NO];
+    [favoritesButton setEnabled:YES];
+    [favoritesButton setUserInteractionEnabled:YES];
+    [[[favoritesButton imageView] layer] setCornerRadius:0];
+    [[favoritesButton imageView] setClipsToBounds:NO];
+    [self updateFavoritesButtonForHistoryKey:historyKey];
+}
+
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
               direction:(KayokoContentTransitionDirection)direction
@@ -941,6 +1051,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
+    if ([self isAuthorizationRequired]) {
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+        return;
+    }
+
     if (![self isShowingClearConfirmation] && [[[self previewViewController] previewView] isHidden] &&
         [[[self wordSelectionViewController] view] isHidden]) {
         if ([self cancelSearchForEmptyActiveHistoryIfNeededHidingView:[self activeHistoryContentView]
@@ -970,6 +1085,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleFavoritesButtonPressed {
     if ([[self panelPresentationController] isAnimating]) {
+        return;
+    }
+
+    if ([self isAuthorizationRequired]) {
         return;
     }
 
@@ -1078,7 +1197,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleClearButtonPressed {
     if ([[self panelPresentationController] isAnimating] || ![[[self previewViewController] previewView] isHidden] ||
-        ![[[self wordSelectionViewController] view] isHidden] || [self isShowingClearConfirmation]) {
+        ![[[self wordSelectionViewController] view] isHidden] || [self isShowingClearConfirmation] ||
+        [self isAuthorizationRequired]) {
         return;
     }
 
@@ -1088,6 +1208,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleTitleTapControlPressed {
     if ([[self panelPresentationController] isAnimating] || [[self mainView] isAnimating]) {
+        return;
+    }
+
+    if ([self isAuthorizationRequired]) {
         return;
     }
 
@@ -1244,7 +1368,34 @@ NS_ASSUME_NONNULL_END
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:style];
 }
 
+- (void)openAuthorizationSettings {
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      NSURL *URL = [NSURL URLWithString:@"prefs:root=Kayoko"];
+      Class workspaceClass = NSClassFromString(@"LSApplicationWorkspace");
+      if (!URL || ![workspaceClass respondsToSelector:@selector(defaultWorkspace)]) {
+          NSLog(@"Kayoko: LSApplicationWorkspace is unavailable for opening Settings");
+          return;
+      }
+
+      LSApplicationWorkspace *workspace = [workspaceClass defaultWorkspace];
+      if (![workspace respondsToSelector:@selector(openSensitiveURL:withOptions:error:)]) {
+          NSLog(@"Kayoko: LSApplicationWorkspace cannot open sensitive URLs");
+          return;
+      }
+
+      NSError *error = nil;
+      if (![workspace openSensitiveURL:URL withOptions:@{} error:&error]) {
+          NSLog(@"Kayoko: Failed to open Kayoko Settings: %@", error);
+      }
+    });
+}
+
 - (void)reload {
+    if ([self isAuthorizationRequired]) {
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+        return;
+    }
+
     NSString *historyKey = [self effectiveActiveHistoryKey];
     [self reloadTableViewForHistoryKey:historyKey
                 animatingTopInsertions:![self isHidden] && [historyKey isEqualToString:kKayokoHistoryKeyHistory]
@@ -1289,6 +1440,13 @@ NS_ASSUME_NONNULL_END
     NSString *initialHistoryKey = [self historyKeyForInitialViewMode];
     if ([initialHistoryKey length] > 0) {
         [[self historyController] setActiveHistoryKey:initialHistoryKey];
+    }
+
+    if ([self isAuthorizationRequired]) {
+        [self setPreparingToShow:NO];
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+        [[self panelPresentationController] showPanelWithCompletion:nil];
+        return;
     }
 
     NSString *historyKey = [self effectiveActiveHistoryKey];

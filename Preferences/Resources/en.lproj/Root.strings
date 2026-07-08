@@ -5,11 +5,11 @@
 "Activation Methods" = "Activation Methods";
 "Advanced Options" = "Advanced Options";
 "Appearance" = "Appearance";
+"Authorization Not Found" = "Authorization Not Found";
 "Automatically Paste" = "Automatically Paste";
 "Behaviors" = "Behaviors";
 "CUSTOM_TAGS" = "Custom Tags…";
 "Cancel" = "Cancel";
-"Authorization Not Found" = "Authorization Not Found";
 "Check Product Authorization" = "Check Product Authorization";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.";
 "Credits" = "Credits";
@@ -54,8 +54,8 @@
 "Single Line" = "Single Line";
 "Supports" = "Supports";
 "Swipe to Select Words" = "Swipe to Select Words";
-"The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123).";
 "The network request failed." = "The network request failed.";
+"The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123).";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "This option requires restarting SpringBoard to apply. Do you want to restart now?";
 "Tools" = "Tools";
 "Touch Outside to Dismiss" = "Touch Outside to Dismiss";
