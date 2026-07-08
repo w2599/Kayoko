@@ -1,7 +1,5 @@
 #import <UIKit/UIKit.h>
 
-NS_ASSUME_NONNULL_BEGIN
-
 @class FBScene;
 @class UIApplicationSceneSettings;
 
@@ -11,6 +9,8 @@ typedef NS_ENUM(NSUInteger, KayokoKeyboardHostKind) {
     KayokoKeyboardHostKindSpringBoard,
     KayokoKeyboardHostKindSpotlight
 };
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoKeyboardHostContext : NSObject
 

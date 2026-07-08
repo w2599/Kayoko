@@ -93,9 +93,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initPrivate;
 - (nullable KayokoKeyboardHostContext *)keyboardHostContextForCurrentInputKayokoOwned:(BOOL)kayokoOwned;
 - (nullable KayokoKeyboardHostContext *)keyboardHostContextForScene:(FBScene *)hostScene
-                                                        identifier:(NSString *)identifier
-                                                      kayokoOwned:(BOOL)kayokoOwned
-                                                           cached:(BOOL)cached;
+                                                         identifier:(NSString *)identifier
+                                                        kayokoOwned:(BOOL)kayokoOwned
+                                                             cached:(BOOL)cached;
 - (nullable FBScene *)keyboardHostSceneWithIdentifier:(NSString *_Nullable *_Nullable)identifier;
 - (nullable UIResponder *)activeKeyboardInputDelegate;
 - (BOOL)objectHasKayokoClassPrefix:(id)object;
@@ -182,26 +182,22 @@ NS_ASSUME_NONNULL_END
 
 - (KayokoKeyboardHostContext *)effectiveExternalKeyboardHostContext {
     BOOL kayokoOwned = [self currentKeyboardInputIsKayokoOwned];
-    KayokoKeyboardHostContext *currentContext =
-        [self keyboardHostContextForCurrentInputKayokoOwned:kayokoOwned];
+    KayokoKeyboardHostContext *currentContext = [self keyboardHostContextForCurrentInputKayokoOwned:kayokoOwned];
     if (currentContext && !currentContext.isKayokoOwned) {
-        return currentContext;
-    }
-
-    if (!kayokoOwned) {
         return currentContext;
     }
 
     KayokoKeyboardHostContext *cachedContext = [self.lastExternalKeyboardHostContext contextMarkedCached];
     if (cachedContext) {
-        HBLogDebug(@"Kayoko: keyboard host resolver using cached external host because current input is Kayoko-owned "
+        HBLogDebug(@"Kayoko: keyboard host resolver using cached external host because current input is %@ "
                    @"currentScene=%@ cachedScene=%@ cachedKind=%@ helperFlag=%lld",
-                   currentContext.identifier ?: @"nil", cachedContext.identifier,
-                   [[self class] stringForHostKind:cachedContext.kind], cachedContext.helperInjectedFlag);
+                   kayokoOwned ? @"Kayoko-owned" : @"unavailable", currentContext.identifier ?: @"nil",
+                   cachedContext.identifier, [[self class] stringForHostKind:cachedContext.kind],
+                   cachedContext.helperInjectedFlag);
     } else {
-        HBLogDebug(@"Kayoko: keyboard host resolver has Kayoko-owned input but no cached external host "
+        HBLogDebug(@"Kayoko: keyboard host resolver has %@ input but no cached external host "
                    @"currentScene=%@",
-                   currentContext.identifier ?: @"nil");
+                   kayokoOwned ? @"Kayoko-owned" : @"unavailable", currentContext.identifier ?: @"nil");
     }
     return cachedContext;
 }
@@ -229,8 +225,7 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    if ([scene respondsToSelector:@selector(identifier)] &&
-        [self stringMatchesSpringBoard:[scene identifier]]) {
+    if ([scene respondsToSelector:@selector(identifier)] && [self stringMatchesSpringBoard:[scene identifier]]) {
         return YES;
     }
 
@@ -267,8 +262,8 @@ NS_ASSUME_NONNULL_END
 
     KayokoKeyboardHostContext *context = [self keyboardHostContextForScene:hostScene
                                                                 identifier:hostSceneIdentifier
-                                                              kayokoOwned:kayokoOwned
-                                                                   cached:NO];
+                                                               kayokoOwned:kayokoOwned
+                                                                    cached:NO];
     if (context && !kayokoOwned) {
         self.lastExternalKeyboardHostContext = context;
     }
@@ -277,8 +272,8 @@ NS_ASSUME_NONNULL_END
 
 - (KayokoKeyboardHostContext *)keyboardHostContextForScene:(FBScene *)hostScene
                                                 identifier:(NSString *)identifier
-                                              kayokoOwned:(BOOL)kayokoOwned
-                                                   cached:(BOOL)cached {
+                                               kayokoOwned:(BOOL)kayokoOwned
+                                                    cached:(BOOL)cached {
     BOOL helperMarkerAvailable = NO;
     long long helperInjectedFlag = 0;
 

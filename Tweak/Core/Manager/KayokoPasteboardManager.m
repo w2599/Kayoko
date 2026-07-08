@@ -6,9 +6,9 @@
 //
 
 #import "KayokoPasteboardManager.h"
-#import "KayokoKeyboardHostResolver.h"
 #import "KayokoHistoryChangeNotifier.h"
 #import "KayokoHistoryRepository.h"
+#import "KayokoKeyboardHostResolver.h"
 #import "KayokoKeyboardShortcutSender.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPasteboardItem.h"
@@ -853,15 +853,15 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    BOOL springBoardHost = hostContext.kind == KayokoKeyboardHostKindSpringBoard ||
-                           hostContext.kind == KayokoKeyboardHostKindSpotlight;
+    BOOL springBoardHost =
+        hostContext.kind == KayokoKeyboardHostKindSpringBoard || hostContext.kind == KayokoKeyboardHostKindSpotlight;
     BOOL usesClassic = springBoardHost || [hostContext isHelperInjected];
     HBLogDebug(@"Kayoko: automatic paste auto mode using %@ keyboard host scene=%@ kind=%@ cached=%@ "
                @"helperMarkerAvailable=%@ helperFlag=%lld injected=%@",
                hostContext.isCached ? @"cached external" : @"current", hostContext.identifier,
-               [KayokoKeyboardHostResolver stringForHostKind:hostContext.kind],
-               hostContext.isCached ? @"YES" : @"NO", hostContext.helperMarkerAvailable ? @"YES" : @"NO",
-               hostContext.helperInjectedFlag, hostContext.isHelperInjected ? @"YES" : @"NO");
+               [KayokoKeyboardHostResolver stringForHostKind:hostContext.kind], hostContext.isCached ? @"YES" : @"NO",
+               hostContext.helperMarkerAvailable ? @"YES" : @"NO", hostContext.helperInjectedFlag,
+               hostContext.isHelperInjected ? @"YES" : @"NO");
     return usesClassic;
 }
 
