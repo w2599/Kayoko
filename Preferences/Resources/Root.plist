@@ -154,7 +154,7 @@
 			<key>detail</key>
 			<string>KayokoTagManagementViewController</string>
 			<key>label</key>
-			<string>Custom Tags…</string>
+			<string>CUSTOM_TAGS</string>
 		</dict>
 
 		<dict>
