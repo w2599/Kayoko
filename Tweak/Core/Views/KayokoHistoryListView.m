@@ -14,6 +14,7 @@ static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 static CGFloat const kKayokoHistoryListViewVerticalFadeHeight = 20;
+static CGFloat const kKayokoNoSearchResultsPlaceholderMinimumHeight = 96;
 static NSTimeInterval const kKayokoHistoryListViewTransientContentOffsetPreservationDuration = 1.0;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -81,7 +82,7 @@ NS_ASSUME_NONNULL_END
 - (CGFloat)noSearchResultsPlaceholderHeight {
     CGFloat headerHeight = [self hiddenHeaderOffsetY];
     CGFloat availableHeight = CGRectGetHeight([self bounds]) - headerHeight - [self keyboardBottomInset];
-    return ceil(MAX(availableHeight, 1));
+    return ceil(MAX(availableHeight, kKayokoNoSearchResultsPlaceholderMinimumHeight));
 }
 
 - (void)updateNoSearchResultsPlaceholderLayout {

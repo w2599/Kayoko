@@ -14,6 +14,7 @@
 #import <UIKit/UIKit.h>
 
 static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
+static CGFloat const kKayokoTagPlaceholderMinimumHeight = 96.0;
 
 @interface KayokoTagManagementViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating,
                                                  UISearchControllerDelegate>
@@ -704,7 +705,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 - (CGFloat)placeholderHeight {
     CGFloat availableHeight = CGRectGetHeight([[self tableView] bounds]) - [self automaticTopInset] -
                               [self automaticBottomInset] - [self keyboardBottomInset] - [self placeholderTopOffset];
-    return floor(MAX(availableHeight, 1.0));
+    return floor(MAX(availableHeight, kKayokoTagPlaceholderMinimumHeight));
 }
 
 - (CGFloat)placeholderTopOffset {
