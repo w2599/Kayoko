@@ -247,6 +247,13 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Authorization Overlay
 
 - (void)beginAuthorizationCheckIfNeededRestartingExistingOverlay:(BOOL)restartExistingOverlay {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:restartExistingOverlay];
+        });
+        return;
+    }
+
     if (_authorizationCheckInProgress) {
         return;
     }
@@ -266,14 +273,9 @@ NS_ASSUME_NONNULL_END
     [self showAuthorizationOverlayChecking];
 
     NSString *updaterPath = [self kayokoUpdaterPath];
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
       [self runCredentialSyncTaskAtPath:updaterPath];
-      dispatch_async(dispatch_get_main_queue(), ^{
-        if (generation != self->_authorizationCheckGeneration) {
-            return;
-        }
-        [self checkMirroredPurchaseForGeneration:generation];
-      });
+      [self checkMirroredPurchaseForGeneration:generation];
     });
 }
 
@@ -312,6 +314,13 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)checkMirroredPurchaseForGeneration:(NSUInteger)generation {
+    if ([NSThread isMainThread]) {
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+          [self checkMirroredPurchaseForGeneration:generation];
+        });
+        return;
+    }
+
     [KayokoPurchaseAuthorization checkMirroredPurchaseWithCompletion:^(KayokoPurchaseAuthorizationResult *result) {
       dispatch_async(dispatch_get_main_queue(), ^{
         if (generation != self->_authorizationCheckGeneration) {
