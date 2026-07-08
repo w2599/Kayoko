@@ -152,11 +152,25 @@ NS_ASSUME_NONNULL_END
     return [[self panelView] hitTest:[recognizer locationInView:[self panelView]] withEvent:nil];
 }
 
-- (nullable UIScrollView *)nearestScrollViewFromView:(UIView *)view {
+- (BOOL)scrollViewParticipatesInVerticalPanelPanGate:(UIScrollView *)scrollView {
+    if (![scrollView isScrollEnabled]) {
+        return NO;
+    }
+
+    UIEdgeInsets adjustedInset = [scrollView adjustedContentInset];
+    CGFloat visibleHeight = CGRectGetHeight([scrollView bounds]) - adjustedInset.top - adjustedInset.bottom;
+    CGFloat contentHeight = [scrollView contentSize].height;
+    return [scrollView alwaysBounceVertical] || contentHeight > visibleHeight + kKayokoPanelPanScrollViewTopTolerance;
+}
+
+- (nullable UIScrollView *)verticalPanelPanGateScrollViewFromView:(UIView *)view {
     UIView *currentView = view;
     while (currentView && currentView != [self panelView]) {
         if ([currentView isKindOfClass:[UIScrollView class]]) {
-            return (UIScrollView *)currentView;
+            UIScrollView *scrollView = (UIScrollView *)currentView;
+            if ([self scrollViewParticipatesInVerticalPanelPanGate:scrollView]) {
+                return scrollView;
+            }
         }
         currentView = [currentView superview];
     }
@@ -217,8 +231,8 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    UIScrollView *scrollView = [self nearestScrollViewFromView:touchView];
-    return !scrollView || ![scrollView isScrollEnabled] || [self isScrollViewAtTopBoundary:scrollView];
+    UIScrollView *scrollView = [self verticalPanelPanGateScrollViewFromView:touchView];
+    return !scrollView || [self isScrollViewAtTopBoundary:scrollView];
 }
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
@@ -313,7 +327,7 @@ NS_ASSUME_NONNULL_END
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     if (gestureRecognizer == [self panGestureRecognizer]) {
         [self setPanGestureTouchView:[touch view]];
-        UIScrollView *scrollView = [self nearestScrollViewFromView:[touch view]];
+        UIScrollView *scrollView = [self verticalPanelPanGateScrollViewFromView:[touch view]];
         if (scrollView) {
             [self makeScrollViewPanGestureRecognizerWaitForPanelPanIfNeeded:scrollView];
         }

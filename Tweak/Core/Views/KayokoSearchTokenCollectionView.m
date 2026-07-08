@@ -5,12 +5,51 @@
 
 #import "KayokoSearchTokenCollectionView.h"
 
+@interface KayokoSearchTokenFlowLayout : UICollectionViewFlowLayout
+@end
+
+@implementation KayokoSearchTokenFlowLayout
+
+- (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect {
+    NSArray<UICollectionViewLayoutAttributes *> *attributes = [super layoutAttributesForElementsInRect:rect];
+    if ([self scrollDirection] != UICollectionViewScrollDirectionVertical) {
+        return attributes;
+    }
+
+    NSMutableArray<UICollectionViewLayoutAttributes *> *adjustedAttributes =
+        [[NSMutableArray alloc] initWithCapacity:[attributes count]];
+    CGFloat currentRowMinY = CGFLOAT_MAX;
+    CGFloat currentX = [self sectionInset].left;
+    for (UICollectionViewLayoutAttributes *attribute in attributes) {
+        UICollectionViewLayoutAttributes *adjustedAttribute = [attribute copy];
+        if ([adjustedAttribute representedElementCategory] != UICollectionElementCategoryCell) {
+            [adjustedAttributes addObject:adjustedAttribute];
+            continue;
+        }
+
+        CGRect frame = [adjustedAttribute frame];
+        if (fabs(CGRectGetMinY(frame) - currentRowMinY) > 0.5) {
+            currentRowMinY = CGRectGetMinY(frame);
+            currentX = [self sectionInset].left;
+        }
+
+        frame.origin.x = currentX;
+        [adjustedAttribute setFrame:frame];
+        currentX += CGRectGetWidth(frame) + [self minimumInteritemSpacing];
+        [adjustedAttributes addObject:adjustedAttribute];
+    }
+
+    return adjustedAttributes;
+}
+
+@end
+
 @implementation KayokoSearchTokenCollectionView
 
 - (instancetype)initWithItemSize:(CGSize)itemSize
                      itemSpacing:(CGFloat)itemSpacing
           horizontalContentInset:(CGFloat)horizontalContentInset {
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    UICollectionViewFlowLayout *layout = [[KayokoSearchTokenFlowLayout alloc] init];
     [layout setScrollDirection:UICollectionViewScrollDirectionHorizontal];
     [layout setItemSize:itemSize];
     [layout setMinimumInteritemSpacing:itemSpacing];
