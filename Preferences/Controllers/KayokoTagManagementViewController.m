@@ -141,7 +141,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     __weak typeof(self) weakSelf = self;
     [_keyboardAvoidanceCoordinator setKeyboardBottomInsetChangeHandler:^(CGFloat keyboardBottomInset) {
       [weakSelf setKeyboardBottomInset:keyboardBottomInset];
-      [[weakSelf placeholderView] setKeyboardBottomInset:keyboardBottomInset];
+      [weakSelf updatePlaceholderLayout];
       [[weakSelf placeholderView] layoutIfNeeded];
     }];
 }
@@ -442,6 +442,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     (void)searchController;
     [self refreshFilteredTags];
     [[self tableView] reloadData];
+    [self updatePlaceholderVisibility];
     [self syncDisplayedSelectionState];
     [self updateToolbarItems];
 }
@@ -453,6 +454,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     BOOL wasSearching = [self isSearching];
     [self setSearchInterfaceActive:YES];
     [self reloadTableForSearchStateChangeFromSearching:wasSearching];
+    [self updatePlaceholderVisibility];
     [self updateToolbarItems];
 }
 
@@ -461,6 +463,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     BOOL wasSearching = [self isSearching];
     [self setSearchInterfaceActive:NO];
     [self reloadTableForSearchStateChangeFromSearching:wasSearching];
+    [self updatePlaceholderVisibility];
     [self updateToolbarItems];
 }
 
@@ -662,7 +665,9 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 }
 
 - (void)updatePlaceholderVisibility {
-    BOOL shouldShowPlaceholder = [[self tags] count] == 0;
+    BOOL showsNoSearchResultsPlaceholder = [self isFiltering] && [[self tags] count] > 0 &&
+                                           [[self filteredTags] count] == 0;
+    BOOL shouldShowPlaceholder = [[self tags] count] == 0 || showsNoSearchResultsPlaceholder;
     UIView *footerView = [[self tableView] tableFooterView];
     BOOL isShowingPlaceholder = footerView == [self placeholderView];
     if (!shouldShowPlaceholder) {
@@ -675,7 +680,8 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
     if (!isShowingPlaceholder) {
         [[self tableView] setTableFooterView:[self placeholderView]];
     }
-    [[self placeholderView] setKeyboardBottomInset:[self keyboardBottomInset]];
+    NSString *messageKey = showsNoSearchResultsPlaceholder ? @"No Search Results" : @"No Tags";
+    [[self placeholderView] setMessage:[self localizedStringForKey:messageKey]];
     [self updatePlaceholderLayout];
 }
 
@@ -697,7 +703,7 @@ static NSString *const kKayokoTagCellReuseIdentifier = @"KayokoTagCell";
 
 - (CGFloat)placeholderHeight {
     CGFloat availableHeight = CGRectGetHeight([[self tableView] bounds]) - [self automaticTopInset] -
-                              [self automaticBottomInset] - [self placeholderTopOffset];
+                              [self automaticBottomInset] - [self keyboardBottomInset] - [self placeholderTopOffset];
     return floor(MAX(availableHeight, 1.0));
 }
 
