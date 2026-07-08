@@ -23,14 +23,21 @@ static NSString *kayokoWordSelectionTextByTrimmingBoundaryNewlines(NSString *tex
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoWordSelectionViewController ()
+#pragma mark - Views
+
 @property(nonatomic, strong, readwrite) KayokoWordSelectionView *wordSelectionView;
-@property(nonatomic, copy, readwrite) NSString *name;
 @property(nonatomic, weak) UIButton *favoritesButton;
 @property(nonatomic, weak) UIButton *backButton;
 @property(nonatomic, weak) UIButton *clearButton;
+
+#pragma mark - State
+
+@property(nonatomic, copy, readwrite) NSString *name;
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *sourceItem;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+
+#pragma mark - Header
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (void)resetHeaderState;
@@ -38,6 +45,9 @@ NS_ASSUME_NONNULL_BEGIN
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
                       andTintColor:(UIColor *)color;
+
+#pragma mark - Tags
+
 - (void)configureTagBarForSourceItem:(KayokoPasteboardItem *)item;
 - (void)assignTagUUID:(nullable NSString *)tagUUID;
 @end
@@ -45,6 +55,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoWordSelectionViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithName:(NSString *)name
              favoritesButton:(UIButton *)favoritesButton
@@ -72,6 +84,8 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
+#pragma mark - Public State
+
 - (NSString *)selectedText {
     return [[self wordSelectionView] selectedText];
 }
@@ -92,6 +106,8 @@ NS_ASSUME_NONNULL_END
     [[self wordSelectionView] scrollToTopAnimated:animated];
 }
 
+#pragma mark - Header
+
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
@@ -102,6 +118,8 @@ NS_ASSUME_NONNULL_END
     [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
     [button setTintColor:color];
 }
+
+#pragma mark - Presentation
 
 - (void)showWordSelectionWithItem:(KayokoPasteboardItem *)item
                  sourceHistoryKey:(NSString *)sourceHistoryKey
@@ -134,6 +152,8 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setHidden:NO];
     [self updateActionButtonState];
 }
+
+#pragma mark - Tags
 
 - (void)configureTagBarForSourceItem:(KayokoPasteboardItem *)item {
     NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
@@ -179,6 +199,8 @@ NS_ASSUME_NONNULL_END
                           }];
 }
 
+#pragma mark - Dismissal
+
 - (void)prepareToHideWordSelection {
     [self resetHeaderState];
 }
@@ -186,6 +208,8 @@ NS_ASSUME_NONNULL_END
 - (void)hideWordSelection {
     [self resetWordSelectionState];
 }
+
+#pragma mark - Actions
 
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste {
     KayokoPasteboardItem *sourceItem = [self sourceItem];
@@ -214,6 +238,8 @@ NS_ASSUME_NONNULL_END
     [[self delegate] wordSelectionViewController:self didRequestHideContainerAfterDirectPaste:automaticallyPaste];
     [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
+
+#pragma mark - Header Helpers
 
 - (void)resetHeaderState {
     [[self clearButton] setHidden:NO];

@@ -9,16 +9,30 @@
 #import "KayokoTagColorFormatter.h"
 
 @interface KayokoTagEditorViewController () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate>
+
+#pragma mark - Data
+
 @property(nonatomic, strong) KayokoTag *tag;
 @property(nonatomic, strong) NSBundle *localizationBundle;
+
+#pragma mark - Views
+
 @property(nonatomic, strong) UITableView *tableView;
 @property(nonatomic, strong) UITextField *titleTextField;
 @property(nonatomic, strong) UIColorWell *colorWell;
+
+#pragma mark - Keyboard
+
 @property(nonatomic, strong) KayokoKeyboardAvoidanceCoordinator *keyboardAvoidanceCoordinator;
+
+#pragma mark - State
+
 @property(nonatomic, assign) BOOL didFocusTitleTextFieldInitially;
 @end
 
 @implementation KayokoTagEditorViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithTag:(KayokoTag *)tag localizationBundle:(NSBundle *)localizationBundle {
     self = [super initWithNibName:nil bundle:nil];
@@ -72,6 +86,8 @@
         [self notifyDismissalTransitionIfNeeded];
     }
 }
+
+#pragma mark - View Setup
 
 - (void)configureTableView {
     _titleTextField = [[UITextField alloc] init];
@@ -160,6 +176,8 @@
     }
 }
 
+#pragma mark - Actions
+
 - (void)cancelEditing {
     [self dismissViewControllerAnimated:YES completion:nil];
 }
@@ -183,6 +201,8 @@
                                }
                              }];
 }
+
+#pragma mark - Helpers
 
 - (NSString *)localizedStringForKey:(NSString *)key {
     return [[self localizationBundle] localizedStringForKey:key value:key table:@"Tags"] ?: key;

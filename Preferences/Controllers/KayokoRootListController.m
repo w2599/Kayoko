@@ -48,6 +48,8 @@ NS_ASSUME_NONNULL_END
     NSUInteger _authorizationCheckGeneration;
 }
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
 
@@ -73,6 +75,8 @@ NS_ASSUME_NONNULL_END
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+#pragma mark - Test Input Search
+
 - (void)configureTestInputSearchController {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
@@ -92,6 +96,8 @@ NS_ASSUME_NONNULL_END
 - (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
     (void)searchController;
 }
+
+#pragma mark - Specifiers
 
 - (NSArray<PSSpecifier *> *)specifiers {
     if (!_specifiers) {
@@ -138,6 +144,8 @@ NS_ASSUME_NONNULL_END
         }
     }
 }
+
+#pragma mark - Preference State
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
@@ -186,6 +194,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Actions
+
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification {
     [[self view] endEditing:YES];
     [super _returnKeyPressed:notification];
@@ -233,6 +243,8 @@ NS_ASSUME_NONNULL_END
         [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:YES];
     }
 }
+
+#pragma mark - Authorization Overlay
 
 - (void)beginAuthorizationCheckIfNeededRestartingExistingOverlay:(BOOL)restartExistingOverlay {
     if (_authorizationCheckInProgress) {
@@ -397,6 +409,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Credential Sync
+
 - (NSString *)kayokoUpdaterPath {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSArray<NSString *> *candidatePaths = @[
@@ -430,6 +444,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Cell Helpers
+
 - (UISlider *_Nullable)findSliderInView:(UIView *)view {
     if ([view isKindOfClass:[UISlider class]]) {
         return (UISlider *)view;
@@ -442,6 +458,8 @@ NS_ASSUME_NONNULL_END
     }
     return nil;
 }
+
+#pragma mark - UITableViewDataSource
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
@@ -519,6 +537,8 @@ NS_ASSUME_NONNULL_END
     }
     return [super tableView:tableView cellForRowAtIndexPath:indexPath];
 }
+
+#pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     if (section == 0) {

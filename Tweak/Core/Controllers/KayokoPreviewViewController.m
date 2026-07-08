@@ -20,17 +20,27 @@ static NSString *kayokoPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPreviewViewController ()
+#pragma mark - Views
+
 @property(nonatomic, strong, readwrite) KayokoPreviewView *previewView;
 @property(nonatomic, weak) UIButton *favoritesButton;
 @property(nonatomic, weak) UIButton *backButton;
 @property(nonatomic, weak) UIButton *clearButton;
+
+#pragma mark - State
+
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *previewItem;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
 
+#pragma mark - Header
+
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item;
 - (NSString *)actionAccessibilityLabelKeyForItem:(KayokoPasteboardItem *)item;
+
+#pragma mark - Tags
+
 - (void)configureTagBarForPreviewItem:(KayokoPasteboardItem *)item;
 - (void)assignTagUUID:(nullable NSString *)tagUUID;
 @end
@@ -38,6 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoPreviewViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
                              backButton:(UIButton *)backButton
@@ -57,6 +69,8 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
+#pragma mark - Header
+
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
@@ -67,6 +81,8 @@ NS_ASSUME_NONNULL_END
     [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
     [button setTintColor:color];
 }
+
+#pragma mark - Presentation
 
 - (void)showPreviewWithItem:(KayokoPasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey {
     [self setPreviewItem:item];
@@ -106,6 +122,8 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setAlpha:1.0];
 }
 
+#pragma mark - Tags
+
 - (void)configureTagBarForPreviewItem:(KayokoPasteboardItem *)item {
     NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
     __weak typeof(self) weakSelf = self;
@@ -116,11 +134,15 @@ NS_ASSUME_NONNULL_END
                                }];
 }
 
+#pragma mark - Feedback
+
 - (void)triggerLightFeedback {
     UIImpactFeedbackGenerator *feedbackGenerator =
         [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [feedbackGenerator impactOccurred];
 }
+
+#pragma mark - Actions
 
 - (void)assignTagUUID:(NSString *)tagUUID {
     KayokoPasteboardItem *item = [self previewItem];
@@ -196,6 +218,8 @@ NS_ASSUME_NONNULL_END
     [[self actionHandler] copyItem:item completion:completion];
 }
 
+#pragma mark - Dismissal
+
 - (void)prepareToHidePreview {
     [[self clearButton] setHidden:NO];
     [[self backButton] setHidden:YES];
@@ -235,6 +259,8 @@ NS_ASSUME_NONNULL_END
 - (void)scrollToTopAnimated:(BOOL)animated {
     [[self previewView] scrollToTopAnimated:animated];
 }
+
+#pragma mark - Header Helpers
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
     BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];

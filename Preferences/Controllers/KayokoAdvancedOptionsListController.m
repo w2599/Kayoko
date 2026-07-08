@@ -18,6 +18,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 
 @implementation KayokoAdvancedOptionsListController
 
+#pragma mark - Specifiers
+
 - (NSArray<PSSpecifier *> *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"AdvancedOptions" target:self];
@@ -26,6 +28,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     return _specifiers;
 }
 
+#pragma mark - Preference Writing
+
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     [super setPreferenceValue:value specifier:specifier];
 
@@ -33,6 +37,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
         [self promptToRespring];
     }
 }
+
+#pragma mark - Prompts
 
 - (void)resetPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
@@ -176,6 +182,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [self presentViewController:clearAlert animated:YES completion:nil];
 }
 
+#pragma mark - Data Directory
+
 - (void)checkDataDirectory {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kKayokoNotificationKeyCoreCheckpointHistory, nil, nil, YES);
@@ -237,6 +245,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+#pragma mark - Authorization
+
 - (void)deactivateAuthorization {
     NSError *error = nil;
     if (![KayokoPurchaseAuthorization clearAuthorizationStateWithError:&error]) {
@@ -267,6 +277,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [alert addAction:action];
     [self presentViewController:alert animated:YES completion:nil];
 }
+
+#pragma mark - Maintenance Actions
 
 - (void)resetPreferences {
     NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
@@ -310,6 +322,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [alert addAction:action];
     [self presentViewController:alert animated:YES completion:nil];
 }
+
+#pragma mark - UITableViewDataSource
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];

@@ -18,25 +18,41 @@ static CGFloat const kKayokoTagPlaceholderMinimumHeight = 96.0;
 
 @interface KayokoTagManagementViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating,
                                                  UISearchControllerDelegate>
+#pragma mark - Views
+
 @property(nonatomic, strong) UITableView *tableView;
 @property(nonatomic, strong) KayokoTagPlaceholderView *placeholderView;
 @property(nonatomic, strong) UISearchController *searchController;
+
+#pragma mark - Data
+
 @property(nonatomic, strong) NSMutableArray<KayokoTag *> *tags;
 @property(nonatomic, strong) NSMutableArray<KayokoTag *> *filteredTags;
 @property(nonatomic, strong) NSMutableSet<NSString *> *selectedTagUUIDs;
 @property(nonatomic, strong) KayokoTagStore *tagStore;
 @property(nonatomic, strong) NSBundle *localizationBundle;
+
+#pragma mark - Keyboard
+
 @property(nonatomic, strong) KayokoKeyboardAvoidanceCoordinator *keyboardAvoidanceCoordinator;
+
+#pragma mark - Toolbar
+
 @property(nonatomic, strong) UIBarButtonItem *toolbarFlexibleSpaceItem;
 @property(nonatomic, strong) UIBarButtonItem *addToolbarItem;
 @property(nonatomic, strong) UIBarButtonItem *selectToolbarItem;
 @property(nonatomic, strong) UIBarButtonItem *deleteToolbarItem;
+
+#pragma mark - State
+
 @property(nonatomic, assign, getter=isSearchInterfaceActive) BOOL searchInterfaceActive;
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 @property(nonatomic, assign, getter=isUpdatingPlaceholderLayout) BOOL updatingPlaceholderLayout;
 @end
 
 @implementation KayokoTagManagementViewController
+
+#pragma mark - Lifecycle
 
 - (void)loadView {
     UIView *view = [[UIView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];

@@ -14,6 +14,8 @@
 
 @implementation KayokoEdgeFadeMaskController
 
+#pragma mark - Lifecycle
+
 - (instancetype)initWithScrollView:(UIScrollView *)scrollView {
     self = [super init];
     if (self) {
@@ -26,6 +28,8 @@
     return self;
 }
 
+#pragma mark - Layers
+
 - (CAGradientLayer *)newMaskLayer {
     CAGradientLayer *gradientLayer = [CAGradientLayer layer];
     [gradientLayer setStartPoint:CGPointMake(0, 0.5)];
@@ -36,6 +40,8 @@
     [gradientLayer setLocations:@[ @0, @1 ]];
     return gradientLayer;
 }
+
+#pragma mark - Configuration
 
 - (void)setFadeWidth:(CGFloat)fadeWidth {
     CGFloat normalizedFadeWidth = MAX(fadeWidth, 0.0);
@@ -85,6 +91,8 @@
     _enabled = enabled;
     [self updateMask];
 }
+
+#pragma mark - Mask Updates
 
 - (void)updateMask {
     UIScrollView *scrollView = [self scrollView];

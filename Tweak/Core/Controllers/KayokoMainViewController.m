@@ -39,24 +39,38 @@ NS_ASSUME_NONNULL_BEGIN
                                         KayokoPanelPresentationControllerDelegate, KayokoSearchControllerDelegate,
                                         KayokoHistoryListViewControllerDelegate,
                                         KayokoWordSelectionViewControllerDelegate, UIGestureRecognizerDelegate>
+#pragma mark - Views
+
 @property(nonatomic, strong) KayokoMainView *mainView;
-@property(nonatomic, copy, nullable) NSString *clearConfirmationHistoryKey;
-@property(nonatomic, strong) KayokoHistoryController *historyController;
-@property(nonatomic, strong) KayokoHistoryListViewController *historyListViewController;
-@property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
 @property(nonatomic, strong) KayokoEmptyStateView *historyEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *favoritesEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *storageErrorView;
 @property(nonatomic, strong) KayokoEmptyStateView *authorizationRequiredView;
-@property(nonatomic, strong, nullable) NSError *storageError;
-@property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
+
+#pragma mark - Child Controllers
+
+@property(nonatomic, strong) KayokoHistoryListViewController *historyListViewController;
+@property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
 @property(nonatomic, strong) KayokoWordSelectionViewController *wordSelectionViewController;
+
+#pragma mark - Coordinators
+
+@property(nonatomic, strong) KayokoHistoryController *historyController;
+@property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
 @property(nonatomic, strong) KayokoSearchController *searchController;
+
+#pragma mark - State
+
+@property(nonatomic, copy, nullable) NSString *clearConfirmationHistoryKey;
+@property(nonatomic, strong, nullable) NSError *storageError;
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
 @property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
+
+#pragma mark - Transient Content
+
 @property(nonatomic, assign) BOOL restoresSearchFirstResponderAfterTransientContent;
 @property(nonatomic, assign) BOOL hasSearchContentOffsetBeforeTransientContent;
 @property(nonatomic, assign) CGPoint searchContentOffsetBeforeTransientContent;
@@ -71,6 +85,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoMainViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithNibName:nil bundle:nil];
@@ -194,6 +210,8 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
+#pragma mark - Configuration
+
 - (BOOL)isHidden {
     return [[self mainView] isHidden];
 }
@@ -254,6 +272,8 @@ NS_ASSUME_NONNULL_END
     return ![self isAuthorizationPassed];
 }
 
+#pragma mark - Layout and Lookup
+
 - (void)handleViewLayout {
     [[self searchController] layout];
 }
@@ -280,6 +300,8 @@ NS_ASSUME_NONNULL_END
     return [self activeListViewController];
 }
 
+#pragma mark - KayokoSearchControllerDelegate
+
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController {
     [[self mainView] setAnimating:YES];
     [[self panelPresentationController] finishOutsideDismissOverlayShow];
@@ -299,6 +321,8 @@ NS_ASSUME_NONNULL_END
     [[self authorizationRequiredView] setKeyboardBottomInset:keyboardBottomInset];
 }
 
+#pragma mark - UIGestureRecognizerDelegate
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     if (gestureRecognizer == [self transientEdgeBackGestureRecognizer]) {
         return [self canBeginTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)gestureRecognizer];
@@ -306,6 +330,8 @@ NS_ASSUME_NONNULL_END
 
     return YES;
 }
+
+#pragma mark - KayokoPanelPresentationControllerDelegate
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
     [self hideRestoringFocus];
@@ -367,6 +393,8 @@ NS_ASSUME_NONNULL_END
     [[self searchController] handleFullscreenPanGestureRecognizer:recognizer beganInHeaderView:beganInHeaderView];
 }
 
+#pragma mark - KayokoHistoryControllerDelegate
+
 - (BOOL)historyControllerIsPanelVisible:(KayokoHistoryController *)controller {
     return ![self isHidden];
 }
@@ -397,6 +425,8 @@ NS_ASSUME_NONNULL_END
     [[self searchController] handleApplicationMetadataChanged];
 }
 
+#pragma mark - KayokoHistoryListViewControllerDelegate
+
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
     [self hideRestoringFocus];
 }
@@ -423,6 +453,8 @@ NS_ASSUME_NONNULL_END
                      movedFromHistoryKey:sourceHistoryKey
                             toHistoryKey:destinationHistoryKey];
 }
+
+#pragma mark - Content Lookup
 
 - (KayokoHistoryListView *)tableViewForHistoryKey:(NSString *)historyKey {
     return [[self historyController] tableViewForHistoryKey:historyKey];
@@ -523,6 +555,8 @@ NS_ASSUME_NONNULL_END
     return nil;
 }
 
+#pragma mark - History Content
+
 - (void)setHistoryContentVisibleForKey:(NSString *)historyKey {
     [[self historyController] setActiveHistoryKey:historyKey];
     UIView *contentView = [self contentViewForHistoryKey:historyKey];
@@ -613,6 +647,8 @@ NS_ASSUME_NONNULL_END
     [[self historyController] reloadTableViewForHistoryKey:historyKey completion:completion];
 }
 
+#pragma mark - Clear Confirmation
+
 - (void)showClearConfirmationForHistoryKey:(NSString *)historyKey {
     [[self historyController] setActiveHistoryKey:historyKey];
     [self setClearConfirmationHistoryKey:historyKey];
@@ -684,6 +720,8 @@ NS_ASSUME_NONNULL_END
     return [self clearConfirmationHistoryKey] && ![[[self clearConfirmationViewController] confirmationView] isHidden];
 }
 
+#pragma mark - Content State
+
 - (void)updateClearButtonState {
     if ([self isAuthorizationRequired]) {
         [[self mainView] setClearButtonEnabledForItemCount:0];
@@ -726,6 +764,8 @@ NS_ASSUME_NONNULL_END
                                title:[self titleForContentView:viewToShow]
                            direction:KayokoContentTransitionDirectionForward];
 }
+
+#pragma mark - Transient Content
 
 - (BOOL)isPreviewActive {
     return ![[[self previewViewController] previewView] isHidden] || [[self previewViewController] previewItem] != nil;
@@ -963,6 +1003,8 @@ NS_ASSUME_NONNULL_END
     [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
 }
 
+#pragma mark - Header State
+
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
     BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
     NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
@@ -1008,6 +1050,8 @@ NS_ASSUME_NONNULL_END
     [[favoritesButton imageView] setClipsToBounds:NO];
     [self updateFavoritesButtonForHistoryKey:historyKey];
 }
+
+#pragma mark - Content Presentation
 
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
@@ -1082,6 +1126,8 @@ NS_ASSUME_NONNULL_END
         [[self searchController] maintainSearchBarVisibilityForListViewController:[self activeListViewController]];
     }
 }
+
+#pragma mark - Actions
 
 - (void)handleFavoritesButtonPressed {
     if ([[self panelPresentationController] isAnimating]) {
@@ -1228,6 +1274,8 @@ NS_ASSUME_NONNULL_END
     [[self activeListViewController] scrollToTopAnimated:YES];
 }
 
+#pragma mark - Item Handling
+
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
                           toHistoryKey:(NSString *)destinationHistoryKey {
@@ -1242,6 +1290,8 @@ NS_ASSUME_NONNULL_END
     }
     [[self listViewControllerForHistoryKey:historyKey] updateTagUUID:[item tagUUID] forItem:item];
 }
+
+#pragma mark - Transient Presentation
 
 - (void)showContentForItem:(KayokoPasteboardItem *)item {
     BOOL restoresSearchFirstResponder = [[self searchController] isActiveSearchFirstResponder];
@@ -1336,6 +1386,8 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+#pragma mark - KayokoClearConfirmationViewControllerDelegate
+
 - (void)clearConfirmationViewControllerDidCancel:(KayokoClearConfirmationViewController *)controller {
     if ([[self panelPresentationController] isAnimating]) {
         return;
@@ -1354,6 +1406,8 @@ NS_ASSUME_NONNULL_END
               didFailClearingHistoryKey:(NSString *)historyKey {
 }
 
+#pragma mark - KayokoWordSelectionViewControllerDelegate
+
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
     didRequestHideContainerAfterDirectPaste:(BOOL)directPaste {
     if (directPaste) {
@@ -1367,6 +1421,8 @@ NS_ASSUME_NONNULL_END
      triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style {
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:style];
 }
+
+#pragma mark - Authorization
 
 - (void)openAuthorizationSettings {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
@@ -1389,6 +1445,8 @@ NS_ASSUME_NONNULL_END
       }
     });
 }
+
+#pragma mark - Public API
 
 - (void)reload {
     if ([self isAuthorizationRequired]) {
@@ -1470,6 +1528,8 @@ NS_ASSUME_NONNULL_END
                               [[self panelPresentationController] showPanelWithCompletion:nil];
                             }];
 }
+
+#pragma mark - Hiding
 
 - (void)hide {
     [self hideWithCompletion:nil];

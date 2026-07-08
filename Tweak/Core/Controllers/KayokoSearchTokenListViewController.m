@@ -21,14 +21,22 @@ static NSUInteger const kKayokoSearchTokenMaximumVerticalAppTokenCount = 2;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchTokenListViewController () <UICollectionViewDataSource, UICollectionViewDelegate>
+#pragma mark - Views
+
 @property(nonatomic, strong) KayokoSearchTokenSectionView *categorySectionView;
 @property(nonatomic, strong) KayokoSearchTokenSectionView *tagSectionView;
 @property(nonatomic, strong) KayokoSearchTokenSectionView *appSectionView;
+
+#pragma mark - Data
+
 @property(nonatomic, strong) NSArray<KayokoSearchToken *> *categoryTokens;
 @property(nonatomic, strong) NSArray<KayokoSearchToken *> *tagTokens;
 @property(nonatomic, strong) NSArray<KayokoSearchToken *> *appTokens;
 @property(nonatomic, strong) KayokoSearchCriteria *searchCriteria;
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
+
+#pragma mark - Layout State
+
 @property(nonatomic, assign) CGFloat lastPreferredHeight;
 @property(nonatomic, assign) BOOL needsCategoryContentOffsetReset;
 @property(nonatomic, assign) BOOL needsTagContentOffsetReset;
@@ -38,6 +46,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoSearchTokenListViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)init {
     self = [super initWithNibName:nil bundle:nil];
@@ -53,6 +63,8 @@ NS_ASSUME_NONNULL_END
     }
     return self;
 }
+
+#pragma mark - View Setup
 
 - (void)loadView {
     UIView *view = [[UIView alloc] init];
@@ -83,6 +95,8 @@ NS_ASSUME_NONNULL_END
     [collectionView registerClass:[KayokoSearchTokenCollectionViewCell class]
         forCellWithReuseIdentifier:[KayokoSearchTokenCollectionViewCell reuseIdentifier]];
 }
+
+#pragma mark - Token Sources
 
 - (NSArray<KayokoSearchToken *> *)newCategoryTokens {
     NSBundle *bundle = [KayokoPasteboardManager localizationBundle];
@@ -117,6 +131,8 @@ NS_ASSUME_NONNULL_END
                                imageName:@"photo.fill"]
     ];
 }
+
+#pragma mark - State
 
 - (BOOL)showsCategorySection {
     return ![[self searchCriteria] hasCategoryToken];
@@ -201,6 +217,8 @@ NS_ASSUME_NONNULL_END
         [self notifyContentHeightIfNeeded];
     }
 }
+
+#pragma mark - Layout
 
 - (void)updateSectionVisibility {
     BOOL showsCategory = [self showsCategorySection];
@@ -353,6 +371,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - UICollectionViewDataSource
+
 - (NSArray<KayokoSearchToken *> *)tokensForCollectionView:(UICollectionView *)collectionView {
     if (collectionView == [[self appSectionView] collectionView]) {
         return [self appTokens];
@@ -388,6 +408,8 @@ NS_ASSUME_NONNULL_END
     [cell configureWithTitle:[token title] icon:icon dotColor:dotColor dotBorderColor:dotBorderColor];
     return cell;
 }
+
+#pragma mark - UICollectionViewDelegate
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     NSArray<KayokoSearchToken *> *tokens = [self tokensForCollectionView:collectionView];

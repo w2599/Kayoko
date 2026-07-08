@@ -23,16 +23,27 @@ static CGFloat const kKayokoWordSelectionTokenBorderWidth = 0.5;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoWordSelectionView () <UIGestureRecognizerDelegate, UIScrollViewDelegate>
+#pragma mark - Views
+
 @property(nonatomic, strong) KayokoEdgeFadingScrollView *scrollView;
 @property(nonatomic, strong) UIView *contentView;
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
+
+#pragma mark - Tokens
+
 @property(nonatomic, strong) NSMutableArray<NSDictionary<NSString *, id> *> *tokens;
 @property(nonatomic, strong) NSMutableArray<KayokoWordTokenView *> *tokenButtons;
 @property(nonatomic, strong) NSMutableIndexSet *selectedTokenIndexes;
 @property(nonatomic, strong) NSMutableIndexSet *selectionGestureOriginalIndexes;
 @property(nonatomic, copy, nullable) NSString *originalText;
 @property(nonatomic, copy, readwrite) NSString *selectedText;
+
+#pragma mark - Gestures
+
 @property(nonatomic, weak) UIPanGestureRecognizer *selectionGestureRecognizer;
+
+#pragma mark - State
+
 @property(nonatomic, assign, readwrite) BOOL hasCustomSelection;
 @property(nonatomic, assign) NSUInteger selectionAnchorIndex;
 @property(nonatomic, assign) BOOL selectionGestureSelectsTokens;
@@ -41,6 +52,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoWordSelectionView
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -91,6 +104,8 @@ NS_ASSUME_NONNULL_END
 
     return self;
 }
+
+#pragma mark - Content
 
 - (void)setText:(NSString *)text {
     [self reset];
@@ -144,6 +159,8 @@ NS_ASSUME_NONNULL_END
     contentOffset.y = -[[self scrollView] adjustedContentInset].top;
     [[self scrollView] setContentOffset:contentOffset animated:animated];
 }
+
+#pragma mark - Tag Bar
 
 - (void)requireSelectionGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
     if (gestureRecognizer) {
@@ -228,6 +245,8 @@ NS_ASSUME_NONNULL_END
     [[self tagChipBarView] setSelectedTagUUID:selectedTagUUID];
 }
 
+#pragma mark - Layout
+
 - (void)layoutSubviews {
     [super layoutSubviews];
 
@@ -289,6 +308,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Gestures
+
 - (void)handleTapGesture:(UITapGestureRecognizer *)gesture {
     NSUInteger tokenIndex = [self tokenIndexAtPoint:[gesture locationInView:[self contentView]]];
     if (tokenIndex != NSNotFound) {
@@ -348,6 +369,8 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+#pragma mark - Token Selection
+
 - (NSUInteger)tokenIndexAtPoint:(CGPoint)point {
     for (KayokoWordTokenView *button in [self tokenButtons]) {
         if (CGRectContainsPoint([button frame], point)) {
@@ -404,6 +427,8 @@ NS_ASSUME_NONNULL_END
     [self updateSelectedText];
     [self updateButtonStyles];
 }
+
+#pragma mark - Styling
 
 - (void)updateButtonStyles {
     UIColor *selectedTextColor = [KayokoWordSelectionView dynamicColorWithLightWhite:0

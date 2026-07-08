@@ -12,14 +12,26 @@ static CGFloat const kKayokoPanelPanScrollViewTopTolerance = 0.5;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPanelPresentationController () <UIGestureRecognizerDelegate>
+
+#pragma mark - Views
+
 @property(nonatomic, weak) KayokoMainView *panelView;
+@property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
+
+#pragma mark - Gestures
+
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, strong) UITapGestureRecognizer *grabberTapGestureRecognizer;
 @property(nonatomic, weak, nullable) UIView *panGestureTouchView;
 @property(nonatomic, strong)
     NSHashTable<UIGestureRecognizer *> *scrollViewPanGestureRecognizersRequiringPanelPanFailure;
-@property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
+
+#pragma mark - Feedback
+
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
+
+#pragma mark - Dismissal State
+
 @property(nonatomic, assign) BOOL panGestureDidReachZeroAlpha;
 @property(nonatomic, assign) CGFloat pendingDismissTranslationY;
 @property(nonatomic, assign) CGFloat pendingDismissVelocityY;
@@ -28,6 +40,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoPanelPresentationController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithPanelView:(KayokoMainView *)panelView {
     self = [super init];
@@ -46,6 +60,8 @@ NS_ASSUME_NONNULL_END
     }
     return self;
 }
+
+#pragma mark - State
 
 - (BOOL)isAnimating {
     return [[self panelView] isAnimating];
@@ -88,11 +104,15 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Dismissal Preparation
+
 - (void)prepareStandardDismissAnimation {
     CGFloat targetTranslationY = MAX([[self panelView] bounds].size.height / 3, 120);
     [self setPendingDismissTranslationY:targetTranslationY];
     [self setPendingDismissVelocityY:0];
 }
+
+#pragma mark - Outside Dismiss Overlay
 
 - (void)handleOutsideDismissOverlayTouchDown {
     if ([self isDismissOnOutsideTouch] && ![[self panelView] isHidden] && ![self isAnimating]) {
@@ -134,6 +154,8 @@ NS_ASSUME_NONNULL_END
     [[self outsideDismissOverlayView] setAlpha:0];
     [[self outsideDismissOverlayView] setHidden:YES];
 }
+
+#pragma mark - Pan Gesture
 
 - (void)preparePanDismissAnimationWithTranslation:(CGPoint)translation velocity:(CGPoint)velocity {
     CGFloat visibleTranslationY = MAX([[self panelView] transform].ty, 0);
@@ -318,6 +340,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - UIGestureRecognizerDelegate
+
 - (CGRect)grabberTapTargetFrame {
     UIView *grabberView = (UIView *)[[self panelView] grabber];
     CGRect grabberFrame = [grabberView frame];
@@ -357,6 +381,8 @@ NS_ASSUME_NONNULL_END
 
     [[self delegate] panelPresentationControllerDidTapGrabberArea:self];
 }
+
+#pragma mark - Presentation
 
 - (void)showPanelWithCompletion:(void (^)(void))completion {
     if ([self isAnimating]) {
@@ -449,6 +475,8 @@ NS_ASSUME_NONNULL_END
         completion();
     }
 }
+
+#pragma mark - Feedback
 
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style {
     if (![self shouldPlayFeedback]) {

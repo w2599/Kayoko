@@ -54,14 +54,26 @@ typedef void (^FBSSceneClientSettingsUpdateBlock)(FBSMutableSceneClientSettings 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperFocusSession : NSObject
+
+#pragma mark - State
+
 @property(nonatomic, assign, getter=hasCapturedFocusSession) BOOL capturedFocusSession;
 @property(nonatomic, assign, getter=hasCapturedPasteboardChangeCount) BOOL capturedPasteboardChangeCount;
 @property(nonatomic, assign) NSUInteger pasteboardChangeCount;
+
+#pragma mark - Responders
+
 @property(nonatomic, weak, nullable) UIResponder *firstResponder;
 @property(nonatomic, weak, nullable) UIResponder *keyboardInputDelegate;
 @property(nonatomic, weak, nullable) UIWindow *keyWindow;
+
+#pragma mark - Lifecycle
+
 - (void)clear;
 - (void)finishCapturing;
+
+#pragma mark - Matching
+
 - (BOOL)matchesKeyWindow:(UIWindow *)keyWindow;
 @end
 
@@ -92,6 +104,9 @@ NS_ASSUME_NONNULL_END
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperPendingPasteSession : NSObject
+
+#pragma mark - State
+
 @property(nonatomic, assign, getter=hasPendingPaste) BOOL pendingPaste;
 @property(nonatomic, assign) BOOL canExecute;
 @property(nonatomic, assign) BOOL requiresKeyboardDelegate;
@@ -99,18 +114,33 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isWaitingForPasteboardVisibility) BOOL waitingForPasteboardVisibility;
 @property(nonatomic, assign) NSUInteger pasteboardChangeCountBeforePaste;
 @property(nonatomic, assign) NSUInteger token;
+
+#pragma mark - Expiration
+
 @property(nonatomic, copy, nullable) dispatch_block_t focusExpirationBlock;
 @property(nonatomic, copy, nullable) dispatch_block_t pasteboardVisibilityExpirationBlock;
 @property(nonatomic, copy, nullable) dispatch_block_t pasteboardVisibilityRecheckBlock;
+
+#pragma mark - Responders
+
 @property(nonatomic, weak, nullable) UIResponder *responder;
 @property(nonatomic, weak, nullable) UIWindow *keyWindow;
+
+#pragma mark - Scheduling
+
 - (void)scheduleFocusExpirationAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler;
 - (void)schedulePasteboardVisibilityExpirationAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler;
 - (void)schedulePasteboardVisibilityRecheckAfterDelay:(NSTimeInterval)delay handler:(dispatch_block_t)handler;
+
+#pragma mark - Cancellation
+
 - (void)cancelFocusExpirationBlock;
 - (void)cancelPasteboardVisibilityExpirationBlock;
 - (void)cancelPasteboardVisibilityRecheckBlock;
 - (void)cancelPasteboardVisibilityWait;
+
+#pragma mark - Lifecycle
+
 - (void)clear;
 @end
 
@@ -194,15 +224,26 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperRuntime ()
 
+#pragma mark - Runtime State
+
 @property(nonatomic, assign, getter=isSpringBoardRuntime) BOOL springBoardRuntime;
 @property(nonatomic, assign, getter=isAutomaticallyPasteEnabled) BOOL automaticallyPasteEnabled;
 @property(nonatomic, assign, getter=isHapticFeedbackEnabled) BOOL hapticFeedbackEnabled;
 @property(nonatomic, assign) BOOL applicationInForeground;
+
+#pragma mark - Sessions
+
 @property(nonatomic, strong) KayokoHelperFocusSession *focusSession;
 @property(nonatomic, strong) KayokoHelperPendingPasteSession *pendingPasteSession;
+
+#pragma mark - Input State
+
 @property(nonatomic, assign) BOOL lastKeyboardInputWasKayokoOwned;
 @property(nonatomic, assign) NSTimeInterval lastKayokoKeyboardInputTime;
 @property(nonatomic, weak, nullable) UIResponder *resolvedCurrentFirstResponder;
+
+#pragma mark - Observers
+
 @property(nonatomic, strong, nullable) KayokoKeyboardObserver *keyboardObserver;
 @property(nonatomic, assign, getter=hasInstalledObservers) BOOL installedObservers;
 

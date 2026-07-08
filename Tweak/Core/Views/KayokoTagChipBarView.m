@@ -32,10 +32,19 @@ static CGFloat const kKayokoTagChipFloatingDarkFadeAlpha = 0.0;
 static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 
 @interface KayokoTagChipButton : UIControl
+
+#pragma mark - State
+
 @property(nonatomic, copy, nullable) NSString *tagUUID;
 @property(nonatomic, copy, nullable) NSString *hexColor;
+
+#pragma mark - Views
+
 @property(nonatomic, strong) KayokoTagDotView *dotView;
 @property(nonatomic, strong) UILabel *textLabel;
+
+#pragma mark - Configuration
+
 - (void)configureWithTitle:(NSString *)title
                    tagUUID:(nullable NSString *)tagUUID
                   hexColor:(nullable NSString *)hexColor
@@ -46,6 +55,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 @end
 
 @implementation KayokoTagChipButton
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -68,6 +79,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     return self;
 }
 
+#pragma mark - Configuration
+
 - (void)configureWithTitle:(NSString *)title
                    tagUUID:(nullable NSString *)tagUUID
                   hexColor:(nullable NSString *)hexColor
@@ -80,6 +93,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [self updateStyle];
     [self setNeedsLayout];
 }
+
+#pragma mark - Colors
 
 - (UIColor *)selectedFillColor {
     if ([[self hexColor] length] > 0) {
@@ -142,6 +157,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     return [color resolvedColorWithTraitCollection:[self traitCollection]];
 }
 
+#pragma mark - State
+
 - (void)setSelected:(BOOL)selected {
     [super setSelected:selected];
     [self updateStyle];
@@ -156,6 +173,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [super didMoveToWindow];
     [self updateStyle];
 }
+
+#pragma mark - Layout
 
 - (CGFloat)preferredWidth {
     CGFloat maximumLabelWidth = kKayokoTagChipMaximumWidth - kKayokoTagChipLeadingInset - kKayokoTagChipDotSlotSize -
@@ -191,9 +210,13 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 
 @implementation KayokoTagChipBarFadeView
 
+#pragma mark - Layer
+
 + (Class)layerClass {
     return [CAGradientLayer class];
 }
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -202,6 +225,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     }
     return self;
 }
+
+#pragma mark - Appearance
 
 - (void)updateGradientColors {
     BOOL dark = [[self traitCollection] userInterfaceStyle] == UIUserInterfaceStyleDark;
@@ -224,17 +249,28 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 @end
 
 @interface KayokoTagChipBarView ()
+
+#pragma mark - Views
+
 @property(nonatomic, strong) UIVisualEffectView *materialView;
 @property(nonatomic, strong) CAGradientLayer *materialMaskLayer;
 @property(nonatomic, strong) KayokoTagChipBarFadeView *fadeView;
 @property(nonatomic, strong) KayokoEdgeFadingScrollView *scrollView;
+
+#pragma mark - Data
+
 @property(nonatomic, strong) NSMutableArray<KayokoTagChipButton *> *chipButtons;
+
+#pragma mark - State
+
 @property(nonatomic, assign, readwrite, getter=isSettled) BOOL settled;
 @property(nonatomic, assign) CGFloat floatingProgress;
 @property(nonatomic, assign) BOOL shouldRevealSelectedTagAfterLayout;
 @end
 
 @implementation KayokoTagChipBarView
+
+#pragma mark - Metrics
 
 + (CGFloat)preferredHeight {
     return kKayokoTagChipBarHeight;
@@ -252,6 +288,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     CGFloat distanceToBottom = contentHeight - visibleBottomY;
     return MIN(MAX(distanceToBottom / kKayokoTagChipFloatingProgressDistance, 0.0), 1.0);
 }
+
+#pragma mark - Appearance
 
 - (BOOL)isDarkMode {
     return [[self traitCollection] userInterfaceStyle] == UIUserInterfaceStyleDark;
@@ -281,6 +319,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [[self materialView] setAlpha:[self floatingMaterialAlpha] * [self floatingProgress]];
     [[self fadeView] setAlpha:[self floatingFadeAlpha] * [self floatingProgress]];
 }
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -322,6 +362,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     return self;
 }
 
+#pragma mark - Configuration
+
 - (void)configureWithTags:(NSArray<KayokoTag *> *)tags selectedTagUUID:(NSString *)selectedTagUUID {
     for (KayokoTagChipButton *button in [self chipButtons]) {
         [button removeFromSuperview];
@@ -348,6 +390,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [[self scrollView] updateEdgeFadeMask];
     [self setNeedsLayout];
 }
+
+#pragma mark - Selection
 
 - (KayokoTagChipButton *)chipButtonForSelectedTag {
     if ([[self selectedTagUUID] length] == 0) {
@@ -413,6 +457,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [button addTarget:self action:@selector(handleChipPressed:) forControlEvents:UIControlEventTouchUpInside];
 }
 
+#pragma mark - State
+
 - (void)setSelectedTagUUID:(NSString *)selectedTagUUID {
     _selectedTagUUID = [selectedTagUUID length] > 0 ? [selectedTagUUID copy] : nil;
     for (KayokoTagChipButton *button in [self chipButtons]) {
@@ -423,11 +469,15 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
     [self setNeedsLayout];
 }
 
+#pragma mark - Actions
+
 - (void)handleChipPressed:(KayokoTagChipButton *)button {
     if ([self selectionHandler]) {
         [self selectionHandler]([button tagUUID]);
     }
 }
+
+#pragma mark - Floating Material
 
 - (void)setBottomMaterialExtension:(CGFloat)bottomMaterialExtension {
     CGFloat normalizedExtension = MAX(bottomMaterialExtension, 0.0);
@@ -477,6 +527,8 @@ static CGFloat const kKayokoTagChipFloatingProgressDistance = 42;
 - (void)setSettled:(BOOL)settled animated:(BOOL)animated {
     [self setFloatingProgress:(settled ? 0.0 : 1.0) animated:animated];
 }
+
+#pragma mark - Layout
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];

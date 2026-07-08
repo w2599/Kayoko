@@ -30,10 +30,19 @@ static NSString *KayokoHistoryStoreLocalizedString(NSString *key) {
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryStore ()
+
+#pragma mark - Paths
+
 @property(nonatomic, copy, readwrite) NSString *databasePath;
 @property(nonatomic, copy, readwrite) NSString *imagesPath;
+
+#pragma mark - Database State
+
 @property(nonatomic, assign, readwrite) KayokoHistoryStoreLockingMode lockingMode;
 @property(nonatomic, assign, readwrite) NSInteger busyTimeoutMilliseconds;
+
+#pragma mark - Schema
+
 - (BOOL)ensureTagUUIDColumnWithError:(NSError **)error;
 @end
 
@@ -43,9 +52,13 @@ NS_ASSUME_NONNULL_END
     sqlite3 *_database;
 }
 
+#pragma mark - Paths
+
 + (NSString *)defaultDatabasePath {
     return jbroot(@"/var/mobile/Library/com.82flex.kayoko/history-v4.sqlite");
 }
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithDatabasePath:(NSString *)databasePath imagesPath:(NSString *)imagesPath {
     return [self initWithDatabasePath:databasePath
@@ -71,6 +84,8 @@ NS_ASSUME_NONNULL_END
 - (void)dealloc {
     [self closeDatabase];
 }
+
+#pragma mark - Schema Preparation
 
 - (BOOL)prepareStoreWithError:(NSError **)error {
     if (![self prepareStorageDirectoriesWithError:error]) {
@@ -149,6 +164,8 @@ NS_ASSUME_NONNULL_END
     return [self prepareStoreWithError:error];
 }
 
+#pragma mark - Storage
+
 - (BOOL)prepareStorageDirectoriesWithError:(NSError **)error {
     NSString *directoryPath = [[self databasePath] stringByDeletingLastPathComponent];
     NSFileManager *fileManager = [NSFileManager defaultManager];
@@ -179,6 +196,8 @@ NS_ASSUME_NONNULL_END
         _database = NULL;
     }
 }
+
+#pragma mark - Locking and Maintenance
 
 - (BOOL)verifyExclusiveAccessWithError:(NSError **)error {
     if (![self prepareStorageDirectoriesWithError:error]) {
@@ -216,6 +235,8 @@ NS_ASSUME_NONNULL_END
 
     return YES;
 }
+
+#pragma mark - Search Index
 
 - (BOOL)upgradeSearchIndexWithError:(NSError **)error {
     if (![self prepareStoreWithError:error]) {
@@ -278,6 +299,8 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+#pragma mark - Migration Metadata
+
 - (BOOL)isMigrationCompletedWithError:(NSError **)error {
     NSString *value = [self metadataValueForKey:kKayokoHistoryStoreMigrationKey error:error];
     return [value boolValue];
@@ -286,6 +309,8 @@ NS_ASSUME_NONNULL_END
 - (BOOL)markMigrationCompletedWithError:(NSError **)error {
     return [self setMetadataValue:@"1" forKey:kKayokoHistoryStoreMigrationKey error:error];
 }
+
+#pragma mark - History Writes
 
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
@@ -387,6 +412,8 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+#pragma mark - Tags
+
 - (BOOL)setTagUUID:(NSString *)tagUUID
     forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
          inHistoryKey:(NSString *)historyKey
@@ -450,6 +477,8 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+#pragma mark - Bulk Removal
+
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                             error:(NSError **)error {
@@ -486,6 +515,8 @@ NS_ASSUME_NONNULL_END
     [self rollbackTransaction];
     return NO;
 }
+
+#pragma mark - History Reads
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     return [self itemsForHistoryKey:historyKey searchCriteria:nil error:error];
@@ -581,6 +612,8 @@ NS_ASSUME_NONNULL_END
     return dictionary;
 }
 
+#pragma mark - Search Metadata
+
 - (NSArray<NSString *> *)availableSearchAppBundleIdentifiersWithError:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     const char *sql = "SELECT DISTINCT bundle_identifier FROM history_items "
@@ -604,6 +637,8 @@ NS_ASSUME_NONNULL_END
     sqlite3_finalize(statement);
     return bundleIdentifiers;
 }
+
+#pragma mark - Import
 
 - (BOOL)importItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
                   toHistoryKey:(NSString *)historyKey
@@ -632,7 +667,7 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
-#pragma mark - Private
+#pragma mark - Schema Helpers
 
 - (BOOL)ensureColumnNamed:(NSString *)columnName
                   inTable:(NSString *)tableName
@@ -672,6 +707,8 @@ NS_ASSUME_NONNULL_END
                usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN tag_uuid TEXT NULL"
                              error:error];
 }
+
+#pragma mark - Search Index Helpers
 
 - (NSInteger)staleSearchIndexItemCountWithError:(NSError **)error {
     sqlite3_stmt *statement = NULL;
@@ -860,6 +897,8 @@ NS_ASSUME_NONNULL_END
     return pattern;
 }
 
+#pragma mark - Database Connection
+
 - (BOOL)openDatabaseWithError:(NSError **)error {
     if (_database) {
         return YES;
@@ -892,6 +931,8 @@ NS_ASSUME_NONNULL_END
     return [self executeStatement:@"PRAGMA locking_mode=EXCLUSIVE" error:error];
 }
 
+#pragma mark - Write Helpers
+
 - (BOOL)upsertItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                 inHistoryKey:(NSString *)historyKey
                        limit:(NSUInteger)limit
@@ -912,6 +953,8 @@ NS_ASSUME_NONNULL_END
     [self rollbackTransaction];
     return NO;
 }
+
+#pragma mark - Tag Helpers
 
 - (NSString *)tagUUIDForHistoryKey:(NSString *)historyKey content:(NSString *)content error:(NSError **)error {
     if ([historyKey length] == 0 || [content length] == 0) {
@@ -990,6 +1033,8 @@ NS_ASSUME_NONNULL_END
                                        error:error];
 }
 
+#pragma mark - History Limits
+
 - (BOOL)trimHistoryKey:(NSString *)historyKey toLimit:(NSUInteger)limit error:(NSError **)error {
     if (limit == NSUIntegerMax) {
         return YES;
@@ -1032,6 +1077,8 @@ NS_ASSUME_NONNULL_END
 
     return YES;
 }
+
+#pragma mark - Image Cleanup
 
 - (NSArray<NSString *> *)imageNamesForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
@@ -1080,6 +1127,8 @@ NS_ASSUME_NONNULL_END
     return count;
 }
 
+#pragma mark - Sequences
+
 - (sqlite3_int64)nextSequence {
     sqlite3_stmt *statement = NULL;
     if (![self prepareStatement:"SELECT COALESCE(MAX(sequence), 0) + 1 FROM history_items"
@@ -1095,6 +1144,8 @@ NS_ASSUME_NONNULL_END
     sqlite3_finalize(statement);
     return sequence;
 }
+
+#pragma mark - Metadata
 
 - (NSString *)metadataValueForKey:(NSString *)key error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
@@ -1116,6 +1167,8 @@ NS_ASSUME_NONNULL_END
                          bindings:@[ key, value ]
                             error:error];
 }
+
+#pragma mark - Value Mapping
 
 - (NSDictionary<NSString *, id> *)dictionaryFromCurrentRowInStatement:(sqlite3_stmt *)statement {
     NSString *bundleIdentifier = [self stringFromColumn:statement index:0] ?: @"com.apple.springboard";
@@ -1154,6 +1207,8 @@ NS_ASSUME_NONNULL_END
     return [NSString stringWithUTF8String:(const char *)text];
 }
 
+#pragma mark - Transactions
+
 - (BOOL)beginTransactionWithError:(NSError **)error {
     return [self executeStatement:@"BEGIN IMMEDIATE TRANSACTION" error:error];
 }
@@ -1165,6 +1220,8 @@ NS_ASSUME_NONNULL_END
 - (void)rollbackTransaction {
     [self executeStatement:@"ROLLBACK" error:nil];
 }
+
+#pragma mark - SQLite Execution
 
 - (BOOL)executeStatement:(NSString *)statement error:(NSError **)error {
     return [self executeStatement:statement bindings:@[] error:error];
@@ -1230,6 +1287,8 @@ NS_ASSUME_NONNULL_END
         }
     }
 }
+
+#pragma mark - Errors
 
 - (void)populateError:(NSError **)error code:(NSInteger)code message:(NSString *)message {
     if (!error) {

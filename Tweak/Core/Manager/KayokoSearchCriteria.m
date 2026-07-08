@@ -19,6 +19,8 @@ NSString *const kKayokoSearchCategoryImage = @"image";
 
 @implementation KayokoSearchToken
 
+#pragma mark - Construction
+
 + (instancetype)tokenWithType:(NSString *)type
                         value:(NSString *)value
                         title:(NSString *)title
@@ -60,6 +62,8 @@ NSString *const kKayokoSearchCategoryImage = @"image";
     }
     return self;
 }
+
+#pragma mark - Copying
 
 - (id)copyWithZone:(NSZone *)zone {
     return [[[self class] allocWithZone:zone] initWithType:[self type]
@@ -103,6 +107,8 @@ NSString *const kKayokoSearchCategoryImage = @"image";
 
 @implementation KayokoSearchCriteria
 
+#pragma mark - Construction
+
 + (instancetype)emptyCriteria {
     return [[self alloc] initWithSearchText:nil categoryValue:nil appBundleIdentifier:nil tagUUID:nil];
 }
@@ -133,6 +139,8 @@ NSString *const kKayokoSearchCategoryImage = @"image";
     return self;
 }
 
+#pragma mark - Copying
+
 - (id)copyWithZone:(NSZone *)zone {
     return [[[self class] allocWithZone:zone] initWithSearchText:[self searchText]
                                                    categoryValue:[self categoryValue]
@@ -159,6 +167,8 @@ NSString *const kKayokoSearchCategoryImage = @"image";
 - (BOOL)hasActiveFilters {
     return [self hasSearchText] || [self hasCategoryToken] || [self hasAppToken] || [self hasTagToken];
 }
+
+#pragma mark - Mutations
 
 - (KayokoSearchCriteria *)criteriaByReplacingSearchText:(nullable NSString *)searchText {
     return [[KayokoSearchCriteria alloc] initWithSearchText:searchText
@@ -209,6 +219,8 @@ NSString *const kKayokoSearchCategoryImage = @"image";
                                         appBundleIdentifier:appBundleIdentifier
                                                     tagUUID:tagUUID];
 }
+
+#pragma mark - Equality
 
 - (BOOL)isEqual:(id)object {
     if (self == object) {

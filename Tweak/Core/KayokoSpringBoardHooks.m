@@ -126,12 +126,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSpringBoardHookInstaller ()
 
+#pragma mark - Status Bar Panel
+
 + (BOOL)isStatusBarWindow:(UIWindow *)window;
 + (void)installPanelIfNeededInStatusBarWindow:(UIWindow *)window;
+
+#pragma mark - Visibility
+
 + (void)hideForHomeScreenIfVisible:(id)controller;
 + (void)hideForLayoutStateTransition;
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
+
+#pragma mark - System Swipe
+
 + (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window;
+
+#pragma mark - Hook Installation
+
 + (void)installApplicationMetadataHooks;
 + (void)installSceneSettingsHooks;
 + (void)installSystemSwipeUpHooks;
@@ -139,6 +150,8 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
+
+#pragma mark - Keyboard Geometry
 
 static CGRect kayokoVisibleKeyboardFrame(void) {
     Class hostClass = NSClassFromString(@"UIPeripheralHost");
@@ -205,13 +218,21 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSystemSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
 @property(nonatomic, weak, readonly) UIView *view;
+
+#pragma mark - Lifecycle
+
 - (instancetype)initWithView:(UIView *)view;
+
+#pragma mark - Actions
+
 - (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoSystemSwipeUpGestureHandler
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithView:(UIView *)view {
     self = [super init];
@@ -220,6 +241,8 @@ NS_ASSUME_NONNULL_END
     }
     return self;
 }
+
+#pragma mark - UIGestureRecognizerDelegate
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     UIView *view = self.view;
@@ -246,6 +269,8 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+#pragma mark - Actions
+
 - (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer {
     if (recognizer.state != UIGestureRecognizerStateRecognized) {
         return;
@@ -261,6 +286,8 @@ NS_ASSUME_NONNULL_END
 
 @end
 
+#pragma mark - Status Bar Hooks
+
 CHOptimizedMethod1(self, void, UIWindowScene, _delegate_windowDidBecomeVisible, UIWindow *, window) {
     CHSuper1(UIWindowScene, _delegate_windowDidBecomeVisible, window);
     [KayokoSpringBoardHookInstaller installPanelIfNeededInStatusBarWindow:window];
@@ -271,6 +298,8 @@ CHOptimizedMethod1(self, id, UIStatusBarWindow, initWithFrame, CGRect, frame) {
     [KayokoSpringBoardHookInstaller installPanelIfNeededInStatusBarWindow:window];
     return window;
 }
+
+#pragma mark - SpringBoard Hooks
 
 CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, application) {
     CHSuper1(SpringBoard, applicationDidFinishLaunching, application);
@@ -289,6 +318,8 @@ CHOptimizedMethod0(self, NSArray<UIKeyCommand *> *, SpringBoard, keyCommands) {
     [command setDiscoverabilityTitle:kKayokoExternalKeyboardDiscoverabilityTitle];
     return keyCommands ? [keyCommands arrayByAddingObject:command] : @[ command ];
 }
+
+#pragma mark - Visibility Hooks
 
 CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
     CHSuper1(UIViewController, viewWillAppear, animated);
@@ -325,6 +356,8 @@ CHOptimizedMethod1(self, void, SBHLibrarySearchController, _willDismissSearchAni
     }
 }
 
+#pragma mark - Application Metadata Hooks
+
 CHOptimizedMethod1(self, void, SBApplicationController, applicationsAdded, id, added) {
     CHSuper1(SBApplicationController, applicationsAdded, added);
     [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
@@ -350,6 +383,8 @@ CHOptimizedMethod1(self, void, SBApplicationController, applicationsUpdated, id,
     [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
 }
 
+#pragma mark - System Gesture Hooks
+
 CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
     if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter) &&
@@ -364,6 +399,8 @@ CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWith
     return CHSuper1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, type);
 }
 
+#pragma mark - App Switcher Hooks
+
 CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
                    transitionDidBeginWithTransitionContext, id, context) {
     CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
@@ -391,6 +428,8 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
              transitionDidEndWithTransitionContext, context);
     [KayokoSpringBoardHookInstaller hideForAppSwitcherIfVisible:self];
 }
+
+#pragma mark - System Swipe Hooks
 
 CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, event) {
     if (event.type == UIEventTypeTouches) {
@@ -400,6 +439,8 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     CHSuper1(_UISystemGestureWindow, sendEvent, event);
 }
 
+#pragma mark - Scene Hooks
+
 CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettings *, settings, withTransitionContext,
                    FBSSceneTransitionContext *, context, completion, FBSceneUpdateCompletion, completion) {
     CHSuper3(FBScene, updateSettings, settings, withTransitionContext, context, completion, completion);
@@ -407,6 +448,8 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
 }
 
 @implementation KayokoSpringBoardHookInstaller
+
+#pragma mark - Status Bar Panel
 
 + (BOOL)isStatusBarWindow:(UIWindow *)window {
     Class statusBarWindowClass = NSClassFromString(@"UIStatusBarWindow");
@@ -432,6 +475,8 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
       });
     });
 }
+
+#pragma mark - Visibility
 
 + (BOOL)isHomeScreenController:(id)controller {
     static Class iconControllerClass = nil;
@@ -477,6 +522,8 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     }
 }
 
+#pragma mark - System Swipe
+
 + (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window {
     if (![window respondsToSelector:@selector(_systemGestureView)]) {
         return;
@@ -503,6 +550,8 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     objc_setAssociatedObject(gestureView, &kayokoSystemSwipeUpGestureRecognizerKey, recognizer,
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
+
+#pragma mark - Hook Installation
 
 + (void)installStatusBarHooks {
     Class windowSceneClass = NSClassFromString(@"UIWindowScene");
@@ -655,6 +704,8 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
                 transitionDidEndWithTransitionContext);
     }
 }
+
+#pragma mark - Entrypoint
 
 + (void)installHooks {
     [self installStatusBarHooks];

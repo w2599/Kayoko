@@ -68,11 +68,21 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPasteSuppressionState ()
 
+#pragma mark - State
+
 @property(nonatomic, assign, readwrite, getter=isActive) BOOL active;
 @property(nonatomic, assign) NSUInteger token;
+
+#pragma mark - Expiration
+
 @property(nonatomic, copy, nullable) dispatch_block_t expirationBlock;
 
+#pragma mark - Lifecycle
+
 - (void)clear;
+
+#pragma mark - Expiration
+
 - (void)cancelExpiration;
 - (void)expireForToken:(NSUInteger)token;
 

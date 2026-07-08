@@ -38,26 +38,46 @@ static CGRect kayokoStatusBarFrameForWindow(UIWindow *window) {
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchPresentationController ()
+
+#pragma mark - Views
+
 @property(nonatomic, weak) UIView *containerView;
 @property(nonatomic, weak) UIView *headerView;
+
+#pragma mark - Search Bars
+
 @property(nonatomic, weak) UISearchBar *historySearchBar;
 @property(nonatomic, weak) UISearchBar *favoritesSearchBar;
 @property(nonatomic, weak) UIView *historySearchTokenView;
 @property(nonatomic, weak) UIView *favoritesSearchTokenView;
 @property(nonatomic, strong) UIView *historySearchHeaderView;
 @property(nonatomic, strong) UIView *favoritesSearchHeaderView;
+
+#pragma mark - Lists
+
 @property(nonatomic, weak) KayokoHistoryListView *historyTableView;
 @property(nonatomic, weak) KayokoHistoryListView *favoritesTableView;
+
+#pragma mark - Gestures
+
 @property(nonatomic, weak) UIPanGestureRecognizer *panGestureRecognizer;
+
+#pragma mark - State
+
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) CGRect normalFrameBeforeSearch;
 @property(nonatomic, assign) BOOL hasNormalFrameBeforeSearch;
+
+#pragma mark - Keyboard
+
 @property(nonatomic, assign, readwrite) CGFloat keyboardBottomInset;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoSearchPresentationController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView
@@ -98,6 +118,8 @@ NS_ASSUME_NONNULL_END
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+#pragma mark - Layout
+
 - (CGFloat)searchHeaderHeight {
     return kKayokoSearchHeaderHeight;
 }
@@ -137,6 +159,8 @@ NS_ASSUME_NONNULL_END
         [tableView setTableHeaderView:headerView];
     }
 }
+
+#pragma mark - Search Header Views
 
 - (UISearchBar *)searchBarForTableView:(KayokoHistoryListView *)tableView {
     return tableView == [self favoritesTableView] ? [self favoritesSearchBar] : [self historySearchBar];
@@ -191,6 +215,8 @@ NS_ASSUME_NONNULL_END
     [self layoutSearchBarForTableView:tableView];
 }
 
+#pragma mark - Search Bar Visibility
+
 - (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar {
     [self installSearchBarForTableView:[self historyTableView]];
     [self installSearchBarForTableView:[self favoritesTableView]];
@@ -240,6 +266,8 @@ NS_ASSUME_NONNULL_END
         [self hideSearchBarInTableView:tableView animated:NO];
     }
 }
+
+#pragma mark - Fullscreen Geometry
 
 - (UIEdgeInsets)contentSafeAreaAdditionalInsetsForFullscreenSuperview:(UIView *)superview {
     UIView *containerView = [self containerView];
@@ -309,6 +337,8 @@ NS_ASSUME_NONNULL_END
     CGFloat effectiveVelocity = MAX(fabs(velocityY), kKayokoSearchFullscreenCollapseVelocity);
     return MIN(MAX(distance / effectiveVelocity, 0.12), kKayokoSearchFullscreenAnimationDuration);
 }
+
+#pragma mark - Search Presentation
 
 - (void)beginSearchWithActiveTableView:(KayokoHistoryListView *)activeTableView completion:(void (^)(void))completion {
     if ([self isSearchActive]) {
@@ -439,6 +469,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Fullscreen Pan
+
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
                              activeTableView:(KayokoHistoryListView *)activeTableView
                            beganInHeaderView:(BOOL)beganInHeaderView {
@@ -513,6 +545,8 @@ NS_ASSUME_NONNULL_END
                      completion:nil];
 }
 
+#pragma mark - Bottom Insets
+
 - (CGFloat)hiddenSearchBottomInsetForTableView:(KayokoHistoryListView *)tableView {
     if ([self isSearchActive]) {
         return 0;
@@ -551,6 +585,8 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetToTableView:[self historyTableView]];
     [self applyBottomInsetToTableView:[self favoritesTableView]];
 }
+
+#pragma mark - Keyboard Notifications
 
 - (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
     keyboardBottomInset = MAX(keyboardBottomInset, 0);

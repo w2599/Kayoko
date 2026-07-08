@@ -35,6 +35,8 @@ NS_ASSUME_NONNULL_END
 
 @implementation KayokoNoSearchResultsFooterView
 
+#pragma mark - Lifecycle
+
 - (instancetype)init {
     self = [super init];
     if (self) {
@@ -62,6 +64,8 @@ NS_ASSUME_NONNULL_END
 @end
 
 @implementation KayokoHistoryListView
+
+#pragma mark - Search Placeholder
 
 - (void)setShowsNoSearchResultsPlaceholder:(BOOL)showsNoSearchResultsPlaceholder {
     UIView *footerView = [self tableFooterView];
@@ -116,6 +120,8 @@ NS_ASSUME_NONNULL_END
     [self updateNoSearchResultsPlaceholderLayout];
 }
 
+#pragma mark - Search Header Geometry
+
 - (CGFloat)hiddenHeaderOffsetY {
     UIView *headerView = [self tableHeaderView];
     return headerView ? CGRectGetHeight([headerView frame]) : 0;
@@ -164,6 +170,8 @@ NS_ASSUME_NONNULL_END
     return ceil(MAX(requiredContentHeight - projectedContentHeight, 0));
 }
 
+#pragma mark - Row Removal
+
 - (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
     if (hiddenHeaderOffsetY <= 0) {
@@ -181,6 +189,8 @@ NS_ASSUME_NONNULL_END
     contentInset.bottom = requiredBottomInset;
     [self setContentInset:contentInset];
 }
+
+#pragma mark - Transient Content Offset
 
 - (BOOL)shouldPreserveTransientContentOffsetForRequestedContentOffset:(CGPoint)contentOffset {
     if (![self preservesTransientContentOffset]) {
@@ -256,6 +266,8 @@ NS_ASSUME_NONNULL_END
         });
 }
 
+#pragma mark - Content Offset
+
 - (void)setContentOffset:(CGPoint)contentOffset {
     if ([self shouldPreserveTransientContentOffsetForRequestedContentOffset:contentOffset]) {
         [super setContentOffset:[self transientContentOffsetForCurrentInsets]];
@@ -292,6 +304,8 @@ NS_ASSUME_NONNULL_END
     [super updateEdgeFadeMask];
 }
 
+#pragma mark - Lifecycle
+
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
 
@@ -307,6 +321,8 @@ NS_ASSUME_NONNULL_END
 
     return self;
 }
+
+#pragma mark - Configuration
 
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
     NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoHistoryListViewMaximumPreviewLineCount);

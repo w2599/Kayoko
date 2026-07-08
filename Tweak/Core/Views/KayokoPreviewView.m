@@ -15,14 +15,22 @@ static CGFloat const kKayokoPreviewViewVerticalFadeHeight = 20;
 static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
 @interface KayokoPreviewView () <UITextViewDelegate, UIScrollViewDelegate>
+
+#pragma mark - Views
+
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
 @property(nonatomic, strong) UIScrollView *imageScrollView;
+
+#pragma mark - Image State
+
 @property(nonatomic, assign) BOOL imageScrollViewNeedsReset;
 @property(nonatomic, assign) CGSize imageScrollViewLayoutSize;
 @property(nonatomic, assign) CGFloat imageScrollViewLayoutBottomInset;
 @end
 
 @implementation KayokoPreviewView
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
@@ -85,6 +93,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     return self;
 }
 
+#pragma mark - Tag Bar
+
 - (CGFloat)visibleTagBarHeight {
     return [[self tagChipBarView] isHidden] ? 0 : [KayokoTagChipBarView preferredHeight];
 }
@@ -145,6 +155,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     [[self tagChipBarView] setFloatingProgress:floatingProgress animated:animated];
 }
 
+#pragma mark - Scroll Insets
+
 - (void)updateTextViewScrollInsets {
     CGFloat tagBarHeight = [self visibleTagBarHeight];
     CGFloat bottomInset = [self scrollBottomInset];
@@ -170,6 +182,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     [[self imageScrollView] setContentInset:contentInset];
     [[self imageScrollView] setScrollIndicatorInsets:contentInset];
 }
+
+#pragma mark - Image Layout
 
 - (CGSize)imageSizeForCurrentImage {
     UIImage *image = [[self imageView] image];
@@ -275,6 +289,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     }
 }
 
+#pragma mark - Content
+
 - (void)showText:(NSString *)text {
     [[self textView] setText:text];
     [[self textView] setHidden:NO];
@@ -295,6 +311,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     [self updateTagBarFloatingProgressAnimated:NO];
 }
 
+#pragma mark - Tag Configuration
+
 - (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags
                 selectedTagUUID:(NSString *)selectedTagUUID
                selectionHandler:(void (^)(NSString *_Nullable tagUUID))selectionHandler {
@@ -313,6 +331,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 - (void)setSelectedTagUUID:(NSString *)selectedTagUUID {
     [[self tagChipBarView] setSelectedTagUUID:selectedTagUUID];
 }
+
+#pragma mark - State
 
 - (void)reset {
     [[self textView] setHidden:YES];
@@ -342,6 +362,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     }
 }
 
+#pragma mark - Gestures
+
 - (BOOL)canBeginEdgeBackGesture {
     if ([[self imageScrollView] isHidden] || ![[self imageView] image]) {
         return YES;
@@ -362,6 +384,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     }
 }
 
+#pragma mark - Layout
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self layoutTagChipBarView];
@@ -378,6 +402,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     [self layoutImageScrollViewIfNeeded];
     [self updateTagBarFloatingProgressAnimated:NO];
 }
+
+#pragma mark - UIScrollViewDelegate
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     if (scrollView == [self textView] || scrollView == [self imageScrollView]) {

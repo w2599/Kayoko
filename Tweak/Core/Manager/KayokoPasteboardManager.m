@@ -34,20 +34,38 @@ static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.82flex.kayoko
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPasteboardPendingWrite : NSObject
+
+#pragma mark - State
+
 @property(nonatomic, assign, readonly, getter=isActive) BOOL active;
 @property(nonatomic, assign, readonly) BOOL shouldAutoPaste;
 @property(nonatomic, assign, readonly) KayokoAutomaticPasteMode automaticPasteMode;
 @property(nonatomic, assign, readonly) NSUInteger token;
 @property(nonatomic, assign, readonly) NSUInteger previousChangeCount;
+
+#pragma mark - Expiration
+
 @property(nonatomic, copy, nullable) dispatch_block_t expirationBlock;
+
+#pragma mark - Lifecycle
+
 - (NSUInteger)beginAfterChangeCount:(NSUInteger)previousChangeCount
                     shouldAutoPaste:(BOOL)shouldAutoPaste
                  automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode;
+
+#pragma mark - Expiration
+
 - (void)scheduleExpirationOnQueue:(dispatch_queue_t)queue
                        afterDelay:(NSTimeInterval)delay
                           handler:(dispatch_block_t)handler;
+
+#pragma mark - Matching
+
 - (BOOL)matchesToken:(NSUInteger)token;
 - (BOOL)hasAdvancedToChangeCount:(NSUInteger)changeCount;
+
+#pragma mark - Cancellation
+
 - (void)cancelExpirationBlock;
 - (void)cancel;
 @end

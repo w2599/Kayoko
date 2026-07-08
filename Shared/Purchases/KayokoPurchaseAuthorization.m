@@ -56,6 +56,8 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 
 @implementation KayokoPurchaseAuthorizationResult
 
+#pragma mark - Lifecycle
+
 - (instancetype)initWithState:(KayokoPurchaseAuthorizationState)state
                         error:(NSError *)error
                    statusCode:(NSInteger)statusCode
@@ -73,6 +75,8 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 @end
 
 @implementation KayokoPurchaseAuthorization
+
+#pragma mark - Credential Mirroring
 
 + (BOOL)mirrorSileoHavocCredentialToAppleAccessGroupWithError:(NSError **)error {
     NSArray<NSDictionary *> *tokenItems =
@@ -126,6 +130,8 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
                                   kKayokoAppleAccessGroup, error);
 }
 
+#pragma mark - Authorization State
+
 + (BOOL)hasAuthorizationPassFlagWithError:(NSError **)error {
     NSData *flagData = KayokoCopyKeychainData(kKayokoAuthorizationFlagService, kKayokoAuthorizationFlagAccount,
                                               kKayokoAppleAccessGroup, error);
@@ -145,6 +151,8 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 
     return KayokoDeleteKeychainItems(kKayokoAuthorizationFlagService, nil, kKayokoAppleAccessGroup, error);
 }
+
+#pragma mark - Purchase Check
 
 + (void)checkMirroredPurchaseWithCompletion:(void (^)(KayokoPurchaseAuthorizationResult *result))completion {
     NSError *credentialError = nil;
@@ -253,10 +261,14 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 
 @end
 
+#pragma mark - Errors
+
 static NSError *KayokoAuthorizationError(NSInteger code, NSString *message) {
     NSDictionary *userInfo = @{NSLocalizedDescriptionKey : message ?: @"Kayoko authorization failed."};
     return [NSError errorWithDomain:kKayokoPurchaseAuthorizationErrorDomain code:code userInfo:userInfo];
 }
+
+#pragma mark - Keychain
 
 static NSMutableDictionary *KayokoKeychainQuery(NSString *service, NSString *account, NSString *accessGroup) {
     NSMutableDictionary *query = [@{
@@ -358,6 +370,8 @@ static BOOL KayokoSaveKeychainData(NSData *data, NSString *service, NSString *ac
     return YES;
 }
 
+#pragma mark - Credentials
+
 static KayokoHavocCredential *KayokoCopyMirroredCredential(NSError **error) {
     NSData *data = KayokoCopyKeychainData(kKayokoCredentialMirrorService, kKayokoCredentialMirrorAccount,
                                           kKayokoAppleAccessGroup, error);
@@ -415,6 +429,8 @@ static NSDictionary *KayokoSelectSileoTokenItem(NSArray<NSDictionary *> *tokenIt
     }
     return [havocCandidates count] == 1 ? [havocCandidates firstObject] : nil;
 }
+
+#pragma mark - Havoc Endpoint
 
 static NSString *KayokoFetchHavocPaymentEndpoint(NSError **error) {
     NSURL *URL = [NSURL URLWithString:kKayokoHavocPaymentEndpointURLString];
@@ -478,6 +494,8 @@ static BOOL KayokoProviderAccountLooksLikeHavoc(NSString *account) {
     return [host containsString:@"havoc"] || [[account lowercaseString] containsString:@"havoc"];
 }
 
+#pragma mark - Device Identity
+
 static NSString *KayokoCopyUniqueDeviceIdentifier(void) {
     void *gestalt = dlopen("/usr/lib/libMobileGestalt.dylib", RTLD_GLOBAL | RTLD_LAZY);
     if (!gestalt) {
@@ -509,6 +527,8 @@ static NSString *KayokoCopyHardwareMachine(void) {
     }
     return [NSString stringWithUTF8String:[data bytes]];
 }
+
+#pragma mark - HTTP
 
 static NSString *KayokoHTTPStatusMessage(NSInteger statusCode) {
     if (statusCode <= 0) {

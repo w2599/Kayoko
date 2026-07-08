@@ -15,12 +15,18 @@ static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
 @interface KayokoMainView ()
+
+#pragma mark - Header Constraints
+
 @property(nonatomic, strong) NSLayoutConstraint *headerTopConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaTopConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerLeadingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaLeadingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerTrailingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaTrailingConstraint;
+
+#pragma mark - Content Constraints
+
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentLeadingConstraints;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentSafeAreaLeadingConstraints;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentTrailingConstraints;
@@ -30,6 +36,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 @end
 
 @implementation KayokoMainView
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -201,6 +209,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     return self;
 }
 
+#pragma mark - Layout
+
 - (void)setGrabberFoldProgress:(CGFloat)progress {
     [[self grabber] setFoldProgress:progress];
 }
@@ -211,6 +221,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [self layoutHandler]();
     }
 }
+
+#pragma mark - Content Installation
 
 - (void)constrainContentView:(UIView *)contentView {
     [contentView setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -227,6 +239,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [[self contentContainerView] addSubview:contentView];
     [self constrainContentView:contentView];
 }
+
+#pragma mark - Content Safe Area
 
 - (UIEdgeInsets)effectiveContentSafeAreaInsets {
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
@@ -362,6 +376,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [self setNeedsLayout];
 }
 
+#pragma mark - Header
+
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
@@ -385,6 +401,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [[self clearButton] setEnabled:enabled];
     [[self clearButton] setAlpha:enabled ? 1.0 : 0.35];
 }
+
+#pragma mark - Content Transitions
 
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
@@ -509,6 +527,8 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 - (CGFloat)clampedInteractiveContentTransitionProgress:(CGFloat)progress {
     return MIN(MAX(progress, 0), 1);
 }
+
+#pragma mark - Interactive Back Transition
 
 - (void)applyInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
                                         hideContentView:(UIView *)viewToHide

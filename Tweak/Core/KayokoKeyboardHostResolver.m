@@ -65,13 +65,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoKeyboardHostContext ()
 
+#pragma mark - Scene
+
 @property(nonatomic, weak, readwrite, nullable) FBScene *scene;
 @property(nonatomic, copy, readwrite) NSString *identifier;
 @property(nonatomic, assign, readwrite) KayokoKeyboardHostKind kind;
+
+#pragma mark - Helper Marker
+
 @property(nonatomic, assign, readwrite) BOOL helperMarkerAvailable;
 @property(nonatomic, assign, readwrite) long long helperInjectedFlag;
+
+#pragma mark - State
+
 @property(nonatomic, assign, readwrite, getter=isKayokoOwned) BOOL kayokoOwned;
 @property(nonatomic, assign, readwrite, getter=isCached) BOOL cached;
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithScene:(nullable FBScene *)scene
                    identifier:(NSString *)identifier
@@ -80,15 +90,25 @@ NS_ASSUME_NONNULL_BEGIN
            helperInjectedFlag:(long long)helperInjectedFlag
                   kayokoOwned:(BOOL)kayokoOwned
                        cached:(BOOL)cached NS_DESIGNATED_INITIALIZER;
+
+#pragma mark - State
+
 - (KayokoKeyboardHostContext *)contextMarkedCached;
 
 @end
 
 @interface KayokoKeyboardHostResolver ()
 
+#pragma mark - Cache
+
 @property(nonatomic, strong, nullable) KayokoKeyboardHostContext *lastExternalKeyboardHostContext;
 
+#pragma mark - Lifecycle
+
 - (instancetype)initPrivate;
+
+#pragma mark - Host Context
+
 - (nullable KayokoKeyboardHostContext *)keyboardHostContextForCurrentInputKayokoOwned:(BOOL)kayokoOwned;
 - (nullable KayokoKeyboardHostContext *)keyboardHostContextForScene:(FBScene *)hostScene
                                                          identifier:(NSString *)identifier
@@ -96,9 +116,15 @@ NS_ASSUME_NONNULL_BEGIN
                                                              cached:(BOOL)cached;
 - (nullable FBScene *)keyboardHostSceneWithIdentifier:(NSString *_Nullable *_Nullable)identifier;
 - (nullable UIResponder *)activeKeyboardInputDelegate;
+
+#pragma mark - Ownership
+
 - (BOOL)objectHasKayokoClassPrefix:(id)object;
 - (BOOL)viewHierarchyIsKayokoOwned:(UIView *)view;
 - (BOOL)responderIsKayokoOwned:(UIResponder *)responder;
+
+#pragma mark - Scene Classification
+
 - (BOOL)stringMatchesSpringBoard:(NSString *)string;
 - (KayokoKeyboardHostKind)kindForScene:(FBScene *)scene;
 
@@ -107,6 +133,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoKeyboardHostContext
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithScene:(FBScene *)scene
                    identifier:(NSString *)identifier
@@ -128,6 +156,8 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
+#pragma mark - State
+
 - (BOOL)isHelperInjected {
     return self.helperInjectedFlag == 1;
 }
@@ -145,6 +175,8 @@ NS_ASSUME_NONNULL_END
 @end
 
 @implementation KayokoKeyboardHostResolver
+
+#pragma mark - Lifecycle
 
 + (instancetype)sharedResolver {
     static KayokoKeyboardHostResolver *resolver;
@@ -173,6 +205,8 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     return self;
 }
+
+#pragma mark - Public Context
 
 - (KayokoKeyboardHostContext *)currentKeyboardHostContext {
     return [self keyboardHostContextForCurrentInputKayokoOwned:[self currentKeyboardInputIsKayokoOwned]];
@@ -203,6 +237,8 @@ NS_ASSUME_NONNULL_END
 - (FBScene *)currentKeyboardHostScene {
     return [[self currentKeyboardHostContext] scene];
 }
+
+#pragma mark - Scene Helpers
 
 - (UIApplicationSceneSettings *)settingsForScene:(FBScene *)scene {
     if (![scene respondsToSelector:@selector(settings)]) {
@@ -245,6 +281,8 @@ NS_ASSUME_NONNULL_END
     }
     return [[scene identifier] isEqualToString:kKayokoSpotlightSceneIdentifier];
 }
+
+#pragma mark - Host Context
 
 - (BOOL)currentKeyboardInputIsKayokoOwned {
     UIResponder *keyboardInputDelegate = [self activeKeyboardInputDelegate];
@@ -347,6 +385,8 @@ NS_ASSUME_NONNULL_END
     return [inputDelegate isKindOfClass:[UIResponder class]] ? inputDelegate : nil;
 }
 
+#pragma mark - Ownership
+
 - (BOOL)objectHasKayokoClassPrefix:(id)object {
     if (!object) {
         return NO;
@@ -390,6 +430,8 @@ NS_ASSUME_NONNULL_END
     }
     return NO;
 }
+
+#pragma mark - Scene Classification
 
 - (BOOL)stringMatchesSpringBoard:(NSString *)string {
     if (![string isKindOfClass:[NSString class]] || [string length] == 0) {

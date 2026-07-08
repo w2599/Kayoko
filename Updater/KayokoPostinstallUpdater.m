@@ -22,6 +22,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
 
 @implementation KayokoPostinstallUpdater
 
+#pragma mark - Postinstall
+
 - (BOOL)runPostinstallWithError:(NSError **)error {
     [self notifyCoreToPrepareForMaintenance];
 
@@ -95,6 +97,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     return YES;
 }
 
+#pragma mark - Legacy Cleanup
+
 - (NSArray<NSString *> *)safelyDeletableLegacyPathsWithError:(NSError **)error {
     KayokoHistoryStore *store = [self historyStore];
     if (![store prepareStoreWithError:error]) {
@@ -122,7 +126,7 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     return paths;
 }
 
-#pragma mark - Private
+#pragma mark - Core Coordination
 
 - (void)notifyCoreToPrepareForMaintenance {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
@@ -130,6 +134,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
                                          YES);
     usleep(kKayokoCoreMaintenanceGracePeriodMicroseconds);
 }
+
+#pragma mark - Store Paths
 
 - (KayokoHistoryStore *)historyStore {
     return [[KayokoHistoryStore alloc] initWithDatabasePath:[KayokoHistoryStore defaultDatabasePath]
@@ -142,6 +148,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     return [jbroot(kKayokoCurrentDataDirectory) stringByAppendingPathComponent:@"images"];
 }
 
+#pragma mark - Default Tags
+
 - (BOOL)prepareDefaultTagsIfNeededWithError:(NSError **)error {
     KayokoTagStore *tagStore = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
                                                      localizationBundle:[self preferencesLocalizationBundle]];
@@ -153,6 +161,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     NSBundle *bundle = [NSBundle bundleWithPath:bundlePath];
     return bundle ?: [NSBundle mainBundle];
 }
+
+#pragma mark - Ownership
 
 - (BOOL)repairDefaultTagsOwnershipWithError:(NSError **)error {
     NSFileManager *fileManager = [NSFileManager defaultManager];
@@ -210,6 +220,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     };
     return [fileManager setAttributes:attributes ofItemAtPath:path error:error];
 }
+
+#pragma mark - Legacy Path Helpers
 
 - (void)addPathIfExists:(NSString *)path
             fileManager:(NSFileManager *)fileManager

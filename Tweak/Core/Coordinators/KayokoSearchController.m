@@ -21,6 +21,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchController () <UISearchBarDelegate, KayokoSearchPresentationControllerDelegate,
                                       KayokoSearchTokenListViewControllerDelegate>
+#pragma mark - Presentation
+
 @property(nonatomic, strong) KayokoSearchPresentationController *presentationController;
 @property(nonatomic, weak) KayokoHistoryListViewController *historyListViewController;
 @property(nonatomic, weak) KayokoHistoryListViewController *favoritesListViewController;
@@ -28,9 +30,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UISearchBar *favoritesSearchBar;
 @property(nonatomic, strong) KayokoSearchTokenListViewController *historyTokenListViewController;
 @property(nonatomic, strong) KayokoSearchTokenListViewController *favoritesTokenListViewController;
+
+#pragma mark - Tokens
+
 @property(nonatomic, copy) NSArray<KayokoSearchToken *> *tagTokens;
 @property(nonatomic, copy) NSArray<KayokoSearchToken *> *appTokens;
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
+
+#pragma mark - State
+
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) BOOL isResettingSearch;
 @property(nonatomic, assign) NSUInteger searchRequestIdentifier;
@@ -43,6 +51,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoSearchController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithContainerView:(UIView *)containerView
                            headerView:(UIView *)headerView
@@ -115,6 +125,8 @@ NS_ASSUME_NONNULL_END
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+#pragma mark - Notifications
+
 - (void)handleHistoryDidChangeNotification:(NSNotification *)notification {
     (void)notification;
     [self invalidateAppTokensAndReloadIfActive];
@@ -123,6 +135,8 @@ NS_ASSUME_NONNULL_END
 - (void)handleApplicationMetadataChanged {
     [self invalidateAppTokensAndReloadIfActive];
 }
+
+#pragma mark - View Lookup
 
 - (KayokoHistoryListViewController *)activeListViewController {
     return [[self delegate] activeListViewControllerForSearchController:self];
@@ -164,6 +178,8 @@ NS_ASSUME_NONNULL_END
     return listViewController == [self favoritesListViewController] ? [self favoritesTokenListViewController]
                                                                     : [self historyTokenListViewController];
 }
+
+#pragma mark - Token Matching
 
 - (BOOL)tokenArray:(NSArray<KayokoSearchToken *> *)left
     isDisplayEqualToTokenArray:(NSArray<KayokoSearchToken *> *)right {
@@ -270,6 +286,8 @@ NS_ASSUME_NONNULL_END
     return nil;
 }
 
+#pragma mark - Search Token Sync
+
 - (NSArray<KayokoSearchToken *> *)searchTokensForCriteria:(KayokoSearchCriteria *)criteria
                                       tokenListController:(KayokoSearchTokenListViewController *)tokenListController {
     NSMutableArray<KayokoSearchToken *> *searchTokens = [[NSMutableArray alloc] init];
@@ -363,6 +381,8 @@ NS_ASSUME_NONNULL_END
                                                 tagUUID:tagUUID];
 }
 
+#pragma mark - Layout
+
 - (void)layout {
     [[self presentationController] layout];
 }
@@ -433,6 +453,8 @@ NS_ASSUME_NONNULL_END
     [self updateTokenListForListViewController:activeListViewController];
     [self updateSearchTokenHeaderHeights];
 }
+
+#pragma mark - Token Loading
 
 - (BOOL)reloadTagTokens {
     NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
@@ -544,6 +566,8 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+#pragma mark - Search Application
+
 - (void)invalidatePendingSearchRequests {
     [self setSearchRequestIdentifier:[self searchRequestIdentifier] + 1];
 }
@@ -653,6 +677,8 @@ NS_ASSUME_NONNULL_END
         }
     }
 }
+
+#pragma mark - Search Session
 
 - (void)resignSearchFirstResponder {
     [[self activeSearchBar] resignFirstResponder];
@@ -778,6 +804,8 @@ NS_ASSUME_NONNULL_END
     [self endSearchRestoringFrame:NO clearsSearch:NO];
 }
 
+#pragma mark - Clearing
+
 - (void)clearSearchForListViewController:(KayokoHistoryListViewController *)listViewController {
     UISearchBar *searchBar = [self searchBarForTableView:[listViewController tableView]];
     BOOL wasResettingSearch = [self isResettingSearch];
@@ -795,6 +823,8 @@ NS_ASSUME_NONNULL_END
     [[self presentationController] maintainSearchBarVisibilityForTableView:[listViewController tableView]];
 }
 
+#pragma mark - KayokoSearchPresentationControllerDelegate
+
 - (void)searchPresentationController:(KayokoSearchPresentationController *)controller
         didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset {
     [[self delegate] searchController:self didUpdateKeyboardBottomInset:keyboardBottomInset];
@@ -804,6 +834,8 @@ NS_ASSUME_NONNULL_END
     didRequestCollapseFromFullscreenPanWithVelocity:(CGFloat)velocityY {
     [self collapseSearchFromFullscreenPanWithVelocity:velocityY];
 }
+
+#pragma mark - KayokoSearchTokenListViewControllerDelegate
 
 - (void)searchTokenListViewController:(KayokoSearchTokenListViewController *)controller
                        didSelectToken:(KayokoSearchToken *)token {
@@ -823,6 +855,8 @@ NS_ASSUME_NONNULL_END
     [self setIsResettingSearch:wasResettingSearch];
     [self applySearchCriteria:criteria toListViewController:listViewController];
 }
+
+#pragma mark - Search Text Events
 
 - (void)handleSearchTextFieldEditingChanged:(UITextField *)textField {
     if ([self isResettingSearch]) {
@@ -848,6 +882,8 @@ NS_ASSUME_NONNULL_END
     }
     [self applySearchFromSearchBar:searchBar];
 }
+
+#pragma mark - UISearchBarDelegate
 
 - (void)searchBarTextDidBeginEditing:(UISearchBar *)searchBar {
     if ([self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
