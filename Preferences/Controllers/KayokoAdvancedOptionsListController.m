@@ -6,6 +6,7 @@
 #import "KayokoAdvancedOptionsListController.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
 #import "KayokoTagStore.h"
 
@@ -76,6 +77,40 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
               @"Are you sure you want to clear all history items? This action cannot be undone."
                                   actionTitleKey:@"Clear History"
                                 notificationName:kKayokoNotificationKeyCoreClearHistory];
+}
+
+- (void)deactivateAuthorizationPrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *deactivateAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:
+                                             @"Are you sure you want to deactivate Kayoko on this device? "
+                                             @"This removes Kayoko’s mirrored Havoc credentials and "
+                                             @"local authorization state."
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *deactivateAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Deactivate"
+                                                                                             value:nil
+                                                                                             table:@"AdvancedOptions"]
+                                                               style:UIAlertActionStyleDestructive
+                                                             handler:^(UIAlertAction *action) {
+                                                               (void)action;
+                                                               [self deactivateAuthorization];
+                                                             }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [deactivateAlert addAction:deactivateAction];
+    [deactivateAlert addAction:cancelAction];
+
+    [self presentViewController:deactivateAlert animated:YES completion:nil];
 }
 
 - (void)restoreTagsPrompt {
@@ -199,6 +234,37 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 
     [alert addAction:cancelAction];
     [alert addAction:copyAction];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)deactivateAuthorization {
+    NSError *error = nil;
+    if (![KayokoPurchaseAuthorization clearAuthorizationStateWithError:&error]) {
+        [self presentDeactivateAuthorizationError:error];
+        return;
+    }
+
+    [self.navigationController popToRootViewControllerAnimated:YES];
+}
+
+- (void)presentDeactivateAuthorizationError:(NSError *)error {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *message = [error localizedDescription]
+                            ?: [bundle localizedStringForKey:@"Unable to Deactivate"
+                                                       value:nil
+                                                       table:@"AdvancedOptions"];
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Unable to Deactivate"
+                                                                            value:nil
+                                                                            table:@"AdvancedOptions"]
+                                            message:message
+                                     preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"OK"
+                                                                                   value:nil
+                                                                                   table:@"AdvancedOptions"]
+                                                     style:UIAlertActionStyleDefault
+                                                   handler:nil];
+    [alert addAction:action];
     [self presentViewController:alert animated:YES completion:nil];
 }
 

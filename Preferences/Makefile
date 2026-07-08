@@ -4,6 +4,7 @@ KayokoPreferences_USE_MODULES := 0
 
 KayokoPreferences_FILES += $(wildcard Controllers/*.m Cells/*.m Utilities/*.m)
 KayokoPreferences_FILES += $(wildcard ../Shared/Tags/*.m)
+KayokoPreferences_FILES += $(wildcard ../Shared/Purchases/*.m)
 
 KayokoPreferences_CFLAGS += -fobjc-arc
 KayokoPreferences_CFLAGS += -I.
@@ -12,9 +13,11 @@ KayokoPreferences_CFLAGS += -IControllers
 KayokoPreferences_CFLAGS += -ICells
 KayokoPreferences_CFLAGS += -IUtilities
 KayokoPreferences_CFLAGS += -I../Shared/Tags
+KayokoPreferences_CFLAGS += -I../Shared/Purchases
 
 KayokoPreferences_FRAMEWORKS += CoreGraphics
 KayokoPreferences_FRAMEWORKS += QuartzCore
+KayokoPreferences_FRAMEWORKS += Security
 KayokoPreferences_FRAMEWORKS += UIKit
 KayokoPreferences_PRIVATE_FRAMEWORKS += FrontBoardServices
 KayokoPreferences_PRIVATE_FRAMEWORKS += Preferences

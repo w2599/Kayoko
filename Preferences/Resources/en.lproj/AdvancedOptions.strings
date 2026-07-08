@@ -1,6 +1,7 @@
 "Advanced Options" = "Advanced Options";
 "Are you sure you want to clear all favorite items? This action cannot be undone." = "Are you sure you want to clear all favorite items? This action cannot be undone.";
 "Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
+"Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state.";
 "Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone." = "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone.";
 "Auto" = "Auto";
@@ -12,6 +13,7 @@
 "Clear History" = "Clear History";
 "Copy Path" = "Copy Path";
 "Dangerous Zone" = "Dangerous Zone";
+"Deactivate" = "Deactivate";
 "Gesture Recognizer" = "Gesture Recognizer";
 "Ignore Universal Clipboard" = "Ignore Universal Clipboard";
 "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices.";
@@ -24,5 +26,6 @@
 "System" = "System";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Unable to Restore Tags" = "Unable to Restore Tags";
+"Unable to Deactivate" = "Unable to Deactivate";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable.";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.";

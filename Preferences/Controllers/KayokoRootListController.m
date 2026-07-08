@@ -6,18 +6,30 @@
 //
 
 #import "KayokoRootListController.h"
+#import "KayokoAuthorizationOverlayView.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
+#import <roothide.h>
 
 @interface NSConcreteNotification : NSNotification
 @end
 
 @interface PSListController (Private)
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification;
+@end
+
+@interface NSTask : NSObject
+- (void)setLaunchPath:(NSString *)launchPath;
+- (void)setArguments:(NSArray<NSString *> *)arguments;
+- (void)setStandardOutput:(id)standardOutput;
+- (void)setStandardError:(id)standardError;
+- (void)launch;
+- (void)waitUntilExit;
 @end
 
 NS_ASSUME_NONNULL_BEGIN
@@ -31,6 +43,9 @@ NS_ASSUME_NONNULL_END
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
     UISearchController *_testInputSearchController;
+    KayokoAuthorizationOverlayView *_authorizationOverlayView;
+    BOOL _authorizationCheckInProgress;
+    NSUInteger _authorizationCheckGeneration;
 }
 
 - (void)viewDidLoad {
@@ -47,6 +62,15 @@ NS_ASSUME_NONNULL_END
 
     [[self navigationItem] setLargeTitleDisplayMode:UINavigationItemLargeTitleDisplayModeNever];
     [[self navigationItem] setRightBarButtonItem:respringButton];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(applicationWillEnterForeground:)
+                                                 name:UIApplicationWillEnterForegroundNotification
+                                               object:nil];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)configureTestInputSearchController {
@@ -121,6 +145,7 @@ NS_ASSUME_NONNULL_END
     if (![transitionCoordinator isInteractive]) {
         [[self navigationController] setToolbarHidden:YES animated:animated];
     }
+    [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:NO];
 
     ActivationMethod currentActivationMethod = [self currentActivationMethod];
     if (!_hasActivationMethodSnapshot) {
@@ -200,6 +225,209 @@ NS_ASSUME_NONNULL_END
 - (void)showKayoko {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kKayokoNotificationKeyCoreShow, nil, nil, YES);
+}
+
+- (void)applicationWillEnterForeground:(NSNotification *)notification {
+    (void)notification;
+    if ([self isViewLoaded] && self.view.window) {
+        [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:YES];
+    }
+}
+
+- (void)beginAuthorizationCheckIfNeededRestartingExistingOverlay:(BOOL)restartExistingOverlay {
+    if (_authorizationCheckInProgress) {
+        return;
+    }
+
+    NSError *flagError = nil;
+    if ([KayokoPurchaseAuthorization hasAuthorizationPassFlagWithError:&flagError]) {
+        [self dismissAuthorizationOverlayAnimated:NO];
+        return;
+    }
+
+    if (_authorizationOverlayView && !restartExistingOverlay) {
+        return;
+    }
+
+    _authorizationCheckInProgress = YES;
+    NSUInteger generation = ++_authorizationCheckGeneration;
+    [self showAuthorizationOverlayChecking];
+
+    NSString *updaterPath = [self kayokoUpdaterPath];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+      [self runCredentialSyncTaskAtPath:updaterPath];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (generation != self->_authorizationCheckGeneration) {
+            return;
+        }
+        [self checkMirroredPurchaseForGeneration:generation];
+      });
+    });
+}
+
+- (void)showAuthorizationOverlayChecking {
+    KayokoAuthorizationOverlayView *overlayView = [self authorizationOverlayView];
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    [overlayView setCheckingTitle:[bundle localizedStringForKey:@"Check Product Authorization" value:nil table:@"Root"]
+                         subtitle:nil];
+}
+
+- (KayokoAuthorizationOverlayView *)authorizationOverlayView {
+    if (!_authorizationOverlayView) {
+        _authorizationOverlayView = [[KayokoAuthorizationOverlayView alloc] initWithFrame:CGRectZero];
+        _authorizationOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
+        __weak typeof(self) weakSelf = self;
+        _authorizationOverlayView.retryHandler = ^{
+          [weakSelf retryAuthorizationCheck];
+        };
+    }
+
+    if (!_authorizationOverlayView.superview) {
+        [self.view addSubview:_authorizationOverlayView];
+        [NSLayoutConstraint activateConstraints:@[
+            [_authorizationOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [_authorizationOverlayView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [_authorizationOverlayView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [_authorizationOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    }
+    _authorizationOverlayView.alpha = 1.0;
+    return _authorizationOverlayView;
+}
+
+- (void)retryAuthorizationCheck {
+    [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:YES];
+}
+
+- (void)checkMirroredPurchaseForGeneration:(NSUInteger)generation {
+    [KayokoPurchaseAuthorization checkMirroredPurchaseWithCompletion:^(KayokoPurchaseAuthorizationResult *result) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (generation != self->_authorizationCheckGeneration) {
+            return;
+        }
+        [self handleAuthorizationResult:result];
+      });
+    }];
+}
+
+- (void)handleAuthorizationResult:(KayokoPurchaseAuthorizationResult *)result {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    _authorizationCheckInProgress = NO;
+
+    switch (result.state) {
+    case KayokoPurchaseAuthorizationStatePurchased: {
+        NSError *error = nil;
+        [KayokoPurchaseAuthorization setAuthorizationPassFlagWithError:&error];
+        [self dismissAuthorizationOverlayAnimated:YES];
+        break;
+    }
+    case KayokoPurchaseAuthorizationStateMissingCredential: {
+        [[self authorizationOverlayView]
+            setFailureTitle:[bundle localizedStringForKey:@"Read Account Failed" value:nil table:@"Root"]
+                   subtitle:[bundle localizedStringForKey:@"Please check the following: open Sileo → tap the "
+                                                          @"avatar in the top-right corner → make sure the Havoc "
+                                                          @"payment provider is signed in"
+                                                    value:nil
+                                                    table:@"Root"]
+               retryEnabled:NO];
+        break;
+    }
+    case KayokoPurchaseAuthorizationStateNetworkFailed: {
+        NSString *subtitle = [result.error localizedDescription]
+                                 ?: [bundle localizedStringForKey:@"The network request failed."
+                                                            value:nil
+                                                            table:@"Root"];
+        [[self authorizationOverlayView] setFailureTitle:[bundle localizedStringForKey:@"Network Request Failed"
+                                                                                 value:nil
+                                                                                 table:@"Root"]
+                                                subtitle:subtitle
+                                            retryEnabled:YES];
+        break;
+    }
+    case KayokoPurchaseAuthorizationStateInvalidResponse: {
+        NSString *statusMessage =
+            result.statusMessage ?: [bundle localizedStringForKey:@"Invalid Response" value:nil table:@"Root"];
+        NSString *format = [bundle localizedStringForKey:@"Server returned an invalid response. Tap the screen to "
+                                                         @"retry: %@"
+                                                   value:nil
+                                                   table:@"Root"];
+        [[self authorizationOverlayView] setFailureTitle:[bundle localizedStringForKey:@"Network Request Failed"
+                                                                                 value:nil
+                                                                                 table:@"Root"]
+                                                subtitle:[NSString stringWithFormat:format, statusMessage]
+                                            retryEnabled:YES];
+        break;
+    }
+    case KayokoPurchaseAuthorizationStateNotPurchased: {
+        [[self authorizationOverlayView]
+            setFailureTitle:[bundle localizedStringForKey:@"Authorization Not Found" value:nil table:@"Root"]
+                   subtitle:[bundle localizedStringForKey:@"Please check the following: open Sileo → tap the "
+                                                          @"avatar in the top-right corner → tap Havoc → make sure "
+                                                          @"Kayoko is in your purchases"
+                                                    value:nil
+                                                    table:@"Root"]
+               retryEnabled:NO];
+        break;
+    }
+    }
+}
+
+- (void)dismissAuthorizationOverlayAnimated:(BOOL)animated {
+    KayokoAuthorizationOverlayView *overlayView = _authorizationOverlayView;
+    if (!overlayView) {
+        return;
+    }
+
+    void (^completion)(BOOL) = ^(BOOL finished) {
+      (void)finished;
+      [overlayView removeFromSuperview];
+      if (self->_authorizationOverlayView == overlayView) {
+          self->_authorizationOverlayView = nil;
+      }
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.25
+                         animations:^{
+                           overlayView.alpha = 0.0;
+                         }
+                         completion:completion];
+    } else {
+        completion(YES);
+    }
+}
+
+- (NSString *)kayokoUpdaterPath {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray<NSString *> *candidatePaths = @[
+        jbroot(@"/usr/local/libexec/kayoko_updater"), @"/var/jb/usr/local/libexec/kayoko_updater",
+        @"/usr/local/libexec/kayoko_updater"
+    ];
+
+    for (NSString *path in candidatePaths) {
+        if ([fileManager isExecutableFileAtPath:path]) {
+            return path;
+        }
+    }
+    return nil;
+}
+
+- (void)runCredentialSyncTaskAtPath:(NSString *)updaterPath {
+    if ([updaterPath length] == 0) {
+        return;
+    }
+
+    @try {
+        NSTask *task = [[NSTask alloc] init];
+        [task setLaunchPath:updaterPath];
+        [task setArguments:@[ @"sync-credential" ]];
+        [task setStandardOutput:[NSPipe pipe]];
+        [task setStandardError:[NSPipe pipe]];
+        [task launch];
+        [task waitUntilExit];
+    } @catch (NSException *exception) {
+        (void)exception;
+    }
 }
 
 - (UISlider *_Nullable)findSliderInView:(UIView *)view {

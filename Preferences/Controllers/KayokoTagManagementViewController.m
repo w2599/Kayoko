@@ -666,8 +666,8 @@ static CGFloat const kKayokoTagPlaceholderMinimumHeight = 96.0;
 }
 
 - (void)updatePlaceholderVisibility {
-    BOOL showsNoSearchResultsPlaceholder = [self isFiltering] && [[self tags] count] > 0 &&
-                                           [[self filteredTags] count] == 0;
+    BOOL showsNoSearchResultsPlaceholder =
+        [self isFiltering] && [[self tags] count] > 0 && [[self filteredTags] count] == 0;
     BOOL shouldShowPlaceholder = [[self tags] count] == 0 || showsNoSearchResultsPlaceholder;
     UIView *footerView = [[self tableView] tableFooterView];
     BOOL isShowingPlaceholder = footerView == [self placeholderView];
