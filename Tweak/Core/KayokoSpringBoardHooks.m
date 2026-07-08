@@ -8,6 +8,7 @@
 #import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <UIKit/UIKit.h>
+#import <math.h>
 #import <objc/runtime.h>
 
 #import "KayokoCoreRuntime.h"
@@ -15,8 +16,6 @@
 #import "KayokoPreferenceKeys.h"
 #import "KayokoSpringBoardHooks.h"
 #import "KayokoSwipeUpGestureRecognizer.h"
-
-#include <math.h>
 
 CHDeclareClass(SpringBoard);
 CHDeclareClass(FBScene);

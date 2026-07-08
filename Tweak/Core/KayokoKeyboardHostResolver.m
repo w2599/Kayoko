@@ -4,12 +4,10 @@
 //
 
 #import "KayokoKeyboardHostResolver.h"
-
-#import <objc/runtime.h>
+#import "KayokoSceneSettingKeys.h"
 
 #import <HBLog.h>
-
-#import "KayokoSceneSettingKeys.h"
+#import <objc/runtime.h>
 
 static NSString *const kKayokoSpotlightSceneIdentifier = @"searchScreen";
 static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";

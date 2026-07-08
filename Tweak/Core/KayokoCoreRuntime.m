@@ -4,21 +4,19 @@
 //
 
 #import "KayokoCoreRuntime.h"
+#import "KayokoKeyboardHostResolver.h"
+#import "KayokoMainViewController.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPasteboardManager.h"
+#import "KayokoPreferenceKeys.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
-#import <QuartzCore/QuartzCore.h>
-
 #import <HBLog.h>
+#import <QuartzCore/QuartzCore.h>
 #import <notify.h>
 #import <roothide.h>
-
-#import "Controllers/KayokoMainViewController.h"
-#import "KayokoKeyboardHostResolver.h"
-#import "KayokoNotificationKeys.h"
-#import "KayokoPasteboardManager.h"
-#import "KayokoPreferenceKeys.h"
 
 static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
 static NSTimeInterval const kKayokoPasteSuppressionExpirationDelay = 1.0;
