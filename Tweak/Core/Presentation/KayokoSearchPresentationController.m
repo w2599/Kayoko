@@ -656,7 +656,7 @@ NS_ASSUME_NONNULL_END
     CGFloat hiddenSearchBottomInset = [self hiddenSearchBottomInsetForTableView:tableView];
     CGFloat safeAreaBottomInset = [self safeAreaBottomInsetForTableView:tableView];
     CGFloat obscuredBottomInset = MAX(keyboardBottomInset, safeAreaBottomInset);
-    contentInset.bottom = hiddenSearchBottomInset + obscuredBottomInset;
+    contentInset.bottom = MAX(hiddenSearchBottomInset, obscuredBottomInset);
     [tableView setContentInset:contentInset];
 
     [tableView setAutomaticallyAdjustsScrollIndicatorInsets:NO];

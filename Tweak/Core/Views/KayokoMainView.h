@@ -37,8 +37,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) UIEdgeInsets contentSafeAreaAdditionalInsets;
 @property(nonatomic, assign, getter=isSearchTitleRowCollapsed) BOOL searchTitleRowCollapsed;
 
-@property(nonatomic, copy, nullable) void (^layoutHandler)(void);
-
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize

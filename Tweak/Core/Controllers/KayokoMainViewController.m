@@ -126,9 +126,6 @@ NS_ASSUME_NONNULL_END
         [_historyController setDelegate:self];
 
         __weak typeof(self) weakSelf = self;
-        [_mainView setLayoutHandler:^{
-          [weakSelf handleViewLayout];
-        }];
         [[_mainView favoritesButton] addTarget:self
                                         action:@selector(handleFavoritesButtonPressed)
                               forControlEvents:UIControlEventTouchUpInside];
@@ -304,6 +301,16 @@ NS_ASSUME_NONNULL_END
 }
 
 #pragma mark - Layout and Lookup
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self handleViewLayout];
+}
+
+- (void)viewSafeAreaInsetsDidChange {
+    [super viewSafeAreaInsetsDidChange];
+    [self handleViewLayout];
+}
 
 - (void)handleViewLayout {
     [[self searchController] layout];

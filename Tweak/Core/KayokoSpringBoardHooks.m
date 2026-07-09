@@ -467,6 +467,11 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     return springBoardStatusBarWindowClass && [window isKindOfClass:springBoardStatusBarWindowClass];
 }
 
++ (BOOL)isTextEffectsWindow:(UIWindow *)window {
+    Class textEffectsWindowClass = NSClassFromString(@"UITextEffectsWindow");
+    return textEffectsWindowClass && [window isKindOfClass:textEffectsWindowClass];
+}
+
 + (void)installPanelIfNeededInStatusBarWindow:(UIWindow *)window {
     if (![self isStatusBarWindow:window]) {
         return;
@@ -526,8 +531,10 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
 }
 
 + (void)handleWindowWillRotateNotification:(NSNotification *)notification {
-    (void)notification;
-    [[KayokoCoreRuntime sharedRuntime] hideForRotation];
+    UIWindow *window = notification.object;
+    if ([self isTextEffectsWindow:window]) {
+        [[KayokoCoreRuntime sharedRuntime] hideForRotation];
+    }
 }
 
 #pragma mark - System Swipe

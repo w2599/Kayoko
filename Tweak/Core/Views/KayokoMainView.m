@@ -234,13 +234,6 @@ static CGFloat const kKayokoContentTopSpacing = 8;
     [self setNeedsLayout];
 }
 
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    if ([self layoutHandler]) {
-        [self layoutHandler]();
-    }
-}
-
 #pragma mark - Content Installation
 
 - (void)constrainContentView:(UIView *)contentView {
@@ -273,6 +266,9 @@ static CGFloat const kKayokoContentTopSpacing = 8;
 
 - (CGFloat)sceneSafeAreaBottomInsetForWindow:(UIWindow *)window {
     UIWindowScene *windowScene = [window windowScene];
+    CGSize targetBoundsSize = [window bounds].size;
+    CGFloat firstVisibleBottomInset = 0;
+    CGFloat matchingVisibleBottomInset = 0;
     for (UIWindow *sceneWindow in [windowScene windows]) {
         if ([sceneWindow isHidden]) {
             continue;
@@ -280,25 +276,38 @@ static CGFloat const kKayokoContentTopSpacing = 8;
 
         CGFloat bottomInset = MAX([sceneWindow safeAreaInsets].bottom, 0);
         if (bottomInset > 0) {
-            return bottomInset;
+            if (firstVisibleBottomInset <= 0) {
+                firstVisibleBottomInset = bottomInset;
+            }
+
+            CGSize sceneWindowBoundsSize = [sceneWindow bounds].size;
+            if (fabs(sceneWindowBoundsSize.width - targetBoundsSize.width) <= 0.5 &&
+                fabs(sceneWindowBoundsSize.height - targetBoundsSize.height) <= 0.5) {
+                matchingVisibleBottomInset = MAX(matchingVisibleBottomInset, bottomInset);
+            }
         }
     }
 
-    return 0;
+    return matchingVisibleBottomInset > 0 ? matchingVisibleBottomInset : firstVisibleBottomInset;
 }
 
 - (CGFloat)safeAreaBottomInsetForContentView:(nullable UIView *)contentView {
-    CGFloat bottomInset = MAX([contentView safeAreaInsets].bottom, 0);
-    if (bottomInset > 0) {
-        return bottomInset;
+    UIView *referenceView = contentView ?: self;
+    if (contentView && [contentView isDescendantOfView:[self contentContainerView]]) {
+        // Content transitions temporarily offset installed content views; the safe-area overlap belongs to the
+        // stable content container.
+        referenceView = [self contentContainerView];
     }
 
-    UIView *referenceView = contentView ?: self;
     UIWindow *window = [referenceView window] ?: [self window];
+    CGFloat viewBottomSafeAreaInset = MAX([referenceView safeAreaInsets].bottom, 0);
     CGFloat windowBottomSafeAreaInset =
         MAX(MAX([window safeAreaInsets].bottom, [self sceneSafeAreaBottomInsetForWindow:window]), 0);
-    if (!referenceView || !window || windowBottomSafeAreaInset <= 0) {
-        return 0;
+    if (!referenceView || !window) {
+        return viewBottomSafeAreaInset;
+    }
+    if (windowBottomSafeAreaInset <= 0) {
+        return viewBottomSafeAreaInset;
     }
 
     CGRect referenceBoundsInWindow = [referenceView convertRect:[referenceView bounds] toView:window];
