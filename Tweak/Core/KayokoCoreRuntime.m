@@ -173,6 +173,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
+@property(nonatomic, assign) KayokoAutomaticPromotionMode automaticPromotionMode;
 @property(nonatomic, assign) KayokoInitialViewMode initialViewMode;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL playSoundEffects;
@@ -363,6 +364,7 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
         kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
+        kKayokoPreferenceKeyAutomaticPromotionMode : @(kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue),
         kKayokoPreferenceKeyInitialViewMode : @(kKayokoPreferenceKeyInitialViewModeDefaultValue),
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
@@ -395,6 +397,13 @@ NS_ASSUME_NONNULL_END
         self.automaticPasteMode != kKayokoAutomaticPasteModeAutomatic) {
         self.automaticPasteMode = kKayokoPreferenceKeyAutomaticPasteModeDefaultValue;
     }
+    self.automaticPromotionMode =
+        [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticPromotionMode] unsignedIntegerValue];
+    if (self.automaticPromotionMode != kKayokoAutomaticPromotionModeOff &&
+        self.automaticPromotionMode != kKayokoAutomaticPromotionModeHistoryOnly &&
+        self.automaticPromotionMode != kKayokoAutomaticPromotionModeAlways) {
+        self.automaticPromotionMode = kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue;
+    }
     self.initialViewMode = [[self.preferences objectForKey:kKayokoPreferenceKeyInitialViewMode] unsignedIntegerValue];
     if (self.initialViewMode != kKayokoInitialViewModeHistory &&
         self.initialViewMode != kKayokoInitialViewModeFavorites &&
@@ -424,6 +433,9 @@ NS_ASSUME_NONNULL_END
     }
     if ([pasteboardManager automaticPasteMode] != self.automaticPasteMode) {
         [pasteboardManager setAutomaticPasteMode:self.automaticPasteMode];
+    }
+    if ([pasteboardManager automaticPromotionMode] != self.automaticPromotionMode) {
+        [pasteboardManager setAutomaticPromotionMode:self.automaticPromotionMode];
     }
     if ([pasteboardManager ignoreRemoteReplication] != ignoreRemoteReplication) {
         [pasteboardManager setIgnoreRemoteReplication:ignoreRemoteReplication];
