@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
 @property(nonatomic, assign) UIInterfaceOrientationMask kayokoSupportedInterfaceOrientations;
 @property(nonatomic, copy, nullable) void (^focusRestoreRequestHandler)(void);
+@property(nonatomic, copy, nullable) void (^panelDidHideHandler)(void);
 
 - (instancetype)initWithFrame:(CGRect)frame;
 

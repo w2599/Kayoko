@@ -1655,6 +1655,9 @@ NS_ASSUME_NONNULL_END
     if (completion) {
         completion();
     }
+    if ([self panelDidHideHandler]) {
+        [self panelDidHideHandler]();
+    }
 }
 
 - (void)hideWithCompletion:(void (^)(void))completion {

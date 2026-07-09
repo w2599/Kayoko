@@ -308,6 +308,9 @@ NS_ASSUME_NONNULL_END
     [self.mainViewController setFocusRestoreRequestHandler:^{
       [weakSelf requestHelperFocusRestore];
     }];
+    [self.mainViewController setPanelDidHideHandler:^{
+      [weakSelf handleMainPanelDidHide];
+    }];
     [self applyPreferencesToView];
     if (self.didRequestInitialHistoryPreload) {
         [self.mainViewController preloadHistoryIfNeeded];
@@ -396,6 +399,15 @@ NS_ASSUME_NONNULL_END
         [self.compactLandscapeOverlayWindow setRootViewController:nil];
     }
     [self.mainViewController setKayokoSupportedInterfaceOrientations:UIInterfaceOrientationMaskAll];
+}
+
+- (void)handleMainPanelDidHide {
+    if ([self activePresentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen &&
+        [self.compactLandscapeOverlayWindow rootViewController] != self.mainViewController) {
+        return;
+    }
+
+    [self tearDownCompactLandscapeOverlayHost];
 }
 
 - (BOOL)prepareCompactLandscapeHost {
@@ -1009,13 +1021,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle {
     if (self.mainViewController && ![self.mainViewController isHidden]) {
-        KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
-        [self.mainViewController hideWithAnimationStyle:animationStyle
-                                             completion:^{
-          if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-              [self tearDownCompactLandscapeOverlayHost];
-          }
-        }];
+        [self.mainViewController hideWithAnimationStyle:animationStyle completion:nil];
     }
 }
 
@@ -1024,19 +1030,8 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
-    __weak typeof(self) weakSelf = self;
     [self.mainViewController hideForExternalRequestWithAnimationStyle:KayokoPanelHideAnimationStyleDefault
-                                                           completion:^{
-                                                             __strong typeof(weakSelf) strongSelf = weakSelf;
-                                                             if (!strongSelf) {
-                                                                 return;
-                                                             }
-                                                             if (presentationMode ==
-                                                                 KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-                                                                 [strongSelf tearDownCompactLandscapeOverlayHost];
-                                                             }
-                                                           }];
+                                                           completion:nil];
 }
 
 - (void)hide {
@@ -1049,11 +1044,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)hideImmediately {
     if (self.mainViewController && ![self.mainViewController isHidden]) {
-        KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
         [self.mainViewController hideImmediately];
-        if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-            [self tearDownCompactLandscapeOverlayHost];
-        }
     }
 }
 
