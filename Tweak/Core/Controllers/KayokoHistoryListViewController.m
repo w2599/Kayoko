@@ -534,6 +534,17 @@ NS_ASSUME_NONNULL_END
                             }];
 }
 
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                      withVelocity:(CGPoint)velocity
+               targetContentOffset:(inout CGPoint *)targetContentOffset {
+    (void)velocity;
+    if (scrollView != [self tableView] || [self hasActiveSearch]) {
+        return;
+    }
+
+    [[self tableView] adjustTargetContentOffsetForSearchBarSnap:targetContentOffset];
+}
+
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray<UIContextualAction *> *actions = [[NSMutableArray alloc] init];

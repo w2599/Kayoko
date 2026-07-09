@@ -138,6 +138,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)layoutSearchBarForTableView:(KayokoHistoryListView *)tableView {
     [tableView updateNoSearchResultsPlaceholderLayout];
+    [tableView setSearchBarSnapHeight:kKayokoSearchHeaderHeight];
 
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
     UIView *headerView = [self searchHeaderViewForTableView:tableView];
