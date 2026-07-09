@@ -136,6 +136,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)hideForHomeScreenIfVisible:(id)controller;
 + (void)hideForLayoutStateTransition;
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
++ (void)handleWindowWillRotateNotification:(NSNotification *)notification;
 
 #pragma mark - System Swipe
 
@@ -144,6 +145,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Hook Installation
 
 + (void)installApplicationMetadataHooks;
++ (void)installRotationObserver;
 + (void)installSceneSettingsHooks;
 + (void)installSystemSwipeUpHooks;
 
@@ -466,13 +468,10 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
         return;
     }
 
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-      dispatch_async(dispatch_get_main_queue(), ^{
-        if ([self isStatusBarWindow:window]) {
-            [[KayokoCoreRuntime sharedRuntime] installPanelInStatusBarWindow:window];
-        }
-      });
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if ([self isStatusBarWindow:window]) {
+          [[KayokoCoreRuntime sharedRuntime] installPanelInStatusBarWindow:window];
+      }
     });
 }
 
@@ -520,6 +519,11 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     if (switcherVisible) {
         [runtime hide];
     }
+}
+
++ (void)handleWindowWillRotateNotification:(NSNotification *)notification {
+    (void)notification;
+    [[KayokoCoreRuntime sharedRuntime] hideForRotation];
 }
 
 #pragma mark - System Swipe
@@ -646,6 +650,16 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     }
 }
 
++ (void)installRotationObserver {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      [[NSNotificationCenter defaultCenter] addObserver:self
+                                                   selector:@selector(handleWindowWillRotateNotification:)
+                                                   name:@"UIWindowWillRotateNotification"
+                                                 object:nil];
+    });
+}
+
 + (void)installSceneSettingsHooks {
     Class sceneClass = NSClassFromString(@"FBScene");
     SEL updateSettingsSelector = @selector(updateSettings:withTransitionContext:completion:);
@@ -723,6 +737,7 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     [self installSpotlightHooks];
     [self installLibrarySearchHooks];
     [self installApplicationMetadataHooks];
+    [self installRotationObserver];
     [self installSceneSettingsHooks];
     [self installSystemGestureHooks];
 

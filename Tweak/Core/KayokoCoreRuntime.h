@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)show;
 - (void)hide;
+- (void)hideForRotation;
 - (void)hideImmediately;
 - (void)reloadHistory;
 - (void)handleApplicationMetadataChanged;

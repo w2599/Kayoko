@@ -90,6 +90,7 @@ NS_ASSUME_NONNULL_END
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
     self = [super init];
     if (self) {
+        _presentationMode = KayokoPanelPresentationModePortraitDrawer;
         _containerView = containerView;
         _headerView = headerView;
         _historySearchBar = historySearchBar;
@@ -348,8 +349,16 @@ NS_ASSUME_NONNULL_END
     [self setSearchActive:YES];
     [self setNormalFrameBeforeSearch:[[self containerView] frame]];
     [self setHasNormalFrameBeforeSearch:YES];
-    [self setGrabberFoldProgress:1];
     [self revealSearchBarInTableView:activeTableView animated:YES];
+
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        if (completion) {
+            completion();
+        }
+        return;
+    }
+
+    [self setGrabberFoldProgress:1];
 
     UIView *superview = [[self containerView] superview];
     if (!superview) {
@@ -420,9 +429,24 @@ NS_ASSUME_NONNULL_END
     [containerView layoutIfNeeded];
     if ([containerView isKindOfClass:[KayokoMainView class]]) {
         KayokoMainView *mainView = (KayokoMainView *)containerView;
-        [mainView setGrabberFoldProgress:0];
-        [mainView setContentRespectsSafeArea:NO];
-        [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        BOOL keepsFullscreenSafeArea = [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
+        if (!keepsFullscreenSafeArea) {
+            [mainView setGrabberFoldProgress:0];
+            [mainView setContentRespectsSafeArea:NO];
+            [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        }
+    }
+
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        [self hideSearchBarInTableView:activeTableView animated:NO];
+        [self setHasNormalFrameBeforeSearch:NO];
+        if (animations) {
+            animations();
+        }
+        if (completion) {
+            completion();
+        }
+        return;
     }
 
     if (restoresFrame && !CGRectEqualToRect([[self containerView] frame], targetFrame)) {

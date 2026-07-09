@@ -138,6 +138,11 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - View Lookup
 
+- (void)setPresentationMode:(KayokoPanelPresentationMode)presentationMode {
+    _presentationMode = presentationMode;
+    [[self presentationController] setPresentationMode:presentationMode];
+}
+
 - (KayokoHistoryListViewController *)activeListViewController {
     return [[self delegate] activeListViewControllerForSearchController:self];
 }

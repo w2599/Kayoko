@@ -5,6 +5,7 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPanelPresentationMode.h"
 #import "KayokoPreferenceKeys.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -18,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
 @property(nonatomic, assign, getter=isAuthorizationPassed) BOOL authorizationPassed;
+@property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
 @property(nonatomic, copy, nullable) void (^focusRestoreRequestHandler)(void);
 
 - (instancetype)initWithFrame:(CGRect)frame;
@@ -35,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)hide;
 - (void)hideRestoringFocus;
 - (void)hideWithCompletion:(nullable void (^)(void))completion;
+- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                    completion:(nullable void (^)(void))completion;
 - (void)hideImmediately;
 - (void)reload;
 

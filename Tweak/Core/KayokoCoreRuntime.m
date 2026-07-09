@@ -7,6 +7,7 @@
 #import "KayokoKeyboardHostResolver.h"
 #import "KayokoMainViewController.h"
 #import "KayokoNotificationKeys.h"
+#import "KayokoPanelPresentationMode.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoPurchaseAuthorization.h"
@@ -58,6 +59,9 @@ static NSTimeInterval const kKayokoPasteSuppressionExpirationDelay = 1.0;
 + (UIKeyboardImpl *)activeInstance;
 @end
 
+@interface KayokoCompactLandscapeOverlayWindow : UIWindow
+@end
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPasteSuppressionState : NSObject
@@ -89,6 +93,19 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
+
+@implementation KayokoCompactLandscapeOverlayWindow
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *rootView = [[self rootViewController] view];
+    if (!rootView || [rootView isHidden]) {
+        return nil;
+    }
+
+    return [super hitTest:point withEvent:event];
+}
+
+@end
 
 @implementation KayokoPasteSuppressionState
 
@@ -160,6 +177,10 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - View State
 
 @property(nonatomic, strong, nullable) KayokoMainViewController *mainViewController;
+@property(nonatomic, weak, nullable) UIWindow *statusBarWindow;
+@property(nonatomic, strong, nullable) UIControl *portraitOutsideDismissOverlayView;
+@property(nonatomic, strong, nullable) UIWindow *compactLandscapeOverlayWindow;
+@property(nonatomic, assign) KayokoPanelPresentationMode activePresentationMode;
 @property(nonatomic, assign) BOOL pendingHeightPreferenceApply;
 @property(nonatomic, assign) BOOL didRequestInitialHistoryPreload;
 @property(nonatomic, assign, getter=hasAuthorizationPassInMemory) BOOL authorizationPassInMemory;
@@ -197,6 +218,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) int lockStateToken;
 @property(nonatomic, assign, getter=isPackageMaintenanceMode) BOOL packageMaintenanceMode;
 
+#pragma mark - Panel Host
+
+- (BOOL)preparePanelHostForPresentationMode:(KayokoPanelPresentationMode)presentationMode;
+- (CGRect)fullscreenPanelFrameInWindow:(nullable UIWindow *)window;
+
 @end
 
 NS_ASSUME_NONNULL_END
@@ -217,6 +243,7 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _previewLineCount = 1;
         _heightInPoints = 420;
+        _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
         _pasteSuppressionState = [[KayokoPasteSuppressionState alloc] init];
     }
     return self;
@@ -227,7 +254,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)fullscreenSearchActive {
-    return self.panelVisible && [self.mainViewController isFullscreenSearchActive];
+    if (!self.panelVisible) {
+        return NO;
+    }
+
+    return [self activePresentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen ||
+           [self.mainViewController isFullscreenSearchActive];
 }
 
 - (BOOL)systemMultitaskingGestureSuppressed {
@@ -236,12 +268,23 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Panel
 
-- (void)installPanelInStatusBarWindow:(UIWindow *)window {
-    if (self.mainViewController) {
-        return;
+- (CGRect)portraitPanelFrameInWindow:(nullable UIWindow *)window {
+    CGRect bounds = window ? [window bounds] : [[UIScreen mainScreen] bounds];
+    CGFloat height = MIN(self.heightInPoints, CGRectGetHeight(bounds));
+    return CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
+}
+
+- (CGRect)fullscreenPanelFrameInWindow:(UIWindow *)window {
+    return window ? [window bounds] : [[UIScreen mainScreen] bounds];
+}
+
+- (UIControl *)ensurePortraitOutsideDismissOverlayInWindow:(UIWindow *)window {
+    if (self.portraitOutsideDismissOverlayView &&
+        [self.portraitOutsideDismissOverlayView superview] == window) {
+        return self.portraitOutsideDismissOverlayView;
     }
 
-    CGRect bounds = [[UIScreen mainScreen] bounds];
+    [self.portraitOutsideDismissOverlayView removeFromSuperview];
     UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[window bounds]];
     [outsideDismissOverlayView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
     [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.18]];
@@ -249,19 +292,151 @@ NS_ASSUME_NONNULL_END
     [outsideDismissOverlayView setHidden:YES];
     [outsideDismissOverlayView setUserInteractionEnabled:NO];
     [window addSubview:outsideDismissOverlayView];
+    self.portraitOutsideDismissOverlayView = outsideDismissOverlayView;
+    return outsideDismissOverlayView;
+}
 
+- (void)createMainViewControllerIfNeeded {
+    if (self.mainViewController) {
+        return;
+    }
+
+    CGRect initialFrame = [self portraitPanelFrameInWindow:self.statusBarWindow];
     self.mainViewController = [[KayokoMainViewController alloc]
-        initWithFrame:CGRectMake(0, bounds.size.height - self.heightInPoints, bounds.size.width, self.heightInPoints)];
+        initWithFrame:initialFrame];
     __weak typeof(self) weakSelf = self;
     [self.mainViewController setFocusRestoreRequestHandler:^{
       [weakSelf requestHelperFocusRestore];
     }];
-    [self.mainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
     [self applyPreferencesToView];
-    [window addSubview:[self.mainViewController view]];
     if (self.didRequestInitialHistoryPreload) {
         [self.mainViewController preloadHistoryIfNeeded];
     }
+}
+
+- (void)installPanelInStatusBarWindow:(UIWindow *)window {
+    if (!window) {
+        return;
+    }
+
+    self.statusBarWindow = window;
+    [self createMainViewControllerIfNeeded];
+
+    if (![self.mainViewController isHidden]) {
+        return;
+    }
+
+    [self preparePanelHostForPresentationMode:KayokoPanelPresentationModePortraitDrawer];
+}
+
+- (CGFloat)overlayWindowLevel {
+    if (self.statusBarWindow) {
+        return [self.statusBarWindow windowLevel];
+    }
+
+    return UIWindowLevelStatusBar;
+}
+
+- (nullable UIWindow *)compactLandscapeOverlayWindowCreatingIfNeeded {
+    UIWindowScene *windowScene = [self.statusBarWindow windowScene];
+    if (!windowScene) {
+        return nil;
+    }
+
+    if (self.compactLandscapeOverlayWindow &&
+        [self.compactLandscapeOverlayWindow windowScene] != windowScene) {
+        [self.compactLandscapeOverlayWindow setHidden:YES];
+        [self.compactLandscapeOverlayWindow setRootViewController:nil];
+        self.compactLandscapeOverlayWindow = nil;
+    }
+
+    if (!self.compactLandscapeOverlayWindow) {
+        UIWindow *window = [[KayokoCompactLandscapeOverlayWindow alloc] initWithWindowScene:windowScene];
+        [window setBackgroundColor:[UIColor clearColor]];
+        [window setOpaque:NO];
+        [window setClipsToBounds:YES];
+        [window setHidden:YES];
+        self.compactLandscapeOverlayWindow = window;
+    }
+
+    [self.compactLandscapeOverlayWindow setWindowLevel:[self overlayWindowLevel]];
+    return self.compactLandscapeOverlayWindow;
+}
+
+- (void)applyCompactLandscapeOverlayFrame:(UIWindow *)window {
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    [window setFrame:bounds];
+    [[window rootViewController].view setFrame:[window bounds]];
+    [[window rootViewController].view setNeedsLayout];
+}
+
+- (BOOL)prepareCompactLandscapeHost {
+    UIWindow *window = [self compactLandscapeOverlayWindowCreatingIfNeeded];
+    if (!window) {
+        return NO;
+    }
+
+    [self.mainViewController setOutsideDismissOverlayView:nil];
+    [self.mainViewController setPresentationMode:KayokoPanelPresentationModeCompactLandscapeFullscreen];
+    [self applyCompactLandscapeOverlayFrame:window];
+    if ([window rootViewController] != self.mainViewController) {
+        [[self.mainViewController view] removeFromSuperview];
+        [window setRootViewController:self.mainViewController];
+    }
+    [window setHidden:NO];
+    [self applyCompactLandscapeOverlayFrame:window];
+
+    UIView *panelView = [self.mainViewController view];
+    [panelView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+    [panelView setFrame:[self fullscreenPanelFrameInWindow:window]];
+    [panelView setNeedsLayout];
+    self.activePresentationMode = KayokoPanelPresentationModeCompactLandscapeFullscreen;
+    return YES;
+}
+
+- (BOOL)preparePortraitHost {
+    UIWindow *window = self.statusBarWindow;
+    if (!window) {
+        return NO;
+    }
+
+    UIControl *outsideDismissOverlayView = [self ensurePortraitOutsideDismissOverlayInWindow:window];
+    [self.mainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
+    [self.mainViewController setPresentationMode:KayokoPanelPresentationModePortraitDrawer];
+
+    if ([self.compactLandscapeOverlayWindow rootViewController] == self.mainViewController) {
+        [self.compactLandscapeOverlayWindow setRootViewController:nil];
+    }
+    [self.compactLandscapeOverlayWindow setHidden:YES];
+
+    UIView *panelView = [self.mainViewController view];
+    if ([panelView superview] != window) {
+        [panelView removeFromSuperview];
+        [window addSubview:panelView];
+    }
+    [window bringSubviewToFront:outsideDismissOverlayView];
+    [window bringSubviewToFront:panelView];
+    [panelView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin];
+    [panelView setFrame:[self portraitPanelFrameInWindow:window]];
+    [panelView setNeedsLayout];
+    self.activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
+    return YES;
+}
+
+- (BOOL)preparePanelHostForPresentationMode:(KayokoPanelPresentationMode)presentationMode {
+    if (!self.mainViewController) {
+        return NO;
+    }
+
+    if (!CGAffineTransformIsIdentity([[self.mainViewController view] transform])) {
+        [[self.mainViewController view] setTransform:CGAffineTransformIdentity];
+    }
+
+    if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        return [self prepareCompactLandscapeHost];
+    }
+
+    return [self preparePortraitHost];
 }
 
 - (void)preloadInitialHistory {
@@ -285,6 +460,20 @@ NS_ASSUME_NONNULL_END
     }
 
     if (!applyWhenHidden && [self.mainViewController isHidden]) {
+        return;
+    }
+
+    if ([self activePresentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        UIWindow *window = self.compactLandscapeOverlayWindow;
+        UIView *panelView = [self.mainViewController view];
+        CGRect newFrame = [self fullscreenPanelFrameInWindow:window];
+        if (!CGRectEqualToRect([panelView frame], newFrame)) {
+            if (!CGAffineTransformIsIdentity([panelView transform])) {
+                [panelView setTransform:CGAffineTransformIdentity];
+            }
+            [panelView setFrame:newFrame];
+            [panelView setNeedsLayout];
+        }
         return;
     }
 
@@ -609,6 +798,15 @@ NS_ASSUME_NONNULL_END
     return UIInterfaceOrientationIsLandscape(orientation);
 }
 
+- (BOOL)deviceUsesCompactLandscapePresentation {
+    return [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone && [self frontmostAppIsLandscape];
+}
+
+- (KayokoPanelPresentationMode)currentPresentationMode {
+    return [self deviceUsesCompactLandscapePresentation] ? KayokoPanelPresentationModeCompactLandscapeFullscreen
+                                                         : KayokoPanelPresentationModePortraitDrawer;
+}
+
 - (BOOL)authorizationPassedForPanelShow {
     if ([self hasAuthorizationPassInMemory]) {
         return YES;
@@ -766,7 +964,8 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    if ([self frontmostAppIsLandscape]) {
+    KayokoPanelPresentationMode presentationMode = [self currentPresentationMode];
+    if (![self preparePanelHostForPresentationMode:presentationMode]) {
         [self playFailureHapticFeedbackIfNeeded];
         return;
     }
@@ -784,15 +983,33 @@ NS_ASSUME_NONNULL_END
     }
 }
 
-- (void)hide {
+- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle {
     if (self.mainViewController && ![self.mainViewController isHidden]) {
-        [self.mainViewController hide];
+        KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
+        [self.mainViewController hideWithAnimationStyle:animationStyle
+                                             completion:^{
+          if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+              [self.compactLandscapeOverlayWindow setHidden:YES];
+          }
+        }];
     }
+}
+
+- (void)hide {
+    [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleDefault];
+}
+
+- (void)hideForRotation {
+    [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleFade];
 }
 
 - (void)hideImmediately {
     if (self.mainViewController && ![self.mainViewController isHidden]) {
+        KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
         [self.mainViewController hideImmediately];
+        if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+            [self.compactLandscapeOverlayWindow setHidden:YES];
+        }
     }
 }
 

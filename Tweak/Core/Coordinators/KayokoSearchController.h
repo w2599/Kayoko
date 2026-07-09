@@ -5,6 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPanelPresentationMode.h"
+
 @class KayokoSearchController;
 @class KayokoHistoryListViewController;
 @class KayokoHistoryListView;
@@ -26,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoSearchController : NSObject
 
 @property(nonatomic, weak, nullable) id<KayokoSearchControllerDelegate> delegate;
+@property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
 @property(nonatomic, assign, readonly, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign, readonly) CGFloat keyboardBottomInset;
 

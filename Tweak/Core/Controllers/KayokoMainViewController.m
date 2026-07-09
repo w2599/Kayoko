@@ -92,6 +92,7 @@ NS_ASSUME_NONNULL_END
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _authorizationPassed = YES;
+        _presentationMode = KayokoPanelPresentationModePortraitDrawer;
         _mainView = [[KayokoMainView alloc] initWithFrame:frame];
         [self setView:_mainView];
         _historyListViewController = [[KayokoHistoryListViewController alloc]
@@ -268,6 +269,27 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)setPresentationMode:(KayokoPanelPresentationMode)presentationMode {
+    _presentationMode = presentationMode;
+    [[self panelPresentationController] setPresentationMode:presentationMode];
+    [[self searchController] setPresentationMode:presentationMode];
+    [self applyBasePresentationLayout];
+}
+
+- (void)applyBasePresentationLayout {
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        [[self mainView] setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        [[self mainView] setContentRespectsSafeArea:YES];
+        return;
+    }
+
+    if (![[self searchController] isSearchActive]) {
+        [[self mainView] setGrabberFoldProgress:0];
+        [[self mainView] setContentRespectsSafeArea:NO];
+        [[self mainView] setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+    }
+}
+
 - (BOOL)isAuthorizationRequired {
     return ![self isAuthorizationPassed];
 }
@@ -346,7 +368,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
-    return [[self searchController] isSearchActive];
+    return [self presentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen &&
+           [[self searchController] isSearchActive];
 }
 
 - (BOOL)panelPresentationController:(KayokoPanelPresentationController *)controller
@@ -1569,6 +1592,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)hideWithCompletion:(void (^)(void))completion {
+    [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleDefault completion:completion];
+}
+
+- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                    completion:(void (^)(void))completion {
     [self setShowRequestIdentifier:[self showRequestIdentifier] + 1];
     [self setPreparingToShow:NO];
 
@@ -1579,7 +1607,8 @@ NS_ASSUME_NONNULL_END
     [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
     [[self searchController] resetBeforeHide];
-    [[self panelPresentationController] hidePanelWithCompletion:^{
+    [[self panelPresentationController] hidePanelWithAnimationStyle:animationStyle
+                                                        completion:^{
       [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:completion];
     }];
 }
