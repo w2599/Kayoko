@@ -500,7 +500,7 @@ NS_ASSUME_NONNULL_END
     if ([imageName length] > 0) {
         __weak KayokoTableViewCell *weakCell = cell;
         [[self cellContentProvider] loadThumbnailForItem:item
-                                              targetSize:CGSizeMake(70, 40)
+                                              targetSize:[KayokoTableViewCell contentImageThumbnailSize]
                                               completion:^(UIImage *_Nullable image) {
                                                 [weakCell setContentImage:image forImageName:imageName];
                                               }];

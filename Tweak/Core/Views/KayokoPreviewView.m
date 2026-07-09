@@ -241,6 +241,15 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     return imageSize;
 }
 
+- (CGSize)imageViewportSizeForCurrentLayout {
+    UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
+    CGFloat viewportTop = CGRectGetMaxY([[self headerView] frame]) + kKayokoHeaderContentSpacing;
+    CGFloat viewportWidth =
+        MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
+    CGFloat viewportHeight = MAX(CGRectGetHeight([self bounds]) - viewportTop, 0);
+    return CGSizeMake(viewportWidth, viewportHeight);
+}
+
 - (CGFloat)minimumImageZoomScaleForImageSize:(CGSize)imageSize {
     if (imageSize.width <= 0 || imageSize.height <= 0) {
         return 1.0;
@@ -248,9 +257,9 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
     UIScrollView *scrollView = [self imageScrollView];
     UIEdgeInsets contentInset = [scrollView contentInset];
-    CGSize boundsSize = [scrollView bounds].size;
-    CGFloat availableWidth = MAX(boundsSize.width - contentInset.left - contentInset.right, 1.0);
-    CGFloat availableHeight = MAX(boundsSize.height - contentInset.top - contentInset.bottom, 1.0);
+    CGSize viewportSize = [self imageViewportSizeForCurrentLayout];
+    CGFloat availableWidth = MAX(viewportSize.width - contentInset.left - contentInset.right, 1.0);
+    CGFloat availableHeight = MAX(viewportSize.height - contentInset.top - contentInset.bottom, 1.0);
     CGFloat widthScale = availableWidth / imageSize.width;
     CGFloat heightScale = availableHeight / imageSize.height;
     return MAX(MIN(widthScale, heightScale), 0.01);
@@ -265,9 +274,9 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
     CGRect imageFrame = [imageView frame];
     UIEdgeInsets contentInset = [scrollView contentInset];
-    CGSize boundsSize = [scrollView bounds].size;
-    CGFloat availableWidth = MAX(boundsSize.width - contentInset.left - contentInset.right, 0);
-    CGFloat availableHeight = MAX(boundsSize.height - contentInset.top - contentInset.bottom, 0);
+    CGSize viewportSize = [self imageViewportSizeForCurrentLayout];
+    CGFloat availableWidth = MAX(viewportSize.width - contentInset.left - contentInset.right, 0);
+    CGFloat availableHeight = MAX(viewportSize.height - contentInset.top - contentInset.bottom, 0);
 
     if (imageFrame.size.width < availableWidth) {
         imageFrame.origin.x = contentInset.left + floor((availableWidth - imageFrame.size.width) / 2.0);
@@ -290,8 +299,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
 - (void)resetImageScrollViewForCurrentLayout {
     CGSize imageSize = [self imageSizeForCurrentImage];
-    CGSize boundsSize = [[self imageScrollView] bounds].size;
-    if (imageSize.width <= 0 || imageSize.height <= 0 || boundsSize.width <= 0 || boundsSize.height <= 0) {
+    CGSize viewportSize = [self imageViewportSizeForCurrentLayout];
+    if (imageSize.width <= 0 || imageSize.height <= 0 || viewportSize.width <= 0 || viewportSize.height <= 0) {
         return;
     }
 
@@ -322,14 +331,16 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
     [self updateImageScrollInsets];
 
-    CGSize boundsSize = [[self imageScrollView] bounds].size;
+    // During the fullscreen collapse, Auto Layout updates the nested scroll view one pass after this view's bounds.
+    // Use the viewport implied by this view and its header so the final zoom does not inherit stale geometry.
+    CGSize viewportSize = [self imageViewportSizeForCurrentLayout];
     CGFloat bottomInset = [[self imageScrollView] contentInset].bottom;
-    BOOL layoutSizeChanged = !CGSizeEqualToSize(boundsSize, [self imageScrollViewLayoutSize]);
+    BOOL layoutSizeChanged = !CGSizeEqualToSize(viewportSize, [self imageScrollViewLayoutSize]);
     BOOL bottomInsetChanged = fabs(bottomInset - [self imageScrollViewLayoutBottomInset]) > 0.5;
     if ([self imageScrollViewNeedsReset] || layoutSizeChanged || bottomInsetChanged) {
         [self resetImageScrollViewForCurrentLayout];
         [self setImageScrollViewNeedsReset:NO];
-        [self setImageScrollViewLayoutSize:boundsSize];
+        [self setImageScrollViewLayoutSize:viewportSize];
         [self setImageScrollViewLayoutBottomInset:bottomInset];
     } else {
         [self updateImageViewFrameForCurrentZoom];
