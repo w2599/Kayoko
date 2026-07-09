@@ -686,6 +686,32 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetsToTableViews];
 }
 
+- (void)resetAfterSearchStateClearedWithActiveTableView:(KayokoHistoryListView *)activeTableView {
+    [self setSearchActive:NO];
+    [self resetKeyboardInsets];
+
+    UIView *containerView = [self containerView];
+    CGRect targetFrame = [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [containerView frame];
+    [self setHasNormalFrameBeforeSearch:NO];
+    [containerView setFrame:targetFrame];
+    [containerView setNeedsLayout];
+
+    if ([containerView isKindOfClass:[KayokoMainView class]]) {
+        KayokoMainView *mainView = (KayokoMainView *)containerView;
+        BOOL keepsFullscreenSafeArea = [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
+        [mainView setSearchTitleRowCollapsed:NO];
+        [mainView setGrabberFoldProgress:0];
+        [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        if (!keepsFullscreenSafeArea) {
+            [mainView setContentRespectsSafeArea:NO];
+        }
+    }
+
+    [containerView layoutIfNeeded];
+    [self hideSearchBarInTableView:activeTableView animated:NO];
+    [activeTableView layoutIfNeeded];
+}
+
 - (BOOL)shouldHandleSearchKeyboardNotification:(NSNotification *)notification {
     if (![self isSearchActive]) {
         return NO;

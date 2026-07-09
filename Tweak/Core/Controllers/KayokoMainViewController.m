@@ -664,7 +664,7 @@ NS_ASSUME_NONNULL_END
     [contentView setAlpha:1];
     [contentView setTransform:CGAffineTransformIdentity];
     if (showsAuthorizationRequired) {
-        [[self searchController] resetBeforeHide];
+        [[self searchController] resetSearchState];
         [self showAuthorizationRequiredHeaderIcon];
         [[[self mainView] clearButton] setHidden:YES];
         [[[self mainView] backButton] setHidden:YES];
@@ -1679,10 +1679,11 @@ NS_ASSUME_NONNULL_END
     [self clearExternalHideCoordinator];
     [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
-    [[self searchController] resetBeforeHide];
+    [[self searchController] resignSearchFirstResponder];
     [[self panelPresentationController]
         hidePanelWithAnimationStyle:animationStyle
                          completion:^{
+                           [[self searchController] resetSearchState];
                            [self completeHideAfterShowingTransientContent:wasShowingTransientContent
                                                                completion:completion];
                          }];
@@ -1718,8 +1719,9 @@ NS_ASSUME_NONNULL_END
     [self clearExternalHideCoordinator];
     [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
-    [[self searchController] resetBeforeHide];
+    [[self searchController] resignSearchFirstResponder];
     [[self panelPresentationController] hidePanelImmediatelyWithCompletion:^{
+      [[self searchController] resetSearchState];
       [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:nil];
     }];
 }

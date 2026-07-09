@@ -847,16 +847,25 @@ NS_ASSUME_NONNULL_END
                                                       beganInHeaderView:beganInHeaderView];
 }
 
-- (void)resetBeforeHide {
+- (void)resetSearchState {
     BOOL hasSearch =
         [[self historyListViewController] hasActiveSearch] || [[self favoritesListViewController] hasActiveSearch];
     if (![self isSearchActive] && !hasSearch) {
+        [self resetSearchSessionState];
         return;
     }
 
+    [self setIsResettingSearch:YES];
+    [self setSearchActive:NO];
+    [[self historySearchBar] resignFirstResponder];
+    [[self favoritesSearchBar] resignFirstResponder];
+    [self setSearchBarsShowCancelButton:NO animated:NO];
     [self clearSearchForListViewController:[self historyListViewController]];
     [self clearSearchForListViewController:[self favoritesListViewController]];
-    [self endSearchRestoringFrame:NO clearsSearch:NO];
+    [self applySearchToActiveTableView];
+    [[self presentationController] resetAfterSearchStateClearedWithActiveTableView:[self activeTableView]];
+    [self resetSearchSessionState];
+    [self setIsResettingSearch:NO];
 }
 
 #pragma mark - Clearing

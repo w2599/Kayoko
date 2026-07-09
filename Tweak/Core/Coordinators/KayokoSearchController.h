@@ -54,7 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)handleApplicationMetadataChanged;
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
                            beganInHeaderView:(BOOL)beganInHeaderView;
-- (void)resetBeforeHide;
+- (void)resetSearchState;
 
 @end
 

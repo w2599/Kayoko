@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
                              activeTableView:(KayokoHistoryListView *)activeTableView
                            beganInHeaderView:(BOOL)beganInHeaderView;
 - (void)resetKeyboardInsets;
+- (void)resetAfterSearchStateClearedWithActiveTableView:(nullable KayokoHistoryListView *)activeTableView;
 
 @end
 
