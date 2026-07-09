@@ -44,7 +44,7 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     if (self) {
         _iconCache = [[NSCache alloc] init];
-        [_iconCache setCountLimit:256];
+        [_iconCache setCountLimit:128];
     }
     return self;
 }
