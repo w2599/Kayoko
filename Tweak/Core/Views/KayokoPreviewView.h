@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UITextView *textView;
 @property(nonatomic, strong) UIImageView *imageView;
 @property(nonatomic, copy) NSString *name;
+@property(nonatomic, assign) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithName:(NSString *)name;
 - (void)showText:(NSString *)text;

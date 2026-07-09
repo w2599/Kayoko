@@ -185,6 +185,18 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Tag Bar
 
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [self layoutTagChipBarView];
+    [self updateScrollInsets];
+    [self setNeedsLayout];
+}
+
 - (void)requireSelectionGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
     if (gestureRecognizer) {
         [[self selectionGestureRecognizer] requireGestureRecognizerToFail:gestureRecognizer];
@@ -213,6 +225,9 @@ NS_ASSUME_NONNULL_END
 
 - (CGFloat)scrollBottomInset {
     CGFloat tagBarHeight = [self visibleTagBarHeight];
+    if ([self keyboardBottomInset] > 0) {
+        return [self keyboardBottomInset] + tagBarHeight;
+    }
     return tagBarHeight > 0 ? tagBarHeight : [self safeAreaBottomInsetForScrollContent];
 }
 
@@ -226,12 +241,17 @@ NS_ASSUME_NONNULL_END
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
     CGFloat x = safeAreaInsets.left;
     CGFloat width = MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
-    CGFloat y = MAX(CGRectGetHeight([self bounds]) - tagBarHeight, 0);
-    [UIView performWithoutAnimation:^{
+    CGFloat y = MAX(CGRectGetHeight([self bounds]) - [self keyboardBottomInset] - tagBarHeight, 0);
+    void (^layoutUpdates)(void) = ^{
       [[self tagChipBarView] setBottomMaterialExtension:0];
       [[self tagChipBarView] setFrame:CGRectMake(x, y, width, tagBarHeight)];
       [[self tagChipBarView] layoutIfNeeded];
-    }];
+    };
+    if ([UIView inheritedAnimationDuration] > 0) {
+        layoutUpdates();
+    } else {
+        [UIView performWithoutAnimation:layoutUpdates];
+    }
 }
 
 - (void)updateTagBarFloatingProgressAnimated:(BOOL)animated {
@@ -253,7 +273,7 @@ NS_ASSUME_NONNULL_END
 
     UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
     [[self scrollView] setVerticalScrollIndicatorInsets:indicatorInsets];
-    [[self scrollView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, tagBarHeight, 0)];
+    [[self scrollView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, [self keyboardBottomInset] + tagBarHeight, 0)];
 }
 
 - (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags

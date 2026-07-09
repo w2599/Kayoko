@@ -739,6 +739,34 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+- (void)updateKeyboardBottomInset:(CGFloat)keyboardBottomInset
+          withAnimationParametersFromNotification:(NSNotification *)notification {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (fabs([self keyboardBottomInset] - keyboardBottomInset) <= 0.5) {
+        return;
+    }
+
+    NSTimeInterval duration = [notification.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationCurve curve =
+        (UIViewAnimationCurve)[notification.userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
+    UIViewAnimationOptions options = (UIViewAnimationOptions)(curve << 16) |
+                                     UIViewAnimationOptionBeginFromCurrentState |
+                                     UIViewAnimationOptionAllowUserInteraction;
+    void (^updates)(void) = ^{
+      [self setKeyboardBottomInset:keyboardBottomInset];
+      [self applyBottomInsetsToTableViews];
+      [[self containerView] layoutIfNeeded];
+    };
+
+    if (duration <= 0) {
+        updates();
+        return;
+    }
+
+    [[self containerView] layoutIfNeeded];
+    [UIView animateWithDuration:duration delay:0 options:options animations:updates completion:nil];
+}
+
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
     if (![self shouldHandleSearchKeyboardNotification:notification]) {
         return;
@@ -746,9 +774,9 @@ NS_ASSUME_NONNULL_END
 
     CGRect keyboardEndFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     CGRect keyboardFrameInView = [[self containerView] convertRect:keyboardEndFrame fromView:nil];
-    [self setKeyboardBottomInset:MAX(CGRectGetMaxY([[self containerView] bounds]) - CGRectGetMinY(keyboardFrameInView),
-                                     0)];
-    [self applyBottomInsetsToTableViews];
+    CGFloat keyboardBottomInset =
+        MAX(CGRectGetMaxY([[self containerView] bounds]) - CGRectGetMinY(keyboardFrameInView), 0);
+    [self updateKeyboardBottomInset:keyboardBottomInset withAnimationParametersFromNotification:notification];
 }
 
 - (void)handleKeyboardWillHideNotification:(NSNotification *)notification {
@@ -756,7 +784,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [self resetKeyboardInsets];
+    [self updateKeyboardBottomInset:0 withAnimationParametersFromNotification:notification];
 }
 
 @end

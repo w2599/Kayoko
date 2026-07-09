@@ -429,6 +429,8 @@ NS_ASSUME_NONNULL_END
     [[self favoritesEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self storageErrorView] setKeyboardBottomInset:keyboardBottomInset];
     [[self authorizationRequiredView] setKeyboardBottomInset:keyboardBottomInset];
+    [[[self previewViewController] previewView] setKeyboardBottomInset:keyboardBottomInset];
+    [[[self wordSelectionViewController] wordSelectionView] setKeyboardBottomInset:keyboardBottomInset];
 }
 
 #pragma mark - UIGestureRecognizerDelegate
@@ -1414,7 +1416,6 @@ NS_ASSUME_NONNULL_END
     } else {
         [self setHasSearchContentOffsetBeforeTransientContent:NO];
     }
-    [[self searchController] resignSearchFirstResponder];
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];
     [self setActiveSourceContentView:sourceTableView];
@@ -1449,7 +1450,11 @@ NS_ASSUME_NONNULL_END
                   transitioningView:sourceTableView
                               direction:KayokoContentTransitionDirectionForward
                     alongsideAnimations:nil
-                             completion:nil];
+                             completion:^{
+                               if (restoresSearchFirstResponder) {
+                                   [[self searchController] resignSearchFirstResponder];
+                               }
+                             }];
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
