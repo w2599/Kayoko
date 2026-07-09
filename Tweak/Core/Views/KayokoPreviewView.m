@@ -8,6 +8,7 @@
 #import "KayokoPreviewView.h"
 
 #import "KayokoEdgeFadingTextView.h"
+#import "KayokoHeaderView.h"
 #import "KayokoMainView.h"
 #import "KayokoTagChipBarView.h"
 
@@ -20,6 +21,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
 @property(nonatomic, strong) UIScrollView *imageScrollView;
+@property(nonatomic, strong, readwrite) KayokoHeaderView *headerView;
+@property(nonatomic, strong, readwrite) UIView *transitionContentView;
 
 #pragma mark - Image State
 
@@ -36,7 +39,25 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     self = [super init];
 
     if (self) {
+        [self setClipsToBounds:YES];
         [self setName:name];
+        [self setHeaderView:[[KayokoHeaderView alloc] initWithTitle:name]];
+        [self addSubview:[self headerView]];
+
+        [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self headerView] heightAnchor] constraintEqualToConstant:[KayokoHeaderView preferredHeight]]
+        ]];
+
+        [self setTransitionContentView:[[UIView alloc] init]];
+        [self insertSubview:[self transitionContentView] belowSubview:[self headerView]];
+        [[self transitionContentView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self transitionContentView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
+            [[[self transitionContentView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self transitionContentView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self transitionContentView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
 
         KayokoEdgeFadingTextView *textView = [[KayokoEdgeFadingTextView alloc] init];
         [textView setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
@@ -52,13 +73,14 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [[self textView] setTextContainerInset:UIEdgeInsetsMake(8, 16, 8, 16)];
         [[[self textView] textContainer] setLineFragmentPadding:0];
         [[self textView] setHidden:YES];
-        [self addSubview:[self textView]];
+        [[self transitionContentView] addSubview:[self textView]];
 
         [[self textView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self textView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self textView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-            [[[self textView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self textView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                          constant:kKayokoHeaderContentSpacing],
+            [[[self textView] leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]],
+            [[[self textView] trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
             [[[self textView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
@@ -72,13 +94,14 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [[self imageScrollView] setShowsVerticalScrollIndicator:NO];
         [[self imageScrollView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
         [[self imageScrollView] setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
-        [self addSubview:[self imageScrollView]];
+        [[self transitionContentView] addSubview:[self imageScrollView]];
 
         [[self imageScrollView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self imageScrollView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self imageScrollView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-            [[[self imageScrollView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self imageScrollView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                                 constant:kKayokoHeaderContentSpacing],
+            [[[self imageScrollView] leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]],
+            [[[self imageScrollView] trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
             [[[self imageScrollView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
@@ -87,7 +110,7 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [[self imageScrollView] addSubview:[self imageView]];
 
         [self setTagChipBarView:[[KayokoTagChipBarView alloc] initWithFrame:CGRectZero]];
-        [self addSubview:[self tagChipBarView]];
+        [[self transitionContentView] addSubview:[self tagChipBarView]];
     }
 
     return self;
@@ -131,11 +154,13 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         return;
     }
 
-    CGFloat width = CGRectGetWidth([self bounds]);
+    UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
+    CGFloat x = safeAreaInsets.left;
+    CGFloat width = MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
     CGFloat y = MAX(CGRectGetHeight([self bounds]) - tagBarHeight, 0);
     [UIView performWithoutAnimation:^{
       [[self tagChipBarView] setBottomMaterialExtension:0];
-      [[self tagChipBarView] setFrame:CGRectMake(0, y, width, tagBarHeight)];
+      [[self tagChipBarView] setFrame:CGRectMake(x, y, width, tagBarHeight)];
       [[self tagChipBarView] layoutIfNeeded];
     }];
 }

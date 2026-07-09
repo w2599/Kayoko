@@ -8,9 +8,12 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class KayokoTag;
+@class KayokoHeaderView;
 
 @interface KayokoWordSelectionView : UIView
 
+@property(nonatomic, strong, readonly) KayokoHeaderView *headerView;
+@property(nonatomic, strong, readonly) UIView *transitionContentView;
 @property(nonatomic, copy, readonly) NSString *selectedText;
 @property(nonatomic, assign, readonly) BOOL hasCustomSelection;
 @property(nonatomic, copy, nullable) void (^selectionChangedHandler)(void);

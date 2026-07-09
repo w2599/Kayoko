@@ -5,6 +5,7 @@
 
 #import "KayokoSearchPresentationController.h"
 
+#import "KayokoHeaderView.h"
 #import "KayokoHistoryListView.h"
 #import "KayokoMainView.h"
 #import "KayokoSearchBar.h"
@@ -13,7 +14,6 @@ static CGFloat const kKayokoSearchHeaderHeight = 56;
 static CGFloat const kKayokoSearchBarHorizontalInset = 16;
 static NSTimeInterval const kKayokoSearchFullscreenAnimationDuration = 0.42;
 static CGFloat const kKayokoSearchFullscreenAnimationDamping = 0.86;
-static CGFloat const kKayokoSearchFullscreenGrabberFoldDistance = 20;
 static CGFloat const kKayokoSearchFullscreenCollapseVelocity = 900;
 static CGFloat const kKayokoSearchFullscreenReboundVelocity = -450;
 static CGFloat const kKayokoSearchFullscreenCollapseProgress = 0.32;
@@ -564,7 +564,8 @@ NS_ASSUME_NONNULL_END
     UIView *trackingView = [[self containerView] superview] ?: [self containerView];
     CGPoint translation = [recognizer translationInView:trackingView];
     CGFloat progress = [self fullscreenCollapseProgressForTranslation:translation.y];
-    CGFloat grabberFoldProgress = 1 - MIN(MAX(translation.y / kKayokoSearchFullscreenGrabberFoldDistance, 0), 1);
+    CGFloat grabberFoldProgress =
+        1 - MIN(MAX(translation.y / kKayokoHeaderGrabberFoldInteractionDistance, 0), 1);
 
     if ([recognizer state] == UIGestureRecognizerStateBegan || [recognizer state] == UIGestureRecognizerStateChanged) {
         CGRect fullscreenFrame = [self fullscreenFrame];

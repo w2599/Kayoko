@@ -8,6 +8,7 @@
 #import "KayokoPanelPresentationMode.h"
 
 @class KayokoPanelPresentationController;
+@class KayokoHeaderView;
 @class KayokoMainView;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -36,6 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readonly, getter=isAnimating) BOOL animating;
 
 - (instancetype)initWithPanelView:(KayokoMainView *)panelView;
+- (void)registerHeaderView:(KayokoHeaderView *)headerView;
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
 - (void)prepareStandardDismissAnimation;
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
