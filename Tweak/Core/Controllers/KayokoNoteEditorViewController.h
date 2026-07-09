@@ -34,7 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
       presentationCell:(KayokoTableViewCell *)presentationCell
             cellHeight:(CGFloat)cellHeight
     keyboardBottomInset:(CGFloat)keyboardBottomInset;
-- (CGFloat)visibleKeyboardBottomInset;
+- (void)refreshLastValidKeyboardBottomInset;
+- (CGFloat)lastValidKeyboardBottomInset;
 - (void)beginEditing;
 - (void)resignEditing;
 - (void)setSaving:(BOOL)saving;

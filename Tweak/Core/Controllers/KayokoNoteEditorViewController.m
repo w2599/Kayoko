@@ -17,6 +17,22 @@
 - (BOOL)isOnScreen;
 @end
 
+static CGFloat const kKayokoKeyboardFrameEdgeTolerance = 1.0;
+
+static CGFloat kayokoBottomInsetForDockedKeyboardFrame(CGRect keyboardFrame, UIWindow *window) {
+    if (CGRectIsNull(keyboardFrame) || CGRectIsEmpty(keyboardFrame) || !window) {
+        return 0;
+    }
+
+    CGRect windowBounds = [window bounds];
+    CGFloat windowBottom = CGRectGetMaxY(windowBounds);
+    if (CGRectGetMinY(keyboardFrame) >= windowBottom - kKayokoKeyboardFrameEdgeTolerance ||
+        fabs(CGRectGetMaxY(keyboardFrame) - windowBottom) > kKayokoKeyboardFrameEdgeTolerance) {
+        return 0;
+    }
+    return windowBottom - CGRectGetMinY(keyboardFrame);
+}
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoNoteEditorViewController () <UITextFieldDelegate>
@@ -26,6 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
 @property(nonatomic, copy) NSString *sourceDisplayName;
 @property(nonatomic, assign, getter=isSaving) BOOL saving;
+@property(nonatomic, assign) CGFloat lastValidKeyboardBottomInset;
 
 @end
 
@@ -98,11 +115,11 @@ NS_ASSUME_NONNULL_BEGIN
     [self updatePreview];
 }
 
-- (CGFloat)visibleKeyboardBottomInset {
+- (void)refreshLastValidKeyboardBottomInset {
     KayokoNoteEditorView *noteEditorView = [self noteEditorView];
     UIWindow *window = [noteEditorView window] ?: [[noteEditorView superview] window];
     if (!window) {
-        return 0;
+        return;
     }
 
     Class hostClass = NSClassFromString(@"UIPeripheralHost");
@@ -111,7 +128,11 @@ NS_ASSUME_NONNULL_BEGIN
         UIPeripheralHost *host = [(id)hostClass sharedInstance];
         if ([host respondsToSelector:@selector(isOnScreen)] && [host isOnScreen]) {
             CGRect keyboardFrame = CGRectNull;
-            for (NSValue *frameValue in [(id)hostClass allVisiblePeripheralFrames]) {
+            NSArray<NSValue *> *visibleFrames = [(id)hostClass allVisiblePeripheralFrames];
+            for (NSValue *frameValue in visibleFrames) {
+                if (![frameValue respondsToSelector:@selector(CGRectValue)]) {
+                    continue;
+                }
                 CGRect frame = [frameValue CGRectValue];
                 if (CGRectIsNull(frame) || CGRectIsEmpty(frame)) {
                     continue;
@@ -120,12 +141,13 @@ NS_ASSUME_NONNULL_BEGIN
             }
             if (!CGRectIsNull(keyboardFrame) && !CGRectIsEmpty(keyboardFrame)) {
                 CGRect keyboardFrameInWindow = [window convertRect:keyboardFrame fromWindow:nil];
-                return MAX(CGRectGetMaxY([window bounds]) - CGRectGetMinY(keyboardFrameInWindow), 0);
+                CGFloat keyboardBottomInset = kayokoBottomInsetForDockedKeyboardFrame(keyboardFrameInWindow, window);
+                if (keyboardBottomInset > 0) {
+                    [self setLastValidKeyboardBottomInset:keyboardBottomInset];
+                }
             }
         }
     }
-
-    return 0;
 }
 
 - (void)beginEditing {
@@ -137,7 +159,7 @@ NS_ASSUME_NONNULL_BEGIN
         [window makeKeyWindow];
     }
 
-    CGFloat keyboardBottomInset = [self visibleKeyboardBottomInset];
+    CGFloat keyboardBottomInset = [self lastValidKeyboardBottomInset];
     if (keyboardBottomInset > 0 &&
         fabs([noteEditorView keyboardBottomInset] - keyboardBottomInset) > 0.5) {
         [[self delegate]
@@ -234,7 +256,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
-    if (![self shouldHandleKeyboardNotification:notification]) {
+    if (![notification.userInfo[UIKeyboardIsLocalUserInfoKey] boolValue]) {
         return;
     }
 
@@ -244,8 +266,13 @@ NS_ASSUME_NONNULL_BEGIN
         return;
     }
     CGRect keyboardFrameInWindow = [window convertRect:keyboardEndFrame fromWindow:nil];
-    CGFloat keyboardBottomInset =
-        MAX(CGRectGetMaxY([window bounds]) - CGRectGetMinY(keyboardFrameInWindow), 0);
+    CGFloat keyboardBottomInset = kayokoBottomInsetForDockedKeyboardFrame(keyboardFrameInWindow, window);
+    if (keyboardBottomInset > 0) {
+        [self setLastValidKeyboardBottomInset:keyboardBottomInset];
+    }
+    if (![self shouldHandleKeyboardNotification:notification]) {
+        return;
+    }
     [self updateKeyboardBottomInset:keyboardBottomInset withAnimationParametersFromNotification:notification];
 }
 

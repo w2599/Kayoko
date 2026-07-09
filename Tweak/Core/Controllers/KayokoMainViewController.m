@@ -101,6 +101,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGRect noteEditingOriginalPanelFrame;
 @property(nonatomic, assign) NSTimeInterval noteEditingKeyboardAnimationDuration;
 @property(nonatomic, assign) UIViewAnimationOptions noteEditingKeyboardAnimationOptions;
+@property(nonatomic, weak, nullable) KayokoTableViewCell *noteEditingSuppressedCell;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -1470,6 +1471,10 @@ NS_ASSUME_NONNULL_END
     }
 
     CGRect bounds = [superview bounds];
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        return bounds;
+    }
+
     CGFloat targetHeight = MIN([[[self noteEditorViewController] noteEditorView] editingContentHeight] +
                                    keyboardBottomInset,
                                CGRectGetHeight(bounds));
@@ -1488,9 +1493,16 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    BOOL beganFromSearch = [[self searchController] isSearchActive];
+    CGFloat keyboardBottomInset = [[self noteEditorViewController] lastValidKeyboardBottomInset];
     [self clearSearchAfterTransientContentState];
-    [self setNoteEditingBeganFromSearch:[[self searchController] isSearchActive]];
+    [self setNoteEditingBeganFromSearch:beganFromSearch];
     [self setFinishingNoteEditing:NO];
+    if (beganFromSearch) {
+        [[self searchController] resetSearchState];
+        sourceCell = [listViewController scrollItemToVisible:item];
+        presentationCell = [listViewController presentationCellForItem:item];
+    }
     [self setNoteEditingOriginalPanelFrame:[[self mainView] frame]];
     [self setNoteEditingKeyboardAnimationDuration:0.25];
     [self setNoteEditingKeyboardAnimationOptions:UIViewAnimationOptionCurveEaseInOut |
@@ -1511,8 +1523,6 @@ NS_ASSUME_NONNULL_END
     if (cellHeight <= 0) {
         cellHeight = [[listViewController tableView] rowHeight];
     }
-    CGFloat keyboardBottomInset = MAX([[self searchController] keyboardBottomInset],
-                                      [[self noteEditorViewController] visibleKeyboardBottomInset]);
     [[self noteEditorViewController] prepareForItem:item
                                   presentationCell:presentationCell
                                         cellHeight:cellHeight
@@ -1545,6 +1555,11 @@ NS_ASSUME_NONNULL_END
     [[noteEditorView previewCell] setFrame:sourceFrame];
     [[noteEditorView previewCell] setAlpha:hasSourceFrame ? 1 : 0];
     [[noteEditorView inputRowView] setAlpha:0];
+    if (hasSourceFrame) {
+        [[self noteEditingSuppressedCell] setHidden:NO];
+        [self setNoteEditingSuppressedCell:sourceCell];
+        [sourceCell setHidden:YES];
+    }
 
     KayokoHeaderView *headerView = [[self mainView] headerView];
     [[self mainView] setAnimating:YES];
@@ -1563,6 +1578,10 @@ NS_ASSUME_NONNULL_END
           [[noteEditorView inputRowView] setAlpha:1];
         }
         completion:^(__unused BOOL finished) {
+          if ([self noteEditingSuppressedCell] == sourceCell) {
+              [sourceCell setHidden:NO];
+              [self setNoteEditingSuppressedCell:nil];
+          }
           if ([self noteEditingRequestIdentifier] != requestIdentifier || ![self isNoteEditing]) {
               return;
           }
@@ -1581,6 +1600,8 @@ NS_ASSUME_NONNULL_END
 - (void)resetNoteEditingState {
     KayokoNoteEditorView *noteEditorView = [[self noteEditorViewController] noteEditorView];
     [noteEditorView setHidden:YES];
+    [[self noteEditingSuppressedCell] setHidden:NO];
+    [self setNoteEditingSuppressedCell:nil];
     [noteEditorView setAlpha:1];
     [noteEditorView setAutomaticallyPositionsPreviewCell:YES];
     [[noteEditorView inputRowView] setAlpha:1];
@@ -1595,7 +1616,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)animateNoteEditingReturnWithRequestIdentifier:(NSUInteger)requestIdentifier
-                                   ensuresItemVisible:(BOOL)ensuresItemVisible {
+                                   ensuresItemVisible:(BOOL)ensuresItemVisible
+                                     targetPanelFrame:(CGRect)targetPanelFrame
+                                             duration:(NSTimeInterval)duration
+                                              options:(UIViewAnimationOptions)options {
     if ([self noteEditingRequestIdentifier] != requestIdentifier || ![self isNoteEditing] ||
         [self isDismissingPanel]) {
         return;
@@ -1604,11 +1628,19 @@ NS_ASSUME_NONNULL_END
     UIView *sourceView = [self activeSourceContentView];
     KayokoHeaderView *headerView = [[self mainView] headerView];
     KayokoNoteEditorView *noteEditorView = [[self noteEditorViewController] noteEditorView];
+    KayokoMainView *mainView = [self mainView];
     [sourceView setHidden:NO];
     [sourceView setAlpha:0];
     [headerView setHidden:NO];
     [headerView setAlpha:0];
-    [[self mainView] layoutIfNeeded];
+    [noteEditorView setAutomaticallyPositionsPreviewCell:NO];
+
+    CGRect initialPanelFrame = [mainView frame];
+    if (!CGRectEqualToRect(initialPanelFrame, targetPanelFrame)) {
+        [mainView setFrame:targetPanelFrame];
+        [mainView layoutIfNeeded];
+        [noteEditorView layoutIfNeeded];
+    }
 
     KayokoTableViewCell *targetCell = ensuresItemVisible
                                           ? [[self noteEditingSourceListViewController]
@@ -1618,15 +1650,26 @@ NS_ASSUME_NONNULL_END
     BOOL hasTargetFrame = targetCell && [targetCell window];
     CGRect targetFrame = hasTargetFrame ? [targetCell convertRect:[targetCell bounds] toView:noteEditorView]
                                         : [[noteEditorView previewCell] frame];
-    [noteEditorView setAutomaticallyPositionsPreviewCell:NO];
-    [[self mainView] setAnimating:YES];
+    if (hasTargetFrame) {
+        [[self noteEditingSuppressedCell] setHidden:NO];
+        [self setNoteEditingSuppressedCell:targetCell];
+        [targetCell setHidden:YES];
+    }
+    if (!CGRectEqualToRect(initialPanelFrame, targetPanelFrame)) {
+        [mainView setFrame:initialPanelFrame];
+        [mainView layoutIfNeeded];
+        [noteEditorView layoutIfNeeded];
+    }
+    [mainView setAnimating:YES];
 
-    [UIView animateWithDuration:0.3
+    duration = duration > 0 ? duration : 0.3;
+    options |= UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction;
+    [UIView animateWithDuration:duration
         delay:0
-        usingSpringWithDamping:1
-        initialSpringVelocity:0
-        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+        options:options
         animations:^{
+          [mainView setFrame:targetPanelFrame];
+          [mainView layoutIfNeeded];
           [sourceView setAlpha:1];
           [headerView setAlpha:1];
           [[noteEditorView inputRowView] setAlpha:0];
@@ -1638,6 +1681,10 @@ NS_ASSUME_NONNULL_END
         }
         completion:^(__unused BOOL finished) {
           if ([self noteEditingRequestIdentifier] != requestIdentifier) {
+              if ([self noteEditingSuppressedCell] == targetCell) {
+                  [targetCell setHidden:NO];
+                  [self setNoteEditingSuppressedCell:nil];
+              }
               return;
           }
           [sourceView setAlpha:1];
@@ -1658,40 +1705,20 @@ NS_ASSUME_NONNULL_END
 
     [self setFinishingNoteEditing:YES];
     [self clearSearchAfterTransientContentState];
+    KayokoNoteEditorView *noteEditorView = [[self noteEditorViewController] noteEditorView];
+    [noteEditorView setAutomaticallyPositionsPreviewCell:NO];
+    if ([[self searchController] isSearchActive]) {
+        [[self searchController] resetSearchState];
+    }
     [[self noteEditorViewController] resignEditing];
 
-    if ([self noteEditingBeganFromSearch] && [[self searchController] isSearchActive]) {
-        [[self searchController] cancelSearchWithCompletion:^{
-          [self animateNoteEditingReturnWithRequestIdentifier:requestIdentifier ensuresItemVisible:YES];
-        }];
-        return;
-    }
-
-    CGRect targetFrame = [self noteEditingOriginalPanelFrame];
-    UIView *mainView = [self mainView];
     NSTimeInterval duration = [self noteEditingKeyboardAnimationDuration];
     UIViewAnimationOptions options = [self noteEditingKeyboardAnimationOptions];
-    [[self mainView] setAnimating:YES];
-    void (^completion)(void) = ^{
-      [self animateNoteEditingReturnWithRequestIdentifier:requestIdentifier ensuresItemVisible:NO];
-    };
-    if (duration <= 0 || CGRectEqualToRect([mainView frame], targetFrame)) {
-        [mainView setFrame:targetFrame];
-        [mainView layoutIfNeeded];
-        completion();
-        return;
-    }
-
-    [UIView animateWithDuration:duration
-        delay:0
-        options:options
-        animations:^{
-          [mainView setFrame:targetFrame];
-          [mainView layoutIfNeeded];
-        }
-        completion:^(__unused BOOL finished) {
-          completion();
-        }];
+    [self animateNoteEditingReturnWithRequestIdentifier:requestIdentifier
+                                     ensuresItemVisible:[self noteEditingBeganFromSearch]
+                                       targetPanelFrame:[self noteEditingOriginalPanelFrame]
+                                               duration:duration
+                                                options:options];
 }
 
 - (void)noteEditorViewController:(KayokoNoteEditorViewController *)controller
@@ -1994,6 +2021,7 @@ NS_ASSUME_NONNULL_END
     [self clearExternalHideCoordinator];
     [self setDismissingPanel:NO];
     [self setPreparingToShow:YES];
+    [[self noteEditorViewController] refreshLastValidKeyboardBottomInset];
     [[KayokoTagCatalog sharedCatalog] reloadTags];
     NSUInteger showRequestIdentifier = [self showRequestIdentifier] + 1;
     [self setShowRequestIdentifier:showRequestIdentifier];

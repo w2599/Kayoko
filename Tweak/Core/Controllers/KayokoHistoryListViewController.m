@@ -34,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+
+- (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -527,6 +529,10 @@ NS_ASSUME_NONNULL_END
     }
     return (KayokoTableViewCell *)[[self tableView]
         cellForRowAtIndexPath:[NSIndexPath indexPathForRow:displayedIndex inSection:0]];
+}
+
+- (KayokoTableViewCell *)presentationCellForItem:(KayokoPasteboardItem *)item {
+    return [self newCellForItem:item addsPreviewGesture:NO];
 }
 
 - (nullable KayokoTableViewCell *)scrollItemToVisible:(KayokoPasteboardItem *)item {

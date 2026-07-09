@@ -112,9 +112,13 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (CGRect)targetPreviewCellFrame {
+    CGRect bounds = [self bounds];
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
-    CGFloat y = MAX(safeAreaInsets.top, 0) + kKayokoNoteEditorPreviewTopSpacing;
-    CGFloat width = MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
+    CGFloat minimumContentOriginY = MAX(safeAreaInsets.top, 0);
+    CGFloat contentOriginY = MAX(CGRectGetHeight(bounds) - [self keyboardBottomInset] - [self editingContentHeight],
+                                 minimumContentOriginY);
+    CGFloat y = contentOriginY + kKayokoNoteEditorPreviewTopSpacing;
+    CGFloat width = MAX(CGRectGetWidth(bounds) - safeAreaInsets.left - safeAreaInsets.right, 0);
     return CGRectMake(safeAreaInsets.left, y, width, [self previewCellHeight]);
 }
 

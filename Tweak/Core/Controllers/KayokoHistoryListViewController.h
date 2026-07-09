@@ -73,6 +73,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateNote:(nullable NSString *)note
             forItem:(KayokoPasteboardItem *)item
          completion:(nullable void (^)(void))completion;
+- (KayokoTableViewCell *)presentationCellForItem:(KayokoPasteboardItem *)item;
 - (nullable KayokoTableViewCell *)visibleCellForItem:(KayokoPasteboardItem *)item;
 - (nullable KayokoTableViewCell *)scrollItemToVisible:(KayokoPasteboardItem *)item;
 - (void)scrollToTopAnimated:(BOOL)animated;
