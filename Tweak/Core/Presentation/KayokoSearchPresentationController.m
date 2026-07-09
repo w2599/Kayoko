@@ -589,6 +589,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)applyBottomInsetToTableView:(KayokoHistoryListView *)tableView {
+    [tableView setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
     [tableView setKeyboardBottomInset:[self keyboardBottomInset]];
     [tableView updateNoSearchResultsPlaceholderLayout];
 
