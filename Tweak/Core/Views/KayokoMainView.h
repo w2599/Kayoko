@@ -35,6 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isAnimating) BOOL animating;
 @property(nonatomic, assign) BOOL contentRespectsSafeArea;
 @property(nonatomic, assign) UIEdgeInsets contentSafeAreaAdditionalInsets;
+@property(nonatomic, assign, getter=isSearchTitleRowCollapsed) BOOL searchTitleRowCollapsed;
 
 @property(nonatomic, copy, nullable) void (^layoutHandler)(void);
 

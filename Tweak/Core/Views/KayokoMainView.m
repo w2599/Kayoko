@@ -13,6 +13,8 @@
 
 static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
+static CGFloat const kKayokoHeaderHeight = 60;
+static CGFloat const kKayokoContentTopSpacing = 8;
 
 @interface KayokoMainView ()
 
@@ -24,9 +26,11 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaLeadingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerTrailingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaTrailingConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerHeightConstraint;
 
 #pragma mark - Content Constraints
 
+@property(nonatomic, strong) NSLayoutConstraint *contentTopConstraint;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentLeadingConstraints;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentSafeAreaLeadingConstraints;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentTrailingConstraints;
@@ -85,9 +89,12 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [self setHeaderSafeAreaTrailingConstraint:[[[self headerView] trailingAnchor]
                                                       constraintEqualToAnchor:[[self safeAreaLayoutGuide]
                                                                                   trailingAnchor]]];
+        [[self headerView] setClipsToBounds:YES];
+        [self
+            setHeaderHeightConstraint:[[[self headerView] heightAnchor] constraintEqualToConstant:kKayokoHeaderHeight]];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self headerView] heightAnchor] constraintEqualToConstant:60], [self headerTopConstraint],
-            [self headerLeadingConstraint], [self headerTrailingConstraint]
+            [self headerHeightConstraint], [self headerTopConstraint], [self headerLeadingConstraint],
+            [self headerTrailingConstraint]
         ]];
 
         [self setGrabber:[[KayokoGrabberView alloc] init]];
@@ -197,10 +204,11 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [[self contentSafeAreaTrailingConstraints] addObject:safeAreaTrailingConstraint];
         [[self contentBottomConstraints] addObject:bottomConstraint];
         [[self contentSafeAreaBottomConstraints] addObject:safeAreaBottomConstraint];
+        [self setContentTopConstraint:[[[self contentContainerView] topAnchor]
+                                          constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                         constant:kKayokoContentTopSpacing]];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self contentContainerView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                                    constant:8],
-            [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
+            [self contentTopConstraint], [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
             [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint, bottomConstraint
         ]];
     }
@@ -212,6 +220,18 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
 - (void)setGrabberFoldProgress:(CGFloat)progress {
     [[self grabber] setFoldProgress:progress];
+}
+
+- (void)setSearchTitleRowCollapsed:(BOOL)searchTitleRowCollapsed {
+    if (_searchTitleRowCollapsed == searchTitleRowCollapsed) {
+        return;
+    }
+
+    _searchTitleRowCollapsed = searchTitleRowCollapsed;
+    [[self headerHeightConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoHeaderHeight];
+    [[self contentTopConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoContentTopSpacing];
+    [[self headerView] setUserInteractionEnabled:!searchTitleRowCollapsed];
+    [self setNeedsLayout];
 }
 
 - (void)layoutSubviews {

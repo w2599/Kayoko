@@ -690,6 +690,14 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Search Session
 
+- (void)setSearchBarsShowCancelButton:(BOOL)showsCancelButton animated:(BOOL)animated {
+    [[self historySearchBar] setShowsCancelButton:NO animated:animated];
+    [[self favoritesSearchBar] setShowsCancelButton:NO animated:animated];
+    if (showsCancelButton) {
+        [[self activeSearchBar] setShowsCancelButton:YES animated:animated];
+    }
+}
+
 - (void)resignSearchFirstResponder {
     [[self activeSearchBar] resignFirstResponder];
 }
@@ -708,9 +716,7 @@ NS_ASSUME_NONNULL_END
     [self setSearchActive:YES];
     [self reloadTagTokens];
     [self loadAppTokensIfNeeded];
-    [[self historySearchBar] setShowsCancelButton:NO animated:NO];
-    [[self favoritesSearchBar] setShowsCancelButton:NO animated:NO];
-    [[self activeSearchBar] setShowsCancelButton:YES animated:YES];
+    [self setSearchBarsShowCancelButton:YES animated:YES];
     [self applySearchFromSearchBar:[self activeSearchBar]];
     [[self delegate] searchControllerWillAnimateSearchState:self];
     [[self presentationController]
@@ -736,6 +742,32 @@ NS_ASSUME_NONNULL_END
                      animations:(void (^)(void))animations
                    panVelocityY:(CGFloat)panVelocityY
                      completion:(void (^)(void))completion {
+    [self endSearchRestoringFrame:restoresFrame
+                         clearsSearch:clearsSearch
+                           animations:animations
+                         panVelocityY:panVelocityY
+        coordinatesVisibleSearchReset:NO
+                           completion:completion];
+}
+
+- (void)finishDeferredVisibleSearchResetClearingSearch:(BOOL)clearsSearch {
+    [self setSearchActive:NO];
+    [self setSearchBarsShowCancelButton:NO animated:NO];
+    if (clearsSearch) {
+        [self clearSearchForListViewController:[self historyListViewController]];
+        [self clearSearchForListViewController:[self favoritesListViewController]];
+    }
+    [self applySearchToActiveTableView];
+    [[self presentationController] hideSearchBarInTableView:[self activeTableView] animated:NO];
+    [self setIsResettingSearch:NO];
+}
+
+- (void)endSearchRestoringFrame:(BOOL)restoresFrame
+                     clearsSearch:(BOOL)clearsSearch
+                       animations:(void (^)(void))animations
+                     panVelocityY:(CGFloat)panVelocityY
+    coordinatesVisibleSearchReset:(BOOL)coordinatesVisibleSearchReset
+                       completion:(void (^)(void))completion {
     if (![self isSearchActive] && !clearsSearch) {
         if (animations) {
             animations();
@@ -747,32 +779,43 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    BOOL defersVisibleSearchReset = coordinatesVisibleSearchReset && clearsSearch &&
+                                    [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
     [self setIsResettingSearch:YES];
-    [self setSearchActive:NO];
     UISearchBar *activeSearchBar = [self activeSearchBar];
+    if (!defersVisibleSearchReset) {
+        [self setSearchActive:NO];
+    }
     [activeSearchBar resignFirstResponder];
-    [[self historySearchBar] setShowsCancelButton:NO animated:YES];
-    [[self favoritesSearchBar] setShowsCancelButton:NO animated:YES];
-    if (clearsSearch) {
+    if (!defersVisibleSearchReset) {
+        [self setSearchBarsShowCancelButton:NO animated:YES];
+    }
+    if (clearsSearch && !defersVisibleSearchReset) {
         [self clearSearchForListViewController:[self historyListViewController]];
         [self clearSearchForListViewController:[self favoritesListViewController]];
     }
     [[self presentationController] resetKeyboardInsets];
-    [self applySearchToActiveTableView];
-    [self setIsResettingSearch:NO];
+    if (!defersVisibleSearchReset) {
+        [self applySearchToActiveTableView];
+        [self setIsResettingSearch:NO];
+    }
 
     [[self delegate] searchControllerWillAnimateSearchState:self];
-    [[self presentationController] endSearchRestoringFrame:restoresFrame
-                                           activeTableView:[[self activeListViewController] tableView]
-                                                animations:animations
-                                              panVelocityY:panVelocityY
-                                                completion:^{
-                                                  [self resetSearchSessionState];
-                                                  [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
-                                                  if (completion) {
-                                                      completion();
-                                                  }
-                                                }];
+    [[self presentationController]
+        endSearchRestoringFrame:restoresFrame
+                activeTableView:[[self activeListViewController] tableView]
+                     animations:animations
+                   panVelocityY:panVelocityY
+                     completion:^{
+                       if (defersVisibleSearchReset) {
+                           [self finishDeferredVisibleSearchResetClearingSearch:clearsSearch];
+                       }
+                       [self resetSearchSessionState];
+                       [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
+                       if (completion) {
+                           completion();
+                       }
+                     }];
 }
 
 - (void)endSearchRestoringFrame:(BOOL)restoresFrame
@@ -929,7 +972,12 @@ NS_ASSUME_NONNULL_END
     if ([self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
         return;
     }
-    [self endSearchRestoringFrame:YES clearsSearch:YES];
+    [self endSearchRestoringFrame:YES
+                         clearsSearch:YES
+                           animations:nil
+                         panVelocityY:0
+        coordinatesVisibleSearchReset:YES
+                           completion:nil];
 }
 
 @end
