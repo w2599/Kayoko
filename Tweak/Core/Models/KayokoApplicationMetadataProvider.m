@@ -10,6 +10,7 @@
 
 static int const kKayokoApplicationIconFormatListRow = 1;
 static int const kKayokoApplicationIconFormatSearchToken = 5;
+static NSString *const kKayokoSpotlightBundleIdentifier = @"com.apple.Spotlight";
 static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
 
 NS_ASSUME_NONNULL_BEGIN
@@ -48,6 +49,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
+        return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Spotlight"
+                                                                             value:nil
+                                                                             table:@"Tweak"];
+    }
+
     if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
         return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard"
                                                                              value:nil
@@ -56,6 +63,13 @@ NS_ASSUME_NONNULL_END
 
     NSString *displayName = [[self applicationForBundleIdentifier:bundleIdentifier] displayName];
     return [displayName length] > 0 ? displayName : bundleIdentifier;
+}
+
+- (BOOL)isSpotlightBundleIdentifier:(NSString *)bundleIdentifier {
+    NSString *normalizedBundleIdentifier = [[bundleIdentifier
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
+    return [normalizedBundleIdentifier isEqualToString:[kKayokoSpotlightBundleIdentifier lowercaseString]] ||
+           [normalizedBundleIdentifier isEqualToString:@"spotlight"];
 }
 
 - (nullable SBApplication *)applicationForBundleIdentifier:(NSString *)bundleIdentifier {
@@ -70,6 +84,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)hasApplicationForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
+        return YES;
+    }
     if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
         return YES;
     }
@@ -82,15 +99,26 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)springBoardIcon {
-    BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
-    return [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
+    return [UIImage imageNamed:@"HomeScreen"
                              inBundle:[KayokoPasteboardManager localizationBundle]
         compatibleWithTraitCollection:nil];
 }
 
 - (nullable UIImage *)springBoardSearchTokenIcon {
-    BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
-    UIImage *icon = [UIImage imageNamed:isPad ? @"HLS_iPad_SearchToken" : @"HLS_iPhone_SearchToken"
+    UIImage *icon = [UIImage imageNamed:@"HomeScreen-Search"
+                               inBundle:[KayokoPasteboardManager localizationBundle]
+          compatibleWithTraitCollection:nil];
+    return [icon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+- (nullable UIImage *)spotlightIcon {
+    return [UIImage imageNamed:@"Spotlight"
+                             inBundle:[KayokoPasteboardManager localizationBundle]
+        compatibleWithTraitCollection:nil];
+}
+
+- (nullable UIImage *)spotlightSearchTokenIcon {
+    UIImage *icon = [UIImage imageNamed:@"Spotlight-Search"
                                inBundle:[KayokoPasteboardManager localizationBundle]
           compatibleWithTraitCollection:nil];
     return [icon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -129,6 +157,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
+        return [self spotlightIcon];
+    }
+
     if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
         return [self springBoardIcon];
     }
@@ -139,6 +171,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)smallIconForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
+        return [self spotlightSearchTokenIcon];
+    }
+
     if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
         return [self springBoardSearchTokenIcon];
     }

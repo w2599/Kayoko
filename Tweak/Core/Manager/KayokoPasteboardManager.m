@@ -317,14 +317,17 @@ NS_ASSUME_NONNULL_END
       });
     };
 
+    NSString *sourceBundleIdentifier = [self sourceApplicationBundleIdentifierForCurrentPasteboardChangeOnMain];
+
     if (@available(iOS 16, *)) {
         dispatch_async(_pasteboardQueue, ^{
-          complete([self _reallyPullPasteboardChanges]);
+          complete([self _reallyPullPasteboardChangesWithSourceBundleIdentifier:sourceBundleIdentifier]);
         });
         return;
     }
 
-    NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    NSArray<KayokoPasteboardItem *> *items =
+        [self pasteboardItemsForCurrentChangeWithSourceBundleIdentifier:sourceBundleIdentifier];
     [self savePasteboardItems:items
              toHistoryWithKey:kKayokoHistoryKeyHistory
                    completion:^(BOOL didSaveAnyItem) {
@@ -360,7 +363,33 @@ NS_ASSUME_NONNULL_END
     return [self pasteboardContainsType:@"com.apple.icns"];
 }
 
-- (NSArray<KayokoPasteboardItem *> *)pasteboardItemsForCurrentChange {
+- (NSString *)sourceApplicationBundleIdentifierForCurrentPasteboardChangeOnMain {
+    KayokoKeyboardHostContext *hostContext =
+        [[KayokoKeyboardHostResolver sharedResolver] keyboardHostContextForSourceAttribution];
+    if ([[hostContext bundleIdentifier] length] > 0) {
+        HBLogDebug(@"Kayoko: pasteboard source app using %@ keyboard host bundleIdentifier=%@ scene=%@ "
+                   @"kind=%@ cached=%@ kayokoOwned=%@",
+                   hostContext.isCached ? @"cached external" : @"current", [hostContext bundleIdentifier],
+                   [hostContext identifier], [KayokoKeyboardHostResolver stringForHostKind:[hostContext kind]],
+                   hostContext.isCached ? @"YES" : @"NO", hostContext.isKayokoOwned ? @"YES" : @"NO");
+        return [hostContext bundleIdentifier];
+    }
+
+    SBApplication *frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+    NSString *frontMostBundleIdentifier = [frontMostApplication bundleIdentifier];
+    NSString *fallbackBundleIdentifier =
+        [frontMostBundleIdentifier length] > 0 ? frontMostBundleIdentifier : @"com.apple.springboard";
+    HBLogDebug(@"Kayoko: pasteboard source app falling back to frontmost application "
+               @"hostScene=%@ hostKind=%@ hostCached=%@ hostBundleIdentifier=%@ frontMostBundleIdentifier=%@ "
+               @"finalBundleIdentifier=%@",
+               [hostContext identifier] ?: @"nil", [KayokoKeyboardHostResolver stringForHostKind:[hostContext kind]],
+               hostContext.isCached ? @"YES" : @"NO", [hostContext bundleIdentifier] ?: @"nil",
+               frontMostBundleIdentifier ?: @"nil", fallbackBundleIdentifier);
+    return fallbackBundleIdentifier;
+}
+
+- (NSArray<KayokoPasteboardItem *> *)pasteboardItemsForCurrentChangeWithSourceBundleIdentifier:
+    (NSString *)sourceBundleIdentifier {
     NSUInteger currentChangeCount = [_pasteboard changeCount];
     if (currentChangeCount == _lastChangeCount) {
         return @[];
@@ -381,18 +410,11 @@ NS_ASSUME_NONNULL_END
     NSMutableArray<KayokoPasteboardItem *> *items = [[NSMutableArray alloc] init];
 
     if ([self saveText]) {
-        // Don't pull strings if the pasteboard contains images.
-        // For example: When copying an image from the web we only want the image, without the string.
         if (!(hasStrings && hasImages)) {
             for (NSString *string in [_pasteboard strings]) {
                 @autoreleasepool {
-                    // The core only runs on the SpringBoard process, thus we can't use mainbundle to get the process'
-                    // bundle identifier. However, we can get it by using UIApplication/SpringBoard
-                    // front-most-application.
-                    SBApplication *frontMostApplication =
-                        [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
                     KayokoPasteboardItem *item =
-                        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
                                                                     andContent:string
                                                                 withImageNamed:nil];
                     [items addObject:item];
@@ -406,7 +428,6 @@ NS_ASSUME_NONNULL_END
             @autoreleasepool {
                 NSString *imageName = [self randomStringWithLength:32];
 
-                // Only save as PNG if the image has an alpha channel to save storage space.
                 if ([self imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
                     NSString *filePath =
@@ -420,11 +441,8 @@ NS_ASSUME_NONNULL_END
                     [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
                 }
 
-                // See the above loop.
-                SBApplication *frontMostApplication =
-                    [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
                 KayokoPasteboardItem *item =
-                    [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                    [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
                                                                 andContent:imageName
                                                             withImageNamed:imageName];
                 [items addObject:item];
@@ -435,7 +453,7 @@ NS_ASSUME_NONNULL_END
     return items;
 }
 
-- (BOOL)_reallyPullPasteboardChanges {
+- (BOOL)_reallyPullPasteboardChangesWithSourceBundleIdentifier:(NSString *)sourceBundleIdentifier {
     if ([_pendingPasteboardWrite isActive]) {
         HBLogDebug(@"Kayoko: ignored pasteboard pull while local write is pending token=%lu changeCount=%lu",
                    (unsigned long)[_pendingPasteboardWrite token], (unsigned long)[_pasteboard changeCount]);
@@ -443,7 +461,8 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    NSArray<KayokoPasteboardItem *> *items =
+        [self pasteboardItemsForCurrentChangeWithSourceBundleIdentifier:sourceBundleIdentifier];
     return [self savePasteboardItemsSynchronously:items toHistoryWithKey:kKayokoHistoryKeyHistory];
 }
 
