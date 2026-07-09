@@ -438,6 +438,11 @@ NS_ASSUME_NONNULL_END
     [self updateSearchTokenHeaderHeights];
 }
 
+- (void)resetSearchSessionState {
+    [[self historyTokenListViewController] resetSearchSessionState];
+    [[self favoritesTokenListViewController] resetSearchSessionState];
+}
+
 - (void)syncSearchBarsAfterTokenSourceChange {
     if (![self isSearchActive]) {
         return;
@@ -735,6 +740,7 @@ NS_ASSUME_NONNULL_END
         if (animations) {
             animations();
         }
+        [self resetSearchSessionState];
         if (completion) {
             completion();
         }
@@ -761,6 +767,7 @@ NS_ASSUME_NONNULL_END
                                                 animations:animations
                                               panVelocityY:panVelocityY
                                                 completion:^{
+                                                  [self resetSearchSessionState];
                                                   [[self delegate] searchControllerDidFinishAnimatingSearchState:self];
                                                   if (completion) {
                                                       completion();
