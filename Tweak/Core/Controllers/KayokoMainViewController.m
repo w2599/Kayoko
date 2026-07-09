@@ -83,6 +83,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable) UIView *interactiveTransientReturnSourceView;
 @property(nonatomic, weak, nullable) UIView *interactiveTransientReturnContentView;
 @property(nonatomic, assign) BOOL interactiveTransientReturnWasPreview;
+@property(nonatomic, assign) BOOL didRestoreSearchDuringInteractiveTransientReturn;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -931,6 +932,7 @@ NS_ASSUME_NONNULL_END
     [self setInteractiveTransientReturnSourceView:nil];
     [self setInteractiveTransientReturnContentView:nil];
     [self setInteractiveTransientReturnWasPreview:NO];
+    [self setDidRestoreSearchDuringInteractiveTransientReturn:NO];
 }
 
 - (void)clearSearchAfterTransientContentState {
@@ -979,6 +981,8 @@ NS_ASSUME_NONNULL_END
                                      alongsideViewToShow:mainHeaderView
                                          hideContentView:contentView
                                                 progress:progress];
+    [self setDidRestoreSearchDuringInteractiveTransientReturn:
+              [self restoreSearchAfterTransientContentIfNeededClearingState:NO]];
 }
 
 - (void)updateInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
@@ -1005,6 +1009,10 @@ NS_ASSUME_NONNULL_END
     }
 
     BOOL wasPreview = [self interactiveTransientReturnWasPreview];
+    BOOL didRestoreSearch = [self didRestoreSearchDuringInteractiveTransientReturn];
+    if (didRestoreSearch) {
+        [self clearSearchAfterTransientContentState];
+    }
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
     UIView *mainHeaderView = [[self mainView] headerView];
 
@@ -1013,7 +1021,9 @@ NS_ASSUME_NONNULL_END
                                                       hideContentView:contentView
                                                              duration:duration
                                                   alongsideAnimations:^{
-                                                    [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
+                                                    if (!didRestoreSearch) {
+                                                        [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
+                                                    }
                                                   }
                                                            completion:^{
                                                              if (wasPreview) {
@@ -1032,6 +1042,10 @@ NS_ASSUME_NONNULL_END
     if (!sourceView || !contentView) {
         [self resetInteractiveTransientReturnState];
         return;
+    }
+
+    if ([self didRestoreSearchDuringInteractiveTransientReturn]) {
+        [[self searchController] resignSearchFirstResponder];
     }
 
     [[self mainView] cancelInteractiveBackwardContentTransitionToView:sourceView
