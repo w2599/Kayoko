@@ -553,9 +553,8 @@ NS_ASSUME_NONNULL_END
     [self showContentForItem:item];
 }
 
-- (void)historyListViewController:(KayokoHistoryListViewController *)controller
-    didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
-    [self updateContentStateMaintainingSearchBarVisibility:maintainsSearchBarVisibility];
+- (void)historyListViewControllerDidChangeContentState:(KayokoHistoryListViewController *)controller {
+    [self updateContentState];
 }
 
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
@@ -718,7 +717,7 @@ NS_ASSUME_NONNULL_END
         }
         [[self mainView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
         if ([self activeHistoryContentView] != [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]]) {
-            [self updateContentStateMaintainingSearchBarVisibility:NO];
+            [self updateContentState];
         }
     }
 }
@@ -838,10 +837,6 @@ NS_ASSUME_NONNULL_END
         return;
     }
     [[self mainView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
-}
-
-- (void)updateContentState {
-    [self updateContentStateMaintainingSearchBarVisibility:YES];
 }
 
 - (void)showStorageError:(NSError *)error {
@@ -1194,7 +1189,7 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
-- (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
+- (void)updateContentState {
     if ([self isAuthorizationRequired]) {
         [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
         return;
@@ -1222,9 +1217,6 @@ NS_ASSUME_NONNULL_END
     }
 
     [self updateClearButtonState];
-    if (maintainsSearchBarVisibility) {
-        [[self searchController] maintainSearchBarVisibilityForListViewController:[self activeListViewController]];
-    }
 }
 
 #pragma mark - Actions

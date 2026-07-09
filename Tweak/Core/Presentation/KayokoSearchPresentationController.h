@@ -43,7 +43,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)layout;
 - (void)updateSearchTokenViews;
 - (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
-- (void)maintainSearchBarVisibilityForTableView:(KayokoHistoryListView *)tableView;
 - (void)hideSearchBarInTableView:(nullable KayokoHistoryListView *)tableView animated:(BOOL)animated;
 - (void)revealSearchBarInTableView:(nullable KayokoHistoryListView *)tableView animated:(BOOL)animated;
 - (void)beginSearchWithActiveTableView:(KayokoHistoryListView *)activeTableView

@@ -288,14 +288,6 @@ NS_ASSUME_NONNULL_END
     [self setContentOffset:contentOffset forTableView:tableView animated:animated];
 }
 
-- (void)maintainSearchBarVisibilityForTableView:(KayokoHistoryListView *)tableView {
-    if ([self isSearchActive]) {
-        [self revealSearchBarInTableView:tableView animated:NO];
-    } else {
-        [self hideSearchBarInTableView:tableView animated:NO];
-    }
-}
-
 #pragma mark - Fullscreen Geometry
 
 - (UIEdgeInsets)contentSafeAreaAdditionalInsetsForFullscreenSuperview:(UIView *)superview {

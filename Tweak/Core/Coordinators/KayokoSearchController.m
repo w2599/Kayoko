@@ -883,10 +883,6 @@ NS_ASSUME_NONNULL_END
     [self setIsResettingSearch:wasResettingSearch];
 }
 
-- (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController {
-    [[self presentationController] maintainSearchBarVisibilityForTableView:[listViewController tableView]];
-}
-
 #pragma mark - KayokoSearchPresentationControllerDelegate
 
 - (void)searchPresentationController:(KayokoSearchPresentationController *)controller
