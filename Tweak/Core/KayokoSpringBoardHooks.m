@@ -658,7 +658,7 @@ CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettin
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
       [[NSNotificationCenter defaultCenter] addObserver:self
-                                                   selector:@selector(handleWindowWillRotateNotification:)
+                                               selector:@selector(handleWindowWillRotateNotification:)
                                                    name:@"UIWindowWillRotateNotification"
                                                  object:nil];
     });

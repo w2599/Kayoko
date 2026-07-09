@@ -30,8 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoExternalHideCoordinator ()
 
-@property(nonatomic, assign, readwrite, getter=isSearchInputTransitionSuppressed)
-    BOOL searchInputTransitionSuppressed;
+@property(nonatomic, assign, readwrite, getter=isSearchInputTransitionSuppressed) BOOL searchInputTransitionSuppressed;
 @property(nonatomic, assign) NSUInteger searchInputTransitionSuppressionToken;
 @property(nonatomic, copy, nullable) dispatch_block_t searchInputTransitionSuppressionExpirationBlock;
 @property(nonatomic, strong, nullable) KayokoExternalHideRequest *pendingExternalHideRequestObject;
@@ -94,8 +93,8 @@ NS_ASSUME_NONNULL_BEGIN
         return NO;
     }
 
-    self.pendingExternalHideRequestObject =
-        [[KayokoExternalHideRequest alloc] initWithAnimationStyle:animationStyle completion:completion];
+    self.pendingExternalHideRequestObject = [[KayokoExternalHideRequest alloc] initWithAnimationStyle:animationStyle
+                                                                                           completion:completion];
     return YES;
 }
 

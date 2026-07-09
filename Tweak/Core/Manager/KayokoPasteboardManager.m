@@ -729,19 +729,19 @@ NS_ASSUME_NONNULL_END
     if (@available(iOS 16, *)) {
         dispatch_async(_pasteboardQueue, ^{
           [self _reallyWritePasteboardItem:pasteboardItem
-                          sourceHistoryItem:sourceHistoryItem
-                         fromHistoryWithKey:historyKey
-                            shouldAutoPaste:performsAutomaticPaste
-                         automaticPasteMode:automaticPasteMode];
+                         sourceHistoryItem:sourceHistoryItem
+                        fromHistoryWithKey:historyKey
+                           shouldAutoPaste:performsAutomaticPaste
+                        automaticPasteMode:automaticPasteMode];
         });
         return;
     }
 
     [self _reallyWritePasteboardItem:pasteboardItem
-                    sourceHistoryItem:sourceHistoryItem
-                   fromHistoryWithKey:historyKey
-                      shouldAutoPaste:performsAutomaticPaste
-                   automaticPasteMode:automaticPasteMode];
+                   sourceHistoryItem:sourceHistoryItem
+                  fromHistoryWithKey:historyKey
+                     shouldAutoPaste:performsAutomaticPaste
+                  automaticPasteMode:automaticPasteMode];
 }
 
 - (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
@@ -776,10 +776,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)_reallyWritePasteboardItem:(KayokoPasteboardItem *)pasteboardItem
-                  sourceHistoryItem:(KayokoPasteboardItem *)sourceHistoryItem
-                 fromHistoryWithKey:(NSString *)historyKey
-                    shouldAutoPaste:(BOOL)shouldAutoPaste
-                 automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
+                 sourceHistoryItem:(KayokoPasteboardItem *)sourceHistoryItem
+                fromHistoryWithKey:(NSString *)historyKey
+                   shouldAutoPaste:(BOOL)shouldAutoPaste
+                automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
     if (_isWritingPasteboardItem) {
         HBLogDebug(@"Kayoko: pasteboard item write ignored because another write is in progress");
         return;

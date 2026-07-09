@@ -339,7 +339,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)executePendingExternalHideRequestIfReady {
-    if ([[self externalHideCoordinator] shouldSuppressExternalHide] || [self externalHideRequestShouldWaitForAnimations]) {
+    if ([[self externalHideCoordinator] shouldSuppressExternalHide] ||
+        [self externalHideRequestShouldWaitForAnimations]) {
         return;
     }
 
@@ -1660,8 +1661,7 @@ NS_ASSUME_NONNULL_END
     [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleDefault completion:completion];
 }
 
-- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
-                    completion:(void (^)(void))completion {
+- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle completion:(void (^)(void))completion {
     [self setShowRequestIdentifier:[self showRequestIdentifier] + 1];
     [self setPreparingToShow:NO];
 
@@ -1673,10 +1673,12 @@ NS_ASSUME_NONNULL_END
     [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
     [[self searchController] resetBeforeHide];
-    [[self panelPresentationController] hidePanelWithAnimationStyle:animationStyle
-                                                        completion:^{
-      [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:completion];
-    }];
+    [[self panelPresentationController]
+        hidePanelWithAnimationStyle:animationStyle
+                         completion:^{
+                           [self completeHideAfterShowingTransientContent:wasShowingTransientContent
+                                                               completion:completion];
+                         }];
 }
 
 - (void)hideForExternalRequestWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
@@ -1691,7 +1693,7 @@ NS_ASSUME_NONNULL_END
 
     if ([self externalHideRequestShouldWaitForAnimations]) {
         [[self externalHideCoordinator] recordPendingExternalHideRequestWithAnimationStyle:animationStyle
-                                                                               completion:completion];
+                                                                                completion:completion];
         return;
     }
 

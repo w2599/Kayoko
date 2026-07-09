@@ -428,7 +428,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)hidePanelWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
-                          completion:(void (^)(void))completion {
+                         completion:(void (^)(void))completion {
     if ([self isAnimating]) {
         return;
     }

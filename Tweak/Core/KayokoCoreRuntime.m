@@ -279,8 +279,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIControl *)ensurePortraitOutsideDismissOverlayInWindow:(UIWindow *)window {
-    if (self.portraitOutsideDismissOverlayView &&
-        [self.portraitOutsideDismissOverlayView superview] == window) {
+    if (self.portraitOutsideDismissOverlayView && [self.portraitOutsideDismissOverlayView superview] == window) {
         return self.portraitOutsideDismissOverlayView;
     }
 
@@ -302,8 +301,7 @@ NS_ASSUME_NONNULL_END
     }
 
     CGRect initialFrame = [self portraitPanelFrameInWindow:self.statusBarWindow];
-    self.mainViewController = [[KayokoMainViewController alloc]
-        initWithFrame:initialFrame];
+    self.mainViewController = [[KayokoMainViewController alloc] initWithFrame:initialFrame];
     [self.mainViewController setDelegate:self];
     [self applyPreferencesToView];
     if (self.didRequestInitialHistoryPreload) {
@@ -360,8 +358,7 @@ NS_ASSUME_NONNULL_END
         return nil;
     }
 
-    if (self.compactLandscapeOverlayWindow &&
-        [self.compactLandscapeOverlayWindow windowScene] != windowScene) {
+    if (self.compactLandscapeOverlayWindow && [self.compactLandscapeOverlayWindow windowScene] != windowScene) {
         [self.compactLandscapeOverlayWindow setHidden:YES];
         [self.compactLandscapeOverlayWindow setRootViewController:nil];
         self.compactLandscapeOverlayWindow = nil;
@@ -427,7 +424,8 @@ NS_ASSUME_NONNULL_END
     }
 
     [self.mainViewController setOutsideDismissOverlayView:nil];
-    [self.mainViewController setKayokoSupportedInterfaceOrientations:[self compactLandscapeSupportedInterfaceOrientations]];
+    [self.mainViewController
+        setKayokoSupportedInterfaceOrientations:[self compactLandscapeSupportedInterfaceOrientations]];
     [self.mainViewController setPresentationMode:KayokoPanelPresentationModeCompactLandscapeFullscreen];
     [self applyCompactLandscapeOverlayFrame:window];
     if ([window rootViewController] != self.mainViewController) {

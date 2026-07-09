@@ -201,8 +201,7 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
             [[[self contentContainerView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
                                                                     constant:8],
             [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
-            [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint,
-            bottomConstraint
+            [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint, bottomConstraint
         ]];
     }
 

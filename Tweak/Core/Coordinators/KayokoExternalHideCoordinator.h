@@ -23,8 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoExternalHideCoordinator : NSObject
 
-@property(nonatomic, assign, readonly, getter=isSearchInputTransitionSuppressed)
-    BOOL searchInputTransitionSuppressed;
+@property(nonatomic, assign, readonly, getter=isSearchInputTransitionSuppressed) BOOL searchInputTransitionSuppressed;
 @property(nonatomic, assign, readonly, getter=hasPendingExternalHideRequest) BOOL pendingExternalHideRequest;
 
 - (void)beginSearchInputTransitionSuppressionWithDuration:(NSTimeInterval)duration
