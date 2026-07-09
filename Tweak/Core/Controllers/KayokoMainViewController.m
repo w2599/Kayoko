@@ -28,7 +28,7 @@ static CGFloat const kKayokoTransientEdgeBackCompletionProgress = 0.35;
 static CGFloat const kKayokoTransientEdgeBackCompletionVelocity = 650;
 static NSTimeInterval const kKayokoTransientEdgeBackMinimumAnimationDuration = 0.08;
 static NSTimeInterval const kKayokoTransientEdgeBackMaximumAnimationDuration = 0.22;
-static NSTimeInterval const kKayokoSearchInputExternalHideSuppressionDuration = 0.5;
+static NSTimeInterval const kKayokoSearchInputExternalHideSuppressionDuration = 0.75;
 
 @interface LSApplicationWorkspace : NSObject
 + (instancetype)defaultWorkspace;
@@ -432,6 +432,7 @@ NS_ASSUME_NONNULL_END
     if ([[self searchController] isSearchActive]) {
         [[self searchController] cancelSearchWithCompletion:nil];
     } else {
+        [[self panelPresentationController] prepareStandardDismissAnimation];
         [self hideRestoringFocus];
     }
 }
@@ -520,10 +521,12 @@ NS_ASSUME_NONNULL_END
 #pragma mark - KayokoHistoryListViewControllerDelegate
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
+    [[self panelPresentationController] prepareStandardDismissAnimation];
     [self hideRestoringFocus];
 }
 
 - (void)historyListViewControllerDidRequestHideAfterDirectPaste:(KayokoHistoryListViewController *)controller {
+    [[self panelPresentationController] prepareStandardDismissAnimation];
     [self hideAfterDirectPaste];
 }
 
@@ -1327,6 +1330,7 @@ NS_ASSUME_NONNULL_END
         [[self previewViewController] handleActionButtonWithCompletion:^(BOOL success) {
           if (success) {
               [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+              [[self panelPresentationController] prepareStandardDismissAnimation];
               [self hideAfterDirectPaste];
           }
         }];
@@ -1502,6 +1506,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
     didRequestHideContainerAfterDirectPaste:(BOOL)directPaste {
+    [[self panelPresentationController] prepareStandardDismissAnimation];
     if (directPaste) {
         [self hideAfterDirectPaste];
     } else {
@@ -1629,6 +1634,11 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Hiding
 
 - (void)hide {
+    [self hideWithCompletion:nil];
+}
+
+- (void)hideWithStandardDismissAnimation {
+    [[self panelPresentationController] prepareStandardDismissAnimation];
     [self hideWithCompletion:nil];
 }
 

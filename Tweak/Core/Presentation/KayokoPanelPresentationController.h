@@ -37,6 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithPanelView:(KayokoMainView *)panelView;
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
+- (void)prepareStandardDismissAnimation;
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle

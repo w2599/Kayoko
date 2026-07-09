@@ -113,14 +113,6 @@ NS_ASSUME_NONNULL_END
     [self setPendingDismissVelocityY:0];
 }
 
-- (CGFloat)defaultDismissTranslationForCurrentPresentationMode {
-    if ([self presentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-        return 0;
-    }
-
-    return MAX([[self panelView] bounds].size.height / 3, 120);
-}
-
 #pragma mark - Outside Dismiss Overlay
 
 - (void)handleOutsideDismissOverlayTouchDown {
@@ -439,8 +431,9 @@ NS_ASSUME_NONNULL_END
     [self setPendingDismissTranslationY:0];
     [self setPendingDismissVelocityY:0];
 
-    if (animationStyle == KayokoPanelHideAnimationStyleDefault && dismissTranslationY <= 0) {
-        dismissTranslationY = [self defaultDismissTranslationForCurrentPresentationMode];
+    if (animationStyle == KayokoPanelHideAnimationStyleFade) {
+        dismissTranslationY = 0;
+        dismissVelocityY = 0;
     }
 
     [self setAnimating:YES];
