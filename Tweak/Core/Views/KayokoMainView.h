@@ -33,7 +33,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setTitleText:(NSString *)title;
 - (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount;
-- (void)setGrabberFoldProgress:(CGFloat)progress;
 - (UIEdgeInsets)effectiveContentSafeAreaInsets;
 - (CGFloat)safeAreaBottomInsetForContentView:(nullable UIView *)contentView;
 - (void)installContentView:(UIView *)contentView hidden:(BOOL)hidden;

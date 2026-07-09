@@ -144,10 +144,6 @@
 
 #pragma mark - Layout
 
-- (void)setGrabberFoldProgress:(CGFloat)progress {
-    [[self headerView] setGrabberFoldProgress:progress];
-}
-
 - (void)setSearchTitleRowCollapsed:(BOOL)searchTitleRowCollapsed {
     if (_searchTitleRowCollapsed == searchTitleRowCollapsed) {
         return;

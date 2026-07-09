@@ -308,7 +308,7 @@ NS_ASSUME_NONNULL_END
     }
 
     if (![[self searchController] isSearchActive]) {
-        [[self mainView] setGrabberFoldProgress:0];
+        [[[self mainView] headerView] setGrabberFoldProgress:0];
         [[self mainView] setContentRespectsSafeArea:NO];
         [[self mainView] setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
     }
@@ -447,7 +447,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)panelPresentationControllerDidTapGrabberArea:(KayokoPanelPresentationController *)controller {
-    if ([[self searchController] isSearchActive] && ![self isPreviewActive] && ![self isWordSelectionActive]) {
+    if ([[self searchController] isSearchActive]) {
         [[self searchController] cancelSearchWithCompletion:nil];
     } else {
         [[self panelPresentationController] prepareStandardDismissAnimation];
@@ -457,7 +457,7 @@ NS_ASSUME_NONNULL_END
 
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
     return [self presentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen &&
-           [[self searchController] isSearchActive] && ![self isPreviewActive] && ![self isWordSelectionActive];
+           [[self searchController] isSearchActive];
 }
 
 - (BOOL)panelPresentationController:(KayokoPanelPresentationController *)controller
@@ -500,8 +500,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
     handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
-                             beganInHeaderView:(BOOL)beganInHeaderView {
-    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer beganInHeaderView:beganInHeaderView];
+                                    headerView:(nullable KayokoHeaderView *)headerView {
+    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer headerView:headerView];
 }
 
 #pragma mark - KayokoHistoryControllerDelegate

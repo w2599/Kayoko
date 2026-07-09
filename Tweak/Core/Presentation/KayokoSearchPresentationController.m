@@ -14,6 +14,7 @@ static CGFloat const kKayokoSearchHeaderHeight = 56;
 static CGFloat const kKayokoSearchBarHorizontalInset = 16;
 static NSTimeInterval const kKayokoSearchFullscreenAnimationDuration = 0.42;
 static CGFloat const kKayokoSearchFullscreenAnimationDamping = 0.86;
+static CGFloat const kKayokoSearchFullscreenGrabberFoldDistance = 20;
 static CGFloat const kKayokoSearchFullscreenCollapseVelocity = 900;
 static CGFloat const kKayokoSearchFullscreenReboundVelocity = -450;
 static CGFloat const kKayokoSearchFullscreenCollapseProgress = 0.32;
@@ -43,7 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Views
 
 @property(nonatomic, weak) UIView *containerView;
-@property(nonatomic, weak) UIView *headerView;
+@property(nonatomic, weak) KayokoHeaderView *headerView;
 
 #pragma mark - Search Bars
 
@@ -68,6 +69,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) CGRect normalFrameBeforeSearch;
 @property(nonatomic, assign) BOOL hasNormalFrameBeforeSearch;
+@property(nonatomic, weak, nullable) KayokoHeaderView *fullscreenPanHeaderView;
 
 #pragma mark - Keyboard
 
@@ -81,7 +83,7 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Lifecycle
 
 - (instancetype)initWithContainerView:(UIView *)containerView
-                           headerView:(UIView *)headerView
+                           headerView:(KayokoHeaderView *)headerView
                      historySearchBar:(UISearchBar *)historySearchBar
                    favoritesSearchBar:(UISearchBar *)favoritesSearchBar
                historySearchTokenView:(UIView *)historySearchTokenView
@@ -315,13 +317,21 @@ NS_ASSUME_NONNULL_END
     return additionalInsets;
 }
 
-- (void)setGrabberFoldProgress:(CGFloat)progress {
-    UIView *containerView = [self containerView];
-    if (![containerView isKindOfClass:[KayokoMainView class]]) {
-        return;
-    }
+- (void)setGrabberFoldProgress:(CGFloat)progress headerView:(nullable KayokoHeaderView *)headerView {
+    [(headerView ?: [self headerView]) setGrabberFoldProgress:progress];
+}
 
-    [(KayokoMainView *)containerView setGrabberFoldProgress:progress];
+- (void)setGrabberFoldProgress:(CGFloat)progress {
+    [self setGrabberFoldProgress:progress headerView:nil];
+}
+
+- (void)resetGrabberFoldState {
+    KayokoHeaderView *fullscreenPanHeaderView = [self fullscreenPanHeaderView];
+    [self setGrabberFoldProgress:0];
+    if (fullscreenPanHeaderView && fullscreenPanHeaderView != [self headerView]) {
+        [self setGrabberFoldProgress:0 headerView:fullscreenPanHeaderView];
+    }
+    [self setFullscreenPanHeaderView:nil];
 }
 
 - (CGRect)fullscreenFrame {
@@ -475,7 +485,7 @@ NS_ASSUME_NONNULL_END
         KayokoMainView *mainView = (KayokoMainView *)containerView;
         BOOL keepsFullscreenSafeArea = [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
         if (!keepsFullscreenSafeArea) {
-            [mainView setGrabberFoldProgress:0];
+            [self resetGrabberFoldState];
             [mainView setContentRespectsSafeArea:NO];
             [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
         }
@@ -542,7 +552,7 @@ NS_ASSUME_NONNULL_END
         [containerView setNeedsLayout];
         [containerView layoutIfNeeded];
         [self hideSearchBarInTableView:activeTableView animated:NO];
-        [self setGrabberFoldProgress:0];
+        [self resetGrabberFoldState];
         if (animations) {
             animations();
         }
@@ -556,16 +566,18 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
                              activeTableView:(KayokoHistoryListView *)activeTableView
-                           beganInHeaderView:(BOOL)beganInHeaderView {
+                                  headerView:(nullable KayokoHeaderView *)headerView {
     if (![self isSearchActive]) {
         return;
     }
 
+    BOOL beganInHeaderView = headerView != nil;
+    KayokoHeaderView *grabberHeaderView = headerView ?: [self headerView];
+    [self setFullscreenPanHeaderView:grabberHeaderView];
     UIView *trackingView = [[self containerView] superview] ?: [self containerView];
     CGPoint translation = [recognizer translationInView:trackingView];
     CGFloat progress = [self fullscreenCollapseProgressForTranslation:translation.y];
-    CGFloat grabberFoldProgress =
-        1 - MIN(MAX(translation.y / kKayokoHeaderGrabberFoldInteractionDistance, 0), 1);
+    CGFloat grabberFoldProgress = 1 - MIN(MAX(translation.y / kKayokoSearchFullscreenGrabberFoldDistance, 0), 1);
 
     if ([recognizer state] == UIGestureRecognizerStateBegan || [recognizer state] == UIGestureRecognizerStateChanged) {
         CGRect fullscreenFrame = [self fullscreenFrame];
@@ -576,7 +588,7 @@ NS_ASSUME_NONNULL_END
         [containerView setFrame:frame];
         [containerView setNeedsLayout];
         [containerView layoutIfNeeded];
-        [self setGrabberFoldProgress:grabberFoldProgress];
+        [self setGrabberFoldProgress:grabberFoldProgress headerView:grabberHeaderView];
         return;
     }
 
@@ -593,9 +605,13 @@ NS_ASSUME_NONNULL_END
                            [containerView setFrame:fullscreenFrame];
                            [containerView setNeedsLayout];
                            [containerView layoutIfNeeded];
-                           [self setGrabberFoldProgress:1];
+                           [self setGrabberFoldProgress:1 headerView:grabberHeaderView];
                          }
-                         completion:nil];
+                         completion:^(__unused BOOL finished) {
+                           if ([self fullscreenPanHeaderView] == grabberHeaderView) {
+                               [self setFullscreenPanHeaderView:nil];
+                           }
+                         }];
         return;
     }
 
@@ -624,9 +640,13 @@ NS_ASSUME_NONNULL_END
                        [containerView setFrame:fullscreenFrame];
                        [containerView setNeedsLayout];
                        [containerView layoutIfNeeded];
-                       [self setGrabberFoldProgress:1];
+                       [self setGrabberFoldProgress:1 headerView:grabberHeaderView];
                      }
-                     completion:nil];
+                     completion:^(__unused BOOL finished) {
+                       if ([self fullscreenPanHeaderView] == grabberHeaderView) {
+                           [self setFullscreenPanHeaderView:nil];
+                       }
+                     }];
 }
 
 #pragma mark - Bottom Insets
@@ -702,7 +722,7 @@ NS_ASSUME_NONNULL_END
         KayokoMainView *mainView = (KayokoMainView *)containerView;
         BOOL keepsFullscreenSafeArea = [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
         [mainView setSearchTitleRowCollapsed:NO];
-        [mainView setGrabberFoldProgress:0];
+        [self resetGrabberFoldState];
         [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
         if (!keepsFullscreenSafeArea) {
             [mainView setContentRespectsSafeArea:NO];

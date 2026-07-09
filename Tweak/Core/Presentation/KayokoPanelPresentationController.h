@@ -23,7 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
                                velocity:(CGPoint)velocity;
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
     handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
-                             beganInHeaderView:(BOOL)beganInHeaderView;
+                                    headerView:(nullable KayokoHeaderView *)headerView;
 
 @end
 

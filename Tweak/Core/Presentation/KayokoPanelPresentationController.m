@@ -23,8 +23,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, weak, nullable) UIView *panGestureTouchView;
-@property(nonatomic, weak, nullable) KayokoHeaderView *panGestureHeaderView;
-@property(nonatomic, assign) CGFloat panGestureInitialHeaderFoldProgress;
 @property(nonatomic, strong) NSHashTable<KayokoHeaderView *> *headerViews;
 @property(nonatomic, strong)
     NSHashTable<UIGestureRecognizer *> *scrollViewPanGestureRecognizersRequiringPanelPanFailure;
@@ -251,8 +249,8 @@ NS_ASSUME_NONNULL_END
     return [scrollView contentOffset].y <= topBoundary + kKayokoPanelPanScrollViewTopTolerance;
 }
 
-- (BOOL)currentPanGestureBeganInHeaderView {
-    return [self headerViewContainingView:[self panGestureTouchView]] != nil;
+- (nullable KayokoHeaderView *)currentPanGestureHeaderView {
+    return [self headerViewContainingView:[self panGestureTouchView]];
 }
 
 - (BOOL)shouldBeginPanelPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
@@ -284,7 +282,7 @@ NS_ASSUME_NONNULL_END
     if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
         [[self delegate] panelPresentationController:self
             handleFullscreenSearchPanGestureRecognizer:recognizer
-                                     beganInHeaderView:[self currentPanGestureBeganInHeaderView]];
+                                            headerView:[self currentPanGestureHeaderView]];
         if ([recognizer state] == UIGestureRecognizerStateEnded ||
             [recognizer state] == UIGestureRecognizerStateCancelled ||
             [recognizer state] == UIGestureRecognizerStateFailed) {
@@ -299,9 +297,6 @@ NS_ASSUME_NONNULL_END
 
     if ([recognizer state] == UIGestureRecognizerStateBegan) {
         [self setPanGestureDidReachZeroAlpha:NO];
-        KayokoHeaderView *headerView = [self headerViewContainingView:[self panGestureTouchView]];
-        [self setPanGestureHeaderView:headerView];
-        [self setPanGestureInitialHeaderFoldProgress:[headerView grabberFoldProgress]];
         [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
     } else if ([recognizer state] == UIGestureRecognizerStateChanged) {
         [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
@@ -316,12 +311,6 @@ NS_ASSUME_NONNULL_END
             fadeProgress = 1;
             translation.y = MAX(translation.y, kFadeOutDistance);
         }
-
-        CGFloat grabberUnfoldProgress =
-            MIN(MAX(translation.y / kKayokoHeaderGrabberFoldInteractionDistance, 0), 1);
-        CGFloat grabberFoldProgress = [self panGestureInitialHeaderFoldProgress] * (1 - grabberUnfoldProgress);
-        [[self panGestureHeaderView] setGrabberFoldProgress:grabberFoldProgress];
-        [[self panGestureHeaderView] layoutIfNeeded];
 
         [UIView animateWithDuration:0.1
                               delay:0
@@ -342,14 +331,12 @@ NS_ASSUME_NONNULL_END
         CGPoint velocity = CGPointZero;
         if ([recognizer state] == UIGestureRecognizerStateEnded) {
             velocity = [recognizer velocityInView:[self panelView]];
-            shouldUseFastDismissAnimation = [self currentPanGestureBeganInHeaderView] &&
+            shouldUseFastDismissAnimation = [self currentPanGestureHeaderView] != nil &&
                                             ![self panGestureDidReachZeroAlpha] && translation.y > 0 &&
                                             velocity.y >= kFastDismissVelocity;
             shouldDismiss = shouldDismiss || shouldUseFastDismissAnimation;
         }
 
-        KayokoHeaderView *panGestureHeaderView = [self panGestureHeaderView];
-        CGFloat initialHeaderFoldProgress = [self panGestureInitialHeaderFoldProgress];
         if (!shouldDismiss) {
             [UIView animateWithDuration:0.4
                 delay:0
@@ -360,8 +347,6 @@ NS_ASSUME_NONNULL_END
                   [[self panelView] setTransform:CGAffineTransformIdentity];
                   [[self panelView] setAlpha:1];
                   [[self outsideDismissOverlayView] setAlpha:1];
-                  [panGestureHeaderView setGrabberFoldProgress:initialHeaderFoldProgress];
-                  [panGestureHeaderView layoutIfNeeded];
                 }
                 completion:^(__unused BOOL finished) {
                   [self finishOutsideDismissOverlayShow];
@@ -373,10 +358,6 @@ NS_ASSUME_NONNULL_END
             [[self delegate] panelPresentationControllerDidRequestDismiss:self];
         }
         [self setPanGestureTouchView:nil];
-        if (!shouldDismiss || ![self isAnimating]) {
-            [self setPanGestureHeaderView:nil];
-            [self setPanGestureInitialHeaderFoldProgress:0];
-        }
     }
 }
 
@@ -470,7 +451,6 @@ NS_ASSUME_NONNULL_END
     [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
     CGFloat dismissTranslationY = [self pendingDismissTranslationY];
     CGFloat dismissVelocityY = [self pendingDismissVelocityY];
-    KayokoHeaderView *panGestureHeaderView = [self panGestureHeaderView];
     [self setPendingDismissTranslationY:0];
     [self setPendingDismissVelocityY:0];
 
@@ -501,17 +481,11 @@ NS_ASSUME_NONNULL_END
           }
           [[self panelView] setAlpha:0];
           [[self outsideDismissOverlayView] setAlpha:0];
-          [panGestureHeaderView setGrabberFoldProgress:0];
-          [panGestureHeaderView layoutIfNeeded];
         }
         completion:^(__unused BOOL finished) {
           [[self panelView] setHidden:YES];
           [self hideOutsideDismissOverlay];
           [self setAnimating:NO];
-          if ([self panGestureHeaderView] == panGestureHeaderView) {
-              [self setPanGestureHeaderView:nil];
-              [self setPanGestureInitialHeaderFoldProgress:0];
-          }
           if (completion) {
               completion();
           }
@@ -524,8 +498,6 @@ NS_ASSUME_NONNULL_END
     [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
     [self setPendingDismissTranslationY:0];
     [self setPendingDismissVelocityY:0];
-    [self setPanGestureHeaderView:nil];
-    [self setPanGestureInitialHeaderFoldProgress:0];
     [self setAnimating:NO];
 
     [[self panelView] setTransform:CGAffineTransformIdentity];

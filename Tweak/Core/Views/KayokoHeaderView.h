@@ -10,7 +10,6 @@
 NS_ASSUME_NONNULL_BEGIN
 
 static CGFloat const kKayokoHeaderContentSpacing = 8;
-static CGFloat const kKayokoHeaderGrabberFoldInteractionDistance = 20;
 
 @interface KayokoHeaderView : UIView
 
