@@ -890,6 +890,13 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - UISearchBarDelegate
 
+- (BOOL)searchBarShouldBeginEditing:(UISearchBar *)searchBar {
+    if ([self listViewControllerForSearchBar:searchBar] == [self activeListViewController]) {
+        [[self delegate] searchControllerWillBeginSearchInputTransition:self];
+    }
+    return YES;
+}
+
 - (void)searchBarTextDidBeginEditing:(UISearchBar *)searchBar {
     if ([self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
         return;

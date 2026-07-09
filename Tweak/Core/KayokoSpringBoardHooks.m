@@ -116,8 +116,12 @@ static void kayokoHandleExternalKeyboardShortcut(id self, SEL _cmd, UIKeyCommand
     (void)_cmd;
     (void)command;
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
-    NSString *notificationName =
-        [runtime panelVisible] ? kKayokoNotificationKeyCoreHide : kKayokoNotificationKeyCoreShow;
+    if ([runtime panelVisible]) {
+        [runtime hide];
+        return;
+    }
+
+    NSString *notificationName = kKayokoNotificationKeyCoreShow;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (__bridge CFStringRef)notificationName, nil, nil, YES);
 }

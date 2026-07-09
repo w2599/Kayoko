@@ -202,7 +202,7 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
                                                                     constant:8],
             [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
             [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint,
-            [self contentRespectsSafeArea] ? safeAreaBottomConstraint : bottomConstraint
+            bottomConstraint
         ]];
     }
 
@@ -368,10 +368,10 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [constraint setActive:contentRespectsSafeArea];
     }
     for (NSLayoutConstraint *constraint in [self contentBottomConstraints]) {
-        [constraint setActive:!contentRespectsSafeArea];
+        [constraint setActive:YES];
     }
     for (NSLayoutConstraint *constraint in [self contentSafeAreaBottomConstraints]) {
-        [constraint setActive:contentRespectsSafeArea];
+        [constraint setActive:NO];
     }
     [self setNeedsLayout];
 }

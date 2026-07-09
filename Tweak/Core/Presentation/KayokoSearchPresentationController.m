@@ -627,13 +627,21 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetsToTableViews];
 }
 
-- (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
+- (BOOL)shouldHandleSearchKeyboardNotification:(NSNotification *)notification {
     if (![self isSearchActive]) {
-        return;
+        return NO;
     }
 
     BOOL isLocal = [notification.userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
     if (!isLocal) {
+        return NO;
+    }
+
+    return YES;
+}
+
+- (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
+    if (![self shouldHandleSearchKeyboardNotification:notification]) {
         return;
     }
 

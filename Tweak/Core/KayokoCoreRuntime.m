@@ -337,6 +337,26 @@ NS_ASSUME_NONNULL_END
     return UIWindowLevelStatusBar;
 }
 
+- (UIInterfaceOrientation)frontmostAppInterfaceOrientation {
+    UIApplication *application = [UIApplication sharedApplication];
+    if (![application respondsToSelector:@selector(_frontMostAppOrientation)]) {
+        return UIInterfaceOrientationUnknown;
+    }
+
+    return [application _frontMostAppOrientation];
+}
+
+- (UIInterfaceOrientationMask)compactLandscapeSupportedInterfaceOrientations {
+    switch ([self frontmostAppInterfaceOrientation]) {
+    case UIInterfaceOrientationLandscapeLeft:
+        return UIInterfaceOrientationMaskLandscapeLeft;
+    case UIInterfaceOrientationLandscapeRight:
+        return UIInterfaceOrientationMaskLandscapeRight;
+    default:
+        return UIInterfaceOrientationMaskLandscape;
+    }
+}
+
 - (nullable UIWindow *)compactLandscapeOverlayWindowCreatingIfNeeded {
     UIWindowScene *windowScene = [self.statusBarWindow windowScene];
     if (!windowScene) {
@@ -370,6 +390,14 @@ NS_ASSUME_NONNULL_END
     [[window rootViewController].view setNeedsLayout];
 }
 
+- (void)tearDownCompactLandscapeOverlayHost {
+    [self.compactLandscapeOverlayWindow setHidden:YES];
+    if ([self.compactLandscapeOverlayWindow rootViewController] == self.mainViewController) {
+        [self.compactLandscapeOverlayWindow setRootViewController:nil];
+    }
+    [self.mainViewController setKayokoSupportedInterfaceOrientations:UIInterfaceOrientationMaskAll];
+}
+
 - (BOOL)prepareCompactLandscapeHost {
     UIWindow *window = [self compactLandscapeOverlayWindowCreatingIfNeeded];
     if (!window) {
@@ -377,6 +405,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [self.mainViewController setOutsideDismissOverlayView:nil];
+    [self.mainViewController setKayokoSupportedInterfaceOrientations:[self compactLandscapeSupportedInterfaceOrientations]];
     [self.mainViewController setPresentationMode:KayokoPanelPresentationModeCompactLandscapeFullscreen];
     [self applyCompactLandscapeOverlayFrame:window];
     if ([window rootViewController] != self.mainViewController) {
@@ -402,6 +431,7 @@ NS_ASSUME_NONNULL_END
 
     UIControl *outsideDismissOverlayView = [self ensurePortraitOutsideDismissOverlayInWindow:window];
     [self.mainViewController setOutsideDismissOverlayView:outsideDismissOverlayView];
+    [self.mainViewController setKayokoSupportedInterfaceOrientations:UIInterfaceOrientationMaskAll];
     [self.mainViewController setPresentationMode:KayokoPanelPresentationModePortraitDrawer];
 
     if ([self.compactLandscapeOverlayWindow rootViewController] == self.mainViewController) {
@@ -789,13 +819,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)frontmostAppIsLandscape {
-    UIApplication *application = [UIApplication sharedApplication];
-    if (![application respondsToSelector:@selector(_frontMostAppOrientation)]) {
-        return NO;
-    }
-
-    UIInterfaceOrientation orientation = [application _frontMostAppOrientation];
-    return UIInterfaceOrientationIsLandscape(orientation);
+    return UIInterfaceOrientationIsLandscape([self frontmostAppInterfaceOrientation]);
 }
 
 - (BOOL)deviceUsesCompactLandscapePresentation {
@@ -989,10 +1013,30 @@ NS_ASSUME_NONNULL_END
         [self.mainViewController hideWithAnimationStyle:animationStyle
                                              completion:^{
           if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-              [self.compactLandscapeOverlayWindow setHidden:YES];
+              [self tearDownCompactLandscapeOverlayHost];
           }
         }];
     }
+}
+
+- (void)hideForExternalRequest {
+    if (!self.mainViewController || [self.mainViewController isHidden]) {
+        return;
+    }
+
+    KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
+    __weak typeof(self) weakSelf = self;
+    [self.mainViewController hideForExternalRequestWithAnimationStyle:KayokoPanelHideAnimationStyleDefault
+                                                           completion:^{
+                                                             __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                             if (!strongSelf) {
+                                                                 return;
+                                                             }
+                                                             if (presentationMode ==
+                                                                 KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+                                                                 [strongSelf tearDownCompactLandscapeOverlayHost];
+                                                             }
+                                                           }];
 }
 
 - (void)hide {
@@ -1008,7 +1052,7 @@ NS_ASSUME_NONNULL_END
         KayokoPanelPresentationMode presentationMode = [self activePresentationMode];
         [self.mainViewController hideImmediately];
         if (presentationMode == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-            [self.compactLandscapeOverlayWindow setHidden:YES];
+            [self tearDownCompactLandscapeOverlayHost];
         }
     }
 }

@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (KayokoHistoryListViewController *)activeListViewControllerForSearchController:
     (KayokoSearchController *)searchController;
+- (void)searchControllerWillBeginSearchInputTransition:(KayokoSearchController *)searchController;
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController;
 - (void)searchControllerDidFinishAnimatingSearchState:(KayokoSearchController *)searchController;
 - (void)searchController:(KayokoSearchController *)searchController
