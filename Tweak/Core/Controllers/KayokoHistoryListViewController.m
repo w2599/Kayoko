@@ -744,7 +744,7 @@ NS_ASSUME_NONNULL_END
                             });
                           }];
     [noteAction setImage:[UIImage systemImageNamed:@"note.text"]];
-    [noteAction setBackgroundColor:[UIColor systemBlueColor]];
+    [noteAction setBackgroundColor:[UIColor systemOrangeColor]];
     return noteAction;
 }
 
@@ -766,7 +766,7 @@ NS_ASSUME_NONNULL_END
                             }
                           }];
     [saveAction setImage:[UIImage systemImageNamed:savesImage ? @"square.and.arrow.down.fill" : @"doc.on.doc.fill"]];
-    [saveAction setBackgroundColor:[UIColor systemOrangeColor]];
+    [saveAction setBackgroundColor:[UIColor systemBlueColor]];
     return saveAction;
 }
 

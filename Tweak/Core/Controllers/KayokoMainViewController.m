@@ -1462,6 +1462,23 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Note Editing
 
+- (CGRect)noteEditingPanelFrameForKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    UIView *mainView = [self mainView];
+    UIView *superview = [mainView superview];
+    if (!superview) {
+        return [mainView frame];
+    }
+
+    CGRect bounds = [superview bounds];
+    CGFloat targetHeight = MIN([[[self noteEditorViewController] noteEditorView] editingContentHeight] +
+                                   keyboardBottomInset,
+                               CGRectGetHeight(bounds));
+    return CGRectMake(CGRectGetMinX(bounds),
+                      CGRectGetMaxY(bounds) - targetHeight,
+                      CGRectGetWidth(bounds),
+                      targetHeight);
+}
+
 - (void)beginNoteEditingForItem:(KayokoPasteboardItem *)item
              listViewController:(KayokoHistoryListViewController *)listViewController
                presentationCell:(KayokoTableViewCell *)presentationCell
@@ -1494,10 +1511,12 @@ NS_ASSUME_NONNULL_END
     if (cellHeight <= 0) {
         cellHeight = [[listViewController tableView] rowHeight];
     }
+    CGFloat keyboardBottomInset = MAX([[self searchController] keyboardBottomInset],
+                                      [[self noteEditorViewController] visibleKeyboardBottomInset]);
     [[self noteEditorViewController] prepareForItem:item
                                   presentationCell:presentationCell
                                         cellHeight:cellHeight
-                                keyboardBottomInset:[[self searchController] keyboardBottomInset]];
+                                keyboardBottomInset:keyboardBottomInset];
 
     [[self mainView] layoutIfNeeded];
     [noteEditorView setHidden:NO];
@@ -1505,8 +1524,23 @@ NS_ASSUME_NONNULL_END
     [noteEditorView setAutomaticallyPositionsPreviewCell:NO];
     [noteEditorView layoutIfNeeded];
 
-    BOOL hasSourceFrame = sourceCell && [sourceCell window];
+    UIView *mainView = [self mainView];
+    CGRect initialPanelFrame = [mainView frame];
+    CGRect targetPanelFrame = keyboardBottomInset > 0
+                                  ? [self noteEditingPanelFrameForKeyboardBottomInset:keyboardBottomInset]
+                                  : initialPanelFrame;
     CGRect targetFrame = [noteEditorView targetPreviewCellFrame];
+    if (!CGRectEqualToRect(initialPanelFrame, targetPanelFrame)) {
+        [mainView setFrame:targetPanelFrame];
+        [mainView layoutIfNeeded];
+        [noteEditorView layoutIfNeeded];
+        targetFrame = [noteEditorView targetPreviewCellFrame];
+        [mainView setFrame:initialPanelFrame];
+        [mainView layoutIfNeeded];
+        [noteEditorView layoutIfNeeded];
+    }
+
+    BOOL hasSourceFrame = sourceCell && [sourceCell window];
     CGRect sourceFrame = hasSourceFrame ? [sourceCell convertRect:[sourceCell bounds] toView:noteEditorView] : targetFrame;
     [[noteEditorView previewCell] setFrame:sourceFrame];
     [[noteEditorView previewCell] setAlpha:hasSourceFrame ? 1 : 0];
@@ -1520,6 +1554,8 @@ NS_ASSUME_NONNULL_END
         initialSpringVelocity:0
         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
         animations:^{
+          [mainView setFrame:targetPanelFrame];
+          [mainView layoutIfNeeded];
           [headerView setAlpha:0];
           [sourceTableView setAlpha:0];
           [[noteEditorView previewCell] setFrame:targetFrame];
@@ -1708,16 +1744,8 @@ NS_ASSUME_NONNULL_END
     UIView *mainView = [self mainView];
     UIView *superview = [mainView superview];
     BOOL adjustsPanelFrame = ![self isFinishingNoteEditing] && ![self isDismissingPanel] && superview;
-    CGRect targetFrame = [mainView frame];
-    if (adjustsPanelFrame) {
-        CGRect bounds = [superview bounds];
-        CGFloat targetHeight = MIN([noteEditorView editingContentHeight] + keyboardBottomInset,
-                                   CGRectGetHeight(bounds));
-        targetFrame = CGRectMake(CGRectGetMinX(bounds),
-                                 CGRectGetMaxY(bounds) - targetHeight,
-                                 CGRectGetWidth(bounds),
-                                 targetHeight);
-    }
+    CGRect targetFrame = adjustsPanelFrame ? [self noteEditingPanelFrameForKeyboardBottomInset:keyboardBottomInset]
+                                           : [mainView frame];
 
     void (^updates)(void) = ^{
       [noteEditorView setKeyboardBottomInset:keyboardBottomInset];

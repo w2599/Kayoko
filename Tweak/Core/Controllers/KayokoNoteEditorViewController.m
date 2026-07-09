@@ -98,17 +98,15 @@ NS_ASSUME_NONNULL_BEGIN
     [self updatePreview];
 }
 
-- (void)beginEditing {
+- (CGFloat)visibleKeyboardBottomInset {
     KayokoNoteEditorView *noteEditorView = [self noteEditorView];
-    [noteEditorView layoutIfNeeded];
-
-    UIWindow *window = [noteEditorView window];
-    if (window && ![window isKeyWindow]) {
-        [window makeKeyWindow];
+    UIWindow *window = [noteEditorView window] ?: [[noteEditorView superview] window];
+    if (!window) {
+        return 0;
     }
 
     Class hostClass = NSClassFromString(@"UIPeripheralHost");
-    if (window && [hostClass respondsToSelector:@selector(sharedInstance)] &&
+    if ([hostClass respondsToSelector:@selector(sharedInstance)] &&
         [hostClass respondsToSelector:@selector(allVisiblePeripheralFrames)]) {
         UIPeripheralHost *host = [(id)hostClass sharedInstance];
         if ([host respondsToSelector:@selector(isOnScreen)] && [host isOnScreen]) {
@@ -122,16 +120,32 @@ NS_ASSUME_NONNULL_BEGIN
             }
             if (!CGRectIsNull(keyboardFrame) && !CGRectIsEmpty(keyboardFrame)) {
                 CGRect keyboardFrameInWindow = [window convertRect:keyboardFrame fromWindow:nil];
-                CGFloat keyboardBottomInset =
-                    MAX(CGRectGetMaxY([window bounds]) - CGRectGetMinY(keyboardFrameInWindow), 0);
-                [[self delegate]
-                    noteEditorViewController:self
-                    didUpdateKeyboardBottomInset:keyboardBottomInset
-                    animationDuration:0.25
-                    options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState |
-                            UIViewAnimationOptionAllowUserInteraction];
+                return MAX(CGRectGetMaxY([window bounds]) - CGRectGetMinY(keyboardFrameInWindow), 0);
             }
         }
+    }
+
+    return 0;
+}
+
+- (void)beginEditing {
+    KayokoNoteEditorView *noteEditorView = [self noteEditorView];
+    [noteEditorView layoutIfNeeded];
+
+    UIWindow *window = [noteEditorView window];
+    if (window && ![window isKeyWindow]) {
+        [window makeKeyWindow];
+    }
+
+    CGFloat keyboardBottomInset = [self visibleKeyboardBottomInset];
+    if (keyboardBottomInset > 0 &&
+        fabs([noteEditorView keyboardBottomInset] - keyboardBottomInset) > 0.5) {
+        [[self delegate]
+            noteEditorViewController:self
+            didUpdateKeyboardBottomInset:keyboardBottomInset
+            animationDuration:0.25
+            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState |
+                    UIViewAnimationOptionAllowUserInteraction];
     }
 
     UITextField *textField = [noteEditorView textField];

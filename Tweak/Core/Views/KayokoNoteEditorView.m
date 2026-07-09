@@ -14,6 +14,7 @@ static CGFloat const kKayokoNoteEditorPreviewTopSpacing = 10;
 static CGFloat const kKayokoNoteEditorInputTopSpacing = 12;
 static CGFloat const kKayokoNoteEditorInputBottomSpacing = 16;
 static CGFloat const kKayokoNoteEditorTextLeadingInset = 14;
+static CGFloat const kKayokoNoteEditorTextTrailingInset = 6;
 static CGFloat const kKayokoNoteEditorMinimumButtonWidth = 68;
 static CGFloat const kKayokoNoteEditorSeparatorVerticalInset = 9;
 
@@ -137,7 +138,11 @@ NS_ASSUME_NONNULL_BEGIN
 
     CGFloat inputY = CGRectGetMaxY(previewFrame) + kKayokoNoteEditorInputTopSpacing;
     [[self inputRowView] setFrame:CGRectMake(leadingInset, inputY, availableWidth, kKayokoNoteEditorInputHeight)];
-    [[self textField] setFrame:CGRectMake(0, 0, textFieldWidth, kKayokoNoteEditorInputHeight)];
+    [[self textField]
+        setFrame:CGRectMake(0,
+                            0,
+                            MAX(textFieldWidth - kKayokoNoteEditorTextTrailingInset, 0),
+                            kKayokoNoteEditorInputHeight)];
     CGFloat separatorWidth = 1.0 / [UIScreen mainScreen].scale;
     [[self inputSeparatorView]
         setFrame:CGRectMake(textFieldWidth,
