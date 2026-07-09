@@ -10,6 +10,7 @@
 
 static int const kKayokoApplicationIconFormatListRow = 1;
 static int const kKayokoApplicationIconFormatSearchToken = 5;
+static NSString *const kKayokoContinuityBundleIdentifier = @"com.apple.continuity";
 static NSString *const kKayokoSpotlightBundleIdentifier = @"com.apple.Spotlight";
 static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
 
@@ -49,6 +50,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isContinuityBundleIdentifier:bundleIdentifier]) {
+        return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Continuity"
+                                                                             value:nil
+                                                                             table:@"Tweak"];
+    }
+
     if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
         return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Spotlight"
                                                                              value:nil
@@ -63,6 +70,14 @@ NS_ASSUME_NONNULL_END
 
     NSString *displayName = [[self applicationForBundleIdentifier:bundleIdentifier] displayName];
     return [displayName length] > 0 ? displayName : bundleIdentifier;
+}
+
+- (BOOL)isContinuityBundleIdentifier:(NSString *)bundleIdentifier {
+    NSString *normalizedBundleIdentifier = [[bundleIdentifier
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
+    return [normalizedBundleIdentifier isEqualToString:kKayokoContinuityBundleIdentifier] ||
+           [normalizedBundleIdentifier isEqualToString:@"continuity"] ||
+           [normalizedBundleIdentifier isEqualToString:@"handoff"];
 }
 
 - (BOOL)isSpotlightBundleIdentifier:(NSString *)bundleIdentifier {
@@ -84,6 +99,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)hasApplicationForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isContinuityBundleIdentifier:bundleIdentifier]) {
+        return YES;
+    }
     if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
         return YES;
     }
@@ -96,6 +114,19 @@ NS_ASSUME_NONNULL_END
 - (NSString *)iconCacheKeyForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale {
     NSString *cacheBundleIdentifier = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.WebSheet";
     return [NSString stringWithFormat:@"%@|%d|%.2f", cacheBundleIdentifier, format, scale];
+}
+
+- (nullable UIImage *)continuityIcon {
+    return [UIImage imageNamed:@"HandOff"
+                             inBundle:[KayokoPasteboardManager localizationBundle]
+        compatibleWithTraitCollection:nil];
+}
+
+- (nullable UIImage *)continuitySearchTokenIcon {
+    UIImage *icon = [UIImage imageNamed:@"HandOff-Search"
+                               inBundle:[KayokoPasteboardManager localizationBundle]
+          compatibleWithTraitCollection:nil];
+    return [icon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 }
 
 - (nullable UIImage *)springBoardIcon {
@@ -157,6 +188,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isContinuityBundleIdentifier:bundleIdentifier]) {
+        return [self continuityIcon];
+    }
+
     if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
         return [self spotlightIcon];
     }
@@ -171,6 +206,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)smallIconForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isContinuityBundleIdentifier:bundleIdentifier]) {
+        return [self continuitySearchTokenIcon];
+    }
+
     if ([self isSpotlightBundleIdentifier:bundleIdentifier]) {
         return [self spotlightSearchTokenIcon];
     }
