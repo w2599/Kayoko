@@ -1493,17 +1493,29 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    UIView *mainView = [self mainView];
     BOOL beganFromSearch = [[self searchController] isSearchActive];
+    UIWindow *searchSourceWindow = beganFromSearch ? [sourceCell window] : nil;
+    BOOL hasSearchSourceFrame = searchSourceWindow != nil;
+    CGRect searchSourceFrameInWindow =
+        hasSearchSourceFrame ? [sourceCell convertRect:[sourceCell bounds] toView:searchSourceWindow] : CGRectNull;
+    CGRect panelFrameBeforeSearchReset = [mainView frame];
     CGFloat keyboardBottomInset = [[self noteEditorViewController] lastValidKeyboardBottomInset];
     [self clearSearchAfterTransientContentState];
     [self setNoteEditingBeganFromSearch:beganFromSearch];
     [self setFinishingNoteEditing:NO];
     if (beganFromSearch) {
         [[self searchController] resetSearchState];
+        [self setNoteEditingOriginalPanelFrame:[mainView frame]];
         sourceCell = [listViewController scrollItemToVisible:item];
         presentationCell = [listViewController presentationCellForItem:item];
+        if (hasSearchSourceFrame) {
+            [mainView setFrame:panelFrameBeforeSearchReset];
+            [mainView layoutIfNeeded];
+        }
+    } else {
+        [self setNoteEditingOriginalPanelFrame:[mainView frame]];
     }
-    [self setNoteEditingOriginalPanelFrame:[[self mainView] frame]];
     [self setNoteEditingKeyboardAnimationDuration:0.25];
     [self setNoteEditingKeyboardAnimationOptions:UIViewAnimationOptionCurveEaseInOut |
                                                    UIViewAnimationOptionBeginFromCurrentState |
@@ -1534,7 +1546,6 @@ NS_ASSUME_NONNULL_END
     [noteEditorView setAutomaticallyPositionsPreviewCell:NO];
     [noteEditorView layoutIfNeeded];
 
-    UIView *mainView = [self mainView];
     CGRect initialPanelFrame = [mainView frame];
     CGRect targetPanelFrame = keyboardBottomInset > 0
                                   ? [self noteEditingPanelFrameForKeyboardBottomInset:keyboardBottomInset]
@@ -1550,12 +1561,18 @@ NS_ASSUME_NONNULL_END
         [noteEditorView layoutIfNeeded];
     }
 
-    BOOL hasSourceFrame = sourceCell && [sourceCell window];
-    CGRect sourceFrame = hasSourceFrame ? [sourceCell convertRect:[sourceCell bounds] toView:noteEditorView] : targetFrame;
+    BOOL usesSearchSourceFrame = hasSearchSourceFrame && [noteEditorView window] == searchSourceWindow;
+    BOOL hasSourceFrame = usesSearchSourceFrame || (sourceCell && [sourceCell window]);
+    CGRect sourceFrame = targetFrame;
+    if (usesSearchSourceFrame) {
+        sourceFrame = [noteEditorView convertRect:searchSourceFrameInWindow fromView:searchSourceWindow];
+    } else if (hasSourceFrame) {
+        sourceFrame = [sourceCell convertRect:[sourceCell bounds] toView:noteEditorView];
+    }
     [[noteEditorView previewCell] setFrame:sourceFrame];
     [[noteEditorView previewCell] setAlpha:hasSourceFrame ? 1 : 0];
     [[noteEditorView inputRowView] setAlpha:0];
-    if (hasSourceFrame) {
+    if (sourceCell && [sourceCell window]) {
         [[self noteEditingSuppressedCell] setHidden:NO];
         [self setNoteEditingSuppressedCell:sourceCell];
         [sourceCell setHidden:YES];
