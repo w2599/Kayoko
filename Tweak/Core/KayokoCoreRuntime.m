@@ -165,7 +165,7 @@ NS_ASSUME_NONNULL_END
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoCoreRuntime ()
+@interface KayokoCoreRuntime () <KayokoMainViewControllerDelegate>
 
 #pragma mark - Runtime Configuration
 
@@ -304,13 +304,7 @@ NS_ASSUME_NONNULL_END
     CGRect initialFrame = [self portraitPanelFrameInWindow:self.statusBarWindow];
     self.mainViewController = [[KayokoMainViewController alloc]
         initWithFrame:initialFrame];
-    __weak typeof(self) weakSelf = self;
-    [self.mainViewController setFocusRestoreRequestHandler:^{
-      [weakSelf requestHelperFocusRestore];
-    }];
-    [self.mainViewController setPanelDidHideHandler:^{
-      [weakSelf handleMainPanelDidHide];
-    }];
+    [self.mainViewController setDelegate:self];
     [self applyPreferencesToView];
     if (self.didRequestInitialHistoryPreload) {
         [self.mainViewController preloadHistoryIfNeeded];
@@ -408,6 +402,22 @@ NS_ASSUME_NONNULL_END
     }
 
     [self tearDownCompactLandscapeOverlayHost];
+}
+
+- (void)mainViewControllerDidRequestFocusRestore:(KayokoMainViewController *)viewController {
+    if (viewController != self.mainViewController) {
+        return;
+    }
+
+    [self requestHelperFocusRestore];
+}
+
+- (void)mainViewControllerDidHide:(KayokoMainViewController *)viewController {
+    if (viewController != self.mainViewController) {
+        return;
+    }
+
+    [self handleMainPanelDidHide];
 }
 
 - (BOOL)prepareCompactLandscapeHost {

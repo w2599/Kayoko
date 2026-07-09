@@ -10,8 +10,18 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class KayokoMainViewController;
+
+@protocol KayokoMainViewControllerDelegate <NSObject>
+
+- (void)mainViewControllerDidRequestFocusRestore:(KayokoMainViewController *)viewController;
+- (void)mainViewControllerDidHide:(KayokoMainViewController *)viewController;
+
+@end
+
 @interface KayokoMainViewController : UIViewController
 
+@property(nonatomic, weak, nullable) id<KayokoMainViewControllerDelegate> delegate;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
@@ -21,8 +31,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isAuthorizationPassed) BOOL authorizationPassed;
 @property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
 @property(nonatomic, assign) UIInterfaceOrientationMask kayokoSupportedInterfaceOrientations;
-@property(nonatomic, copy, nullable) void (^focusRestoreRequestHandler)(void);
-@property(nonatomic, copy, nullable) void (^panelDidHideHandler)(void);
 
 - (instancetype)initWithFrame:(CGRect)frame;
 

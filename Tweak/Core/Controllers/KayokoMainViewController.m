@@ -1627,18 +1627,16 @@ NS_ASSUME_NONNULL_END
 - (void)hideAfterDirectPaste {
     BOOL shouldRestoreFocusAfterHide = [self isFullscreenSearchActive];
     [self hideWithCompletion:^{
-      if (!shouldRestoreFocusAfterHide || ![self focusRestoreRequestHandler]) {
+      if (!shouldRestoreFocusAfterHide) {
           return;
       }
-      [self focusRestoreRequestHandler]();
+      [[self delegate] mainViewControllerDidRequestFocusRestore:self];
     }];
 }
 
 - (void)hideRestoringFocus {
     [self hideWithCompletion:^{
-      if ([self focusRestoreRequestHandler]) {
-          [self focusRestoreRequestHandler]();
-      }
+      [[self delegate] mainViewControllerDidRequestFocusRestore:self];
     }];
 }
 
@@ -1655,9 +1653,7 @@ NS_ASSUME_NONNULL_END
     if (completion) {
         completion();
     }
-    if ([self panelDidHideHandler]) {
-        [self panelDidHideHandler]();
-    }
+    [[self delegate] mainViewControllerDidHide:self];
 }
 
 - (void)hideWithCompletion:(void (^)(void))completion {
