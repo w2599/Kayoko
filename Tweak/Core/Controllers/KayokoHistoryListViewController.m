@@ -574,6 +574,11 @@ NS_ASSUME_NONNULL_END
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
     KayokoHistoryListView *tableView = [self tableView];
     [tableView layoutIfNeeded];
+    KayokoTableViewCell *visibleCell = (KayokoTableViewCell *)[tableView cellForRowAtIndexPath:indexPath];
+    if (visibleCell) {
+        return visibleCell;
+    }
+
     [tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
     [tableView layoutIfNeeded];
     return (KayokoTableViewCell *)[tableView cellForRowAtIndexPath:indexPath];
