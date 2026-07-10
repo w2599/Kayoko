@@ -101,7 +101,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGRect noteEditingOriginalPanelFrame;
 @property(nonatomic, assign) NSTimeInterval noteEditingKeyboardAnimationDuration;
 @property(nonatomic, assign) UIViewAnimationOptions noteEditingKeyboardAnimationOptions;
-@property(nonatomic, weak, nullable) KayokoTableViewCell *noteEditingSuppressedCell;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -1572,11 +1571,7 @@ NS_ASSUME_NONNULL_END
     [[noteEditorView previewCell] setFrame:sourceFrame];
     [[noteEditorView previewCell] setAlpha:hasSourceFrame ? 1 : 0];
     [[noteEditorView inputRowView] setAlpha:0];
-    if (sourceCell && [sourceCell window]) {
-        [[self noteEditingSuppressedCell] setHidden:NO];
-        [self setNoteEditingSuppressedCell:sourceCell];
-        [sourceCell setHidden:YES];
-    }
+    [listViewController setCellPresentationHidden:YES forItem:item];
 
     KayokoHeaderView *headerView = [[self mainView] headerView];
     [[self mainView] setAnimating:YES];
@@ -1595,10 +1590,7 @@ NS_ASSUME_NONNULL_END
           [[noteEditorView inputRowView] setAlpha:1];
         }
         completion:^(__unused BOOL finished) {
-          if ([self noteEditingSuppressedCell] == sourceCell) {
-              [sourceCell setHidden:NO];
-              [self setNoteEditingSuppressedCell:nil];
-          }
+          [listViewController setCellPresentationHidden:NO forItem:item];
           if ([self noteEditingRequestIdentifier] != requestIdentifier || ![self isNoteEditing]) {
               return;
           }
@@ -1617,8 +1609,7 @@ NS_ASSUME_NONNULL_END
 - (void)resetNoteEditingState {
     KayokoNoteEditorView *noteEditorView = [[self noteEditorViewController] noteEditorView];
     [noteEditorView setHidden:YES];
-    [[self noteEditingSuppressedCell] setHidden:NO];
-    [self setNoteEditingSuppressedCell:nil];
+    [[self noteEditingSourceListViewController] setCellPresentationHidden:NO forItem:[self noteEditingItem]];
     [noteEditorView setAlpha:1];
     [noteEditorView setAutomaticallyPositionsPreviewCell:YES];
     [[noteEditorView inputRowView] setAlpha:1];
@@ -1652,6 +1643,10 @@ NS_ASSUME_NONNULL_END
     [headerView setAlpha:0];
     [noteEditorView setAutomaticallyPositionsPreviewCell:NO];
 
+    KayokoHistoryListViewController *listViewController = [self noteEditingSourceListViewController];
+    KayokoPasteboardItem *item = [self noteEditingItem];
+    [listViewController setCellPresentationHidden:YES forItem:item];
+
     CGRect initialPanelFrame = [mainView frame];
     if (!CGRectEqualToRect(initialPanelFrame, targetPanelFrame)) {
         [mainView setFrame:targetPanelFrame];
@@ -1667,11 +1662,6 @@ NS_ASSUME_NONNULL_END
     BOOL hasTargetFrame = targetCell && [targetCell window];
     CGRect targetFrame = hasTargetFrame ? [targetCell convertRect:[targetCell bounds] toView:noteEditorView]
                                         : [[noteEditorView previewCell] frame];
-    if (hasTargetFrame) {
-        [[self noteEditingSuppressedCell] setHidden:NO];
-        [self setNoteEditingSuppressedCell:targetCell];
-        [targetCell setHidden:YES];
-    }
     if (!CGRectEqualToRect(initialPanelFrame, targetPanelFrame)) {
         [mainView setFrame:initialPanelFrame];
         [mainView layoutIfNeeded];
@@ -1698,10 +1688,7 @@ NS_ASSUME_NONNULL_END
         }
         completion:^(__unused BOOL finished) {
           if ([self noteEditingRequestIdentifier] != requestIdentifier) {
-              if ([self noteEditingSuppressedCell] == targetCell) {
-                  [targetCell setHidden:NO];
-                  [self setNoteEditingSuppressedCell:nil];
-              }
+              [listViewController setCellPresentationHidden:NO forItem:item];
               return;
           }
           [sourceView setAlpha:1];
