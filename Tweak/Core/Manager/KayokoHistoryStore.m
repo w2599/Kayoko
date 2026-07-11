@@ -325,6 +325,11 @@ NS_ASSUME_NONNULL_END
 
     BOOL success = [self rebuildStaleSearchIndexesWithError:error];
     if (success) {
+        success = [self setMetadataValue:[@(kKayokoHistoryStoreSearchIndexVersion) stringValue]
+                                  forKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey
+                                   error:error];
+    }
+    if (success) {
         return [self commitTransactionWithError:error];
     }
 
