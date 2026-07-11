@@ -113,6 +113,7 @@ NS_ASSUME_NONNULL_END
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _authorizationPassed = YES;
+        _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
         _kayokoSupportedInterfaceOrientations = UIInterfaceOrientationMaskAll;
         _presentationMode = KayokoPanelPresentationModePortraitDrawer;
         _externalHideCoordinator = [[KayokoExternalHideCoordinator alloc] init];
@@ -300,6 +301,16 @@ NS_ASSUME_NONNULL_END
     _previewLineCount = previewLineCount;
     [[self historyListViewController] setPreviewLineCount:previewLineCount];
     [[self favoritesListViewController] setPreviewLineCount:previewLineCount];
+}
+
+- (void)setItemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode {
+    if (itemDetailsMode != kKayokoItemDetailsModeOff && itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
+        itemDetailsMode != kKayokoItemDetailsModeAll) {
+        itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
+    }
+    _itemDetailsMode = itemDetailsMode;
+    [[self historyListViewController] setItemDetailsMode:itemDetailsMode];
+    [[self favoritesListViewController] setItemDetailsMode:itemDetailsMode];
 }
 
 - (void)setShouldPlayFeedback:(BOOL)shouldPlayFeedback {
@@ -2003,6 +2014,9 @@ NS_ASSUME_NONNULL_END
 
     [[self historyListViewController] setAutomaticallyPaste:[self automaticallyPaste]];
     [[self favoritesListViewController] setAutomaticallyPaste:[self automaticallyPaste]];
+    // Relative timestamps are derived presentation text, so refresh cached lists whenever the panel opens.
+    [[[self historyListViewController] tableView] reloadData];
+    [[[self favoritesListViewController] tableView] reloadData];
 
     NSString *initialHistoryKey = [self historyKeyForInitialViewMode];
     if ([initialHistoryKey length] > 0) {

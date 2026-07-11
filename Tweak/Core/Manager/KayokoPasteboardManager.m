@@ -17,6 +17,8 @@
 #import "KayokoThumbnailCache.h"
 
 #import <HBLog.h>
+#import <ImageIO/ImageIO.h>
+#import <math.h>
 #import <roothide.h>
 
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
@@ -296,6 +298,28 @@ NS_ASSUME_NONNULL_END
     return rotatedImage;
 }
 
+- (CGSize)pixelSizeForEncodedImageData:(NSData *)imageData {
+    if ([imageData length] == 0) {
+        return CGSizeZero;
+    }
+
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)imageData, NULL);
+    if (!imageSource) {
+        return CGSizeZero;
+    }
+    NSDictionary<NSString *, id> *properties =
+        CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL));
+    CFRelease(imageSource);
+
+    CGFloat width = [properties[(NSString *)kCGImagePropertyPixelWidth] doubleValue];
+    CGFloat height = [properties[(NSString *)kCGImagePropertyPixelHeight] doubleValue];
+    if (!isfinite(width) || !isfinite(height) || width <= 0 || height <= 0) {
+        return CGSizeZero;
+    }
+    NSUInteger orientation = [properties[(NSString *)kCGImagePropertyOrientation] unsignedIntegerValue];
+    return orientation >= 5 && orientation <= 8 ? CGSizeMake(height, width) : CGSizeMake(width, height);
+}
+
 #pragma mark - Pasteboard Observation
 
 - (void)pullPasteboardChanges {
@@ -437,24 +461,26 @@ NS_ASSUME_NONNULL_END
         for (UIImage *image in [_pasteboard images]) {
             @autoreleasepool {
                 NSString *imageName = [self randomStringWithLength:32];
+                NSData *imageData = nil;
 
                 if ([self imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
-                    NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], imageName];
-                    [UIImagePNGRepresentation([self imageByApplyingOrientation:image]) writeToFile:filePath
-                                                                                        atomically:YES];
+                    imageData = UIImagePNGRepresentation([self imageByApplyingOrientation:image]);
                 } else {
                     imageName = [imageName stringByAppendingString:@".jpg"];
-                    NSString *filePath =
-                        [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], imageName];
-                    [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
+                    imageData = UIImageJPEGRepresentation(image, 1);
                 }
+                NSString *filePath =
+                    [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], imageName];
+                [imageData writeToFile:filePath atomically:YES];
 
                 KayokoPasteboardItem *item =
                     [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
                                                                 andContent:imageName
                                                             withImageNamed:imageName];
+                CGSize pixelSize = [self pixelSizeForEncodedImageData:imageData];
+                [item setImagePixelWidth:(NSUInteger)llround(pixelSize.width)];
+                [item setImagePixelHeight:(NSUInteger)llround(pixelSize.height)];
                 [items addObject:item];
             }
         }
