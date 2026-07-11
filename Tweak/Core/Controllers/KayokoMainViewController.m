@@ -1755,11 +1755,16 @@ NS_ASSUME_NONNULL_END
     KayokoNoteEditorView *noteEditorView = [controller noteEditorView];
     UIView *mainView = [self mainView];
     UIView *superview = [mainView superview];
-    BOOL adjustsPanelFrame = ![self isFinishingNoteEditing] && ![self isDismissingPanel] && superview;
+    BOOL leavesTopAnchoredFallback = [noteEditorView anchorsEditingContentToTop] && keyboardBottomInset > 0;
+    BOOL adjustsPanelFrame = (![noteEditorView anchorsEditingContentToTop] || leavesTopAnchoredFallback) &&
+                             ![self isFinishingNoteEditing] && ![self isDismissingPanel] && superview;
     CGRect targetFrame =
         adjustsPanelFrame ? [self noteEditingPanelFrameForKeyboardBottomInset:keyboardBottomInset] : [mainView frame];
 
     void (^updates)(void) = ^{
+      if (leavesTopAnchoredFallback) {
+          [noteEditorView setAnchorsEditingContentToTop:NO];
+      }
       [noteEditorView setKeyboardBottomInset:keyboardBottomInset];
       if (adjustsPanelFrame) {
           [mainView setFrame:targetFrame];

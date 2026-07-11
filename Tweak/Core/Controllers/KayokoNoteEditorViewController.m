@@ -43,6 +43,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) NSString *sourceDisplayName;
 @property(nonatomic, assign, getter=isSaving) BOOL saving;
 @property(nonatomic, assign) CGFloat lastValidKeyboardBottomInset;
+@property(nonatomic, assign) BOOL preservingKeyboardInsetDuringActivation;
 
 @end
 
@@ -109,6 +110,7 @@ NS_ASSUME_NONNULL_BEGIN
     [[[self noteEditorView] textField] setText:[item note] ?: @""];
     [[self noteEditorView] setPreviewCellHeight:cellHeight];
     [[self noteEditorView] setPreviewCell:presentationCell];
+    [[self noteEditorView] setAnchorsEditingContentToTop:keyboardBottomInset <= 0];
     [[self noteEditorView] setKeyboardBottomInset:keyboardBottomInset];
     [self setSaving:NO];
     [self updatePreview];
@@ -153,6 +155,10 @@ NS_ASSUME_NONNULL_BEGIN
     KayokoNoteEditorView *noteEditorView = [self noteEditorView];
     [noteEditorView layoutIfNeeded];
 
+    if ([self lastValidKeyboardBottomInset] > 0 && [noteEditorView keyboardBottomInset] > 0) {
+        [self setPreservingKeyboardInsetDuringActivation:YES];
+    }
+
     UIWindow *window = [noteEditorView window];
     if (window && ![window isKeyWindow]) {
         [window makeKeyWindow];
@@ -183,6 +189,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)resignEditing {
+    [self setPreservingKeyboardInsetDuringActivation:NO];
     [[[self noteEditorView] textField] resignFirstResponder];
 }
 
@@ -200,6 +207,7 @@ NS_ASSUME_NONNULL_BEGIN
     [self setSourceDisplayName:@""];
     [[[self noteEditorView] textField] setText:@""];
     [[self noteEditorView] setKeyboardBottomInset:0];
+    [[self noteEditorView] setAnchorsEditingContentToTop:NO];
     [[self noteEditorView] setPreviewCell:nil];
 }
 
@@ -237,6 +245,9 @@ NS_ASSUME_NONNULL_BEGIN
     withAnimationParametersFromNotification:(NSNotification *)notification {
     KayokoNoteEditorView *view = [self noteEditorView];
     keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (keyboardBottomInset > 0) {
+        [self setPreservingKeyboardInsetDuringActivation:NO];
+    }
     if (fabs([view keyboardBottomInset] - keyboardBottomInset) <= 0.5) {
         return;
     }
@@ -251,6 +262,20 @@ NS_ASSUME_NONNULL_BEGIN
                  didUpdateKeyboardBottomInset:keyboardBottomInset
                             animationDuration:duration
                                       options:options];
+}
+
+- (BOOL)shouldIgnoreKeyboardZeroInsetDuringActivation {
+    if (![self preservingKeyboardInsetDuringActivation] || [self lastValidKeyboardBottomInset] <= 0) {
+        return NO;
+    }
+
+    KayokoNoteEditorView *noteEditorView = [self noteEditorView];
+    if ([noteEditorView isHidden] || [noteEditorView keyboardBottomInset] <= 0) {
+        return NO;
+    }
+
+    UITextField *textField = [noteEditorView textField];
+    return [textField isFirstResponder] || [[noteEditorView window] isKeyWindow];
 }
 
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
@@ -271,11 +296,17 @@ NS_ASSUME_NONNULL_BEGIN
     if (![self shouldHandleKeyboardNotification:notification]) {
         return;
     }
+    if (keyboardBottomInset <= 0 && [self shouldIgnoreKeyboardZeroInsetDuringActivation]) {
+        return;
+    }
     [self updateKeyboardBottomInset:keyboardBottomInset withAnimationParametersFromNotification:notification];
 }
 
 - (void)handleKeyboardWillHideNotification:(NSNotification *)notification {
     if (![self item]) {
+        return;
+    }
+    if ([self shouldIgnoreKeyboardZeroInsetDuringActivation]) {
         return;
     }
     [self updateKeyboardBottomInset:0 withAnimationParametersFromNotification:notification];

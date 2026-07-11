@@ -105,6 +105,15 @@ NS_ASSUME_NONNULL_BEGIN
     [self setNeedsLayout];
 }
 
+- (void)setAnchorsEditingContentToTop:(BOOL)anchorsEditingContentToTop {
+    if (_anchorsEditingContentToTop == anchorsEditingContentToTop) {
+        return;
+    }
+
+    _anchorsEditingContentToTop = anchorsEditingContentToTop;
+    [self setNeedsLayout];
+}
+
 - (CGFloat)editingContentHeight {
     return kKayokoNoteEditorPreviewTopSpacing + [self previewCellHeight] + kKayokoNoteEditorInputTopSpacing +
            kKayokoNoteEditorInputHeight + kKayokoNoteEditorInputBottomSpacing;
@@ -114,8 +123,11 @@ NS_ASSUME_NONNULL_BEGIN
     CGRect bounds = [self bounds];
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
     CGFloat minimumContentOriginY = MAX(safeAreaInsets.top, 0);
-    CGFloat contentOriginY =
-        MAX(CGRectGetHeight(bounds) - [self keyboardBottomInset] - [self editingContentHeight], minimumContentOriginY);
+    CGFloat contentOriginY = [self anchorsEditingContentToTop]
+                                 ? minimumContentOriginY
+                                 : MAX(CGRectGetHeight(bounds) - [self keyboardBottomInset] -
+                                           [self editingContentHeight],
+                                       minimumContentOriginY);
     CGFloat y = contentOriginY + kKayokoNoteEditorPreviewTopSpacing;
     CGFloat width = MAX(CGRectGetWidth(bounds) - safeAreaInsets.left - safeAreaInsets.right, 0);
     return CGRectMake(safeAreaInsets.left, y, width, [self previewCellHeight]);
