@@ -24,5 +24,6 @@ static NSString *const kKayokoNotificationKeyPreferencesReload = @"com.82flex.ka
 static NSString *const kKayokoNotificationKeyPreferencesHeightReload = @"com.82flex.kayoko.preferences.height.reload";
 static NSString *const kKayokoNotificationKeyCopyVaultImportRequiresRestart =
     @"com.82flex.kayoko.preferences.copyvault-import-requires-restart";
+static NSString *const kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded = @"succeeded";
 static NSString *const kKayokoNotificationKeyPasteWillStart = @"com.82flex.kayoko.paste.willstart";
 static NSString *const kKayokoNotificationKeyPasteFeedback = @"com.82flex.kayoko.paste.feedback";

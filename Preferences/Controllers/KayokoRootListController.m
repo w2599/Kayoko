@@ -57,6 +57,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     BOOL _authorizationCheckInProgress;
     NSUInteger _authorizationCheckGeneration;
     BOOL _copyVaultImportRestartReminderPending;
+    BOOL _copyVaultImportRestartReminderSucceeded;
 }
 
 #pragma mark - Lifecycle
@@ -190,8 +191,9 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 }
 
 - (void)copyVaultImportRequiresRestart:(NSNotification *)notification {
-    (void)notification;
     _copyVaultImportRestartReminderPending = YES;
+    _copyVaultImportRestartReminderSucceeded =
+        [notification.userInfo[kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded] boolValue];
 }
 
 - (void)presentCopyVaultImportRestartReminderIfNeeded {
@@ -201,13 +203,14 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     _copyVaultImportRestartReminderPending = NO;
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *messageKey = _copyVaultImportRestartReminderSucceeded
+                               ? @"CopyVault data was imported successfully. Restart SpringBoard now to finish the "
+                                  "import and continue using Kayoko."
+                               : @"Kayoko entered maintenance mode before the import failed. Restart SpringBoard now "
+                                  "to continue using Kayoko.";
     UIAlertController *alert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Restart Required" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:
-                                             @"Kayoko entered maintenance mode before the import failed. Restart "
-                                              "SpringBoard now to continue using Kayoko."
-                                                         value:nil
-                                                         table:@"Root"]
+                         message:[bundle localizedStringForKey:messageKey value:nil table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction *restartAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
                                                                                           value:nil

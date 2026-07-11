@@ -535,6 +535,10 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
 
 - (void)showCopyVaultImportSuccess {
     self.navigationController.view.userInteractionEnabled = YES;
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:kKayokoNotificationKeyCopyVaultImportRequiresRestart
+                      object:nil
+                    userInfo:@{kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded : @YES}];
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
     [overlayView
@@ -554,8 +558,10 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
 - (void)showCopyVaultImportFailureReason:(NSString *)reason requiresRespring:(BOOL)requiresRespring {
     self.navigationController.view.userInteractionEnabled = YES;
     if (requiresRespring) {
-        [[NSNotificationCenter defaultCenter] postNotificationName:kKayokoNotificationKeyCopyVaultImportRequiresRestart
-                                                            object:nil];
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:kKayokoNotificationKeyCopyVaultImportRequiresRestart
+                          object:nil
+                        userInfo:@{kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded : @NO}];
     }
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSString *actionMessage =
