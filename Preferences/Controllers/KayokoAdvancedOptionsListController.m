@@ -8,6 +8,7 @@
 #import "KayokoPreferenceKeys.h"
 #import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
+#import "KayokoStatusOverlayView.h"
 #import "KayokoTagStore.h"
 
 #import <Preferences/PSSpecifier.h>
@@ -23,9 +24,13 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 - (void)setStandardError:(id)standardError;
 - (void)launch;
 - (void)waitUntilExit;
+- (int)terminationStatus;
 @end
 
-@implementation KayokoAdvancedOptionsListController
+@implementation KayokoAdvancedOptionsListController {
+    KayokoStatusOverlayView *_copyVaultImportOverlayView;
+    BOOL _copyVaultImportInProgress;
+}
 
 #pragma mark - Specifiers
 
@@ -189,6 +194,41 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+- (void)importCopyVaultPrompt {
+    if (_copyVaultImportInProgress) {
+        return;
+    }
+
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Import from CopyVault"
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                         message:[bundle localizedStringForKey:
+                                             @"Kayoko will merge CopyVault history and archived items with your "
+                                              "current data. Existing Kayoko items will be kept. SpringBoard must "
+                                              "restart when the import finishes."
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *importAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Import"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:^(UIAlertAction *action) {
+                                                           (void)action;
+                                                           [self importCopyVault];
+                                                         }];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    [alert addAction:importAction];
+    [alert addAction:cancelAction];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)presentClearConfirmationWithMessageKey:(NSString *)messageKey
                                 actionTitleKey:(NSString *)actionTitleKey
                               notificationName:(NSString *)notificationName {
@@ -316,6 +356,138 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 }
 
 #pragma mark - Maintenance Actions
+
+- (void)importCopyVault {
+    if (_copyVaultImportInProgress) {
+        return;
+    }
+    _copyVaultImportInProgress = YES;
+
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
+    overlayView.tapHandler = nil;
+    [overlayView setLoadingTitle:[bundle localizedStringForKey:@"Importing from CopyVault…"
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                        subtitle:nil];
+
+    NSString *updaterPath = [self kayokoUpdaterPath];
+    if ([updaterPath length] == 0) {
+        _copyVaultImportInProgress = NO;
+        [self showCopyVaultImportFailureReason:[bundle localizedStringForKey:@"The import could not be completed."
+                                                                       value:nil
+                                                                       table:@"AdvancedOptions"]
+                              requiresRespring:NO];
+        return;
+    }
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      @autoreleasepool {
+          BOOL launched = NO;
+          int terminationStatus = -1;
+          NSString *output = nil;
+          @try {
+              NSPipe *outputPipe = [NSPipe pipe];
+              NSTask *task = [[NSTask alloc] init];
+              [task setLaunchPath:updaterPath];
+              [task setArguments:@[ @"import-copyvault" ]];
+              [task setStandardOutput:outputPipe];
+              [task setStandardError:outputPipe];
+              [task launch];
+              launched = YES;
+
+              NSData *outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
+              [task waitUntilExit];
+              terminationStatus = [task terminationStatus];
+              if ([outputData length] > 0) {
+                  output = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
+                  output = [output stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+              }
+          } @catch (NSException *exception) {
+              output = [exception reason];
+          }
+
+          dispatch_async(dispatch_get_main_queue(), ^{
+            self->_copyVaultImportInProgress = NO;
+            if (launched && terminationStatus == 0) {
+                [self showCopyVaultImportSuccess];
+                return;
+            }
+
+            NSBundle *mainBundle = [NSBundle bundleForClass:[self class]];
+            NSString *reason = [output length] > 0
+                                   ? output
+                                   : [mainBundle localizedStringForKey:@"The import could not be completed."
+                                                                 value:nil
+                                                                 table:@"AdvancedOptions"];
+            [self showCopyVaultImportFailureReason:reason requiresRespring:launched];
+          });
+      }
+    });
+}
+
+- (KayokoStatusOverlayView *)copyVaultImportOverlayView {
+    if (!_copyVaultImportOverlayView) {
+        _copyVaultImportOverlayView = [[KayokoStatusOverlayView alloc] initWithFrame:CGRectZero];
+        _copyVaultImportOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
+    }
+    if (!_copyVaultImportOverlayView.superview) {
+        [self.view addSubview:_copyVaultImportOverlayView];
+        [NSLayoutConstraint activateConstraints:@[
+            [_copyVaultImportOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [_copyVaultImportOverlayView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [_copyVaultImportOverlayView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [_copyVaultImportOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    }
+    _copyVaultImportOverlayView.alpha = 1.0;
+    return _copyVaultImportOverlayView;
+}
+
+- (void)showCopyVaultImportSuccess {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
+    [overlayView
+        setSuccessTitle:[bundle localizedStringForKey:@"Import Complete" value:nil table:@"AdvancedOptions"]
+               subtitle:[bundle localizedStringForKey:@"Tap the screen to restart SpringBoard and finish importing."
+                                                value:nil
+                                                table:@"AdvancedOptions"]
+          actionEnabled:YES];
+    __weak typeof(self) weakSelf = self;
+    overlayView.tapHandler = ^{
+      [weakSelf respring];
+    };
+}
+
+- (void)showCopyVaultImportFailureReason:(NSString *)reason requiresRespring:(BOOL)requiresRespring {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *actionMessage =
+        [bundle localizedStringForKey:(requiresRespring ? @"Tap the screen to restart SpringBoard and restore Kayoko."
+                                                        : @"Tap the screen to close.")
+                                value:nil
+                                table:@"AdvancedOptions"];
+    NSString *subtitle = [NSString stringWithFormat:@"%@\n\n%@", reason, actionMessage];
+    KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
+    [overlayView setFailureTitle:[bundle localizedStringForKey:@"Unable to Import" value:nil table:@"AdvancedOptions"]
+                        subtitle:subtitle
+                   actionEnabled:YES];
+    __weak typeof(self) weakSelf = self;
+    overlayView.tapHandler = ^{
+      if (requiresRespring) {
+          [weakSelf respring];
+      } else {
+          [weakSelf dismissCopyVaultImportOverlay];
+      }
+    };
+}
+
+- (void)dismissCopyVaultImportOverlay {
+    KayokoStatusOverlayView *overlayView = _copyVaultImportOverlayView;
+    [overlayView removeFromSuperview];
+    if (_copyVaultImportOverlayView == overlayView) {
+        _copyVaultImportOverlayView = nil;
+    }
+}
 
 - (void)resetThumbnailCache {
     NSString *updaterPath = [self kayokoUpdaterPath];

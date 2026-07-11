@@ -79,6 +79,9 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 - (BOOL)importItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
                   toHistoryKey:(NSString *)historyKey
                          error:(NSError *_Nullable *_Nullable)error;
+- (BOOL)importItemDictionariesByHistoryKey:
+            (NSDictionary<NSString *, NSArray<NSDictionary<NSString *, id> *> *> *)itemsByHistoryKey
+                                     error:(NSError *_Nullable *_Nullable)error;
 
 @end
 

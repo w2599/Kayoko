@@ -9,6 +9,8 @@
 
 #import <math.h>
 
+NSString *const kKayokoContinuityBundleIdentifier = @"com.apple.continuity";
+
 @implementation KayokoPasteboardItem
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier

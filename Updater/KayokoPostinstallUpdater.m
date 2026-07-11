@@ -4,6 +4,7 @@
 //
 
 #import "KayokoPostinstallUpdater.h"
+#import "KayokoCopyVaultImporter.h"
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
 #import "KayokoNotificationKeys.h"
@@ -14,6 +15,7 @@
 #import <unistd.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
+static NSString *const kKayokoCopyVaultDataDirectory = @"/var/mobile/Documents/CopyVault";
 static NSString *const kKayokoPreferencesBundlePath = @"/Library/PreferenceBundles/KayokoPreferences.bundle";
 static NSString *const kKayokoThumbnailCacheDirectoryPath = @"/var/mobile/Library/Caches/com.82flex.kayoko/thumbnails";
 static NSUInteger const kKayokoMobileUserID = 501;
@@ -96,6 +98,37 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     }
 
     return YES;
+}
+
+#pragma mark - CopyVault Import
+
+- (BOOL)importCopyVaultWithError:(NSError **)error {
+    [self notifyCoreToPrepareForMaintenance];
+
+    KayokoHistoryStore *store = [self historyStore];
+    if (![store verifyExclusiveAccessWithError:error]) {
+        return NO;
+    }
+    if (![store prepareStoreWithError:error]) {
+        return NO;
+    }
+    if (![store upgradeSearchIndexWithError:error]) {
+        return NO;
+    }
+
+    KayokoTagStore *tagStore = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
+                                                     localizationBundle:[self preferencesLocalizationBundle]];
+    KayokoCopyVaultImporter *importer =
+        [[KayokoCopyVaultImporter alloc] initWithSourceDirectoryPath:kKayokoCopyVaultDataDirectory
+                                                        historyStore:store
+                                                            tagStore:tagStore];
+    BOOL imported = [importer runWithError:error];
+    [store closeDatabase];
+    if (!imported) {
+        return NO;
+    }
+
+    return [self repairCurrentDataDirectoryOwnershipWithError:error];
 }
 
 #pragma mark - Thumbnail Cache

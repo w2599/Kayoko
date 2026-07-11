@@ -4,13 +4,13 @@
 //
 
 #import "KayokoApplicationMetadataProvider.h"
+#import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
 
 #import <objc/runtime.h>
 
 static int const kKayokoApplicationIconFormatListRow = 1;
 static int const kKayokoApplicationIconFormatSearchToken = 5;
-static NSString *const kKayokoContinuityBundleIdentifier = @"com.apple.continuity";
 static NSString *const kKayokoSpotlightBundleIdentifier = @"com.apple.Spotlight";
 static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
 

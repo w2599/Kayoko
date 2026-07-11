@@ -1,19 +1,19 @@
 //
-//  KayokoAuthorizationOverlayView.m
+//  KayokoStatusOverlayView.m
 //  Kayoko
 //
 
-#import "KayokoAuthorizationOverlayView.h"
+#import "KayokoStatusOverlayView.h"
 
-@interface KayokoAuthorizationOverlayView ()
+@interface KayokoStatusOverlayView ()
 @property(nonatomic, strong) UIActivityIndicatorView *activityIndicatorView;
 @property(nonatomic, strong) UIImageView *statusImageView;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UILabel *subtitleLabel;
-@property(nonatomic, strong) UITapGestureRecognizer *retryTapRecognizer;
+@property(nonatomic, strong) UITapGestureRecognizer *actionTapRecognizer;
 @end
 
-@implementation KayokoAuthorizationOverlayView
+@implementation KayokoStatusOverlayView
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -24,8 +24,7 @@
             [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
         [_activityIndicatorView setHidesWhenStopped:YES];
 
-        _statusImageView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"xmark.circle.fill"]];
-        _statusImageView.tintColor = [UIColor systemRedColor];
+        _statusImageView = [[UIImageView alloc] init];
         _statusImageView.hidden = YES;
         _statusImageView.contentMode = UIViewContentModeScaleAspectFit;
 
@@ -75,32 +74,54 @@
             [_subtitleLabel.widthAnchor constraintLessThanOrEqualToAnchor:stackView.widthAnchor]
         ]];
 
-        _retryTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleRetryTap)];
-        _retryTapRecognizer.enabled = NO;
-        [self addGestureRecognizer:_retryTapRecognizer];
+        _actionTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleActionTap)];
+        _actionTapRecognizer.enabled = NO;
+        [self addGestureRecognizer:_actionTapRecognizer];
     }
     return self;
 }
 
-- (void)setCheckingTitle:(NSString *)title subtitle:(NSString *)subtitle {
-    self.retryTapRecognizer.enabled = NO;
+- (void)setLoadingTitle:(NSString *)title subtitle:(NSString *)subtitle {
+    self.actionTapRecognizer.enabled = NO;
     self.titleLabel.text = title;
     self.subtitleLabel.text = [subtitle length] > 0 ? subtitle : @" ";
     self.statusImageView.hidden = YES;
     [self.activityIndicatorView startAnimating];
 }
 
-- (void)setFailureTitle:(NSString *)title subtitle:(NSString *)subtitle retryEnabled:(BOOL)retryEnabled {
-    self.retryTapRecognizer.enabled = retryEnabled;
+- (void)setFailureTitle:(NSString *)title subtitle:(NSString *)subtitle actionEnabled:(BOOL)actionEnabled {
+    [self setStatusTitle:title
+                subtitle:subtitle
+               imageName:@"xmark.circle.fill"
+               tintColor:[UIColor systemRedColor]
+           actionEnabled:actionEnabled];
+}
+
+- (void)setSuccessTitle:(NSString *)title subtitle:(NSString *)subtitle actionEnabled:(BOOL)actionEnabled {
+    [self setStatusTitle:title
+                subtitle:subtitle
+               imageName:@"checkmark.circle.fill"
+               tintColor:[UIColor systemGreenColor]
+           actionEnabled:actionEnabled];
+}
+
+- (void)setStatusTitle:(NSString *)title
+              subtitle:(NSString *)subtitle
+             imageName:(NSString *)imageName
+             tintColor:(UIColor *)tintColor
+         actionEnabled:(BOOL)actionEnabled {
+    self.actionTapRecognizer.enabled = actionEnabled;
     self.titleLabel.text = title;
     self.subtitleLabel.text = [subtitle length] > 0 ? subtitle : @" ";
     [self.activityIndicatorView stopAnimating];
+    self.statusImageView.image = [UIImage systemImageNamed:imageName];
+    self.statusImageView.tintColor = tintColor;
     self.statusImageView.hidden = NO;
 }
 
-- (void)handleRetryTap {
-    if (self.retryHandler) {
-        self.retryHandler();
+- (void)handleActionTap {
+    if (self.tapHandler) {
+        self.tapHandler();
     }
 }
 

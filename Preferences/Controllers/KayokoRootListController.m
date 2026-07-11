@@ -6,11 +6,11 @@
 //
 
 #import "KayokoRootListController.h"
-#import "KayokoAuthorizationOverlayView.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
+#import "KayokoStatusOverlayView.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
@@ -52,7 +52,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
     UISearchController *_testInputSearchController;
-    KayokoAuthorizationOverlayView *_authorizationOverlayView;
+    KayokoStatusOverlayView *_authorizationOverlayView;
     BOOL _authorizationCheckInProgress;
     NSUInteger _authorizationCheckGeneration;
 }
@@ -282,18 +282,18 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 }
 
 - (void)showAuthorizationOverlayChecking {
-    KayokoAuthorizationOverlayView *overlayView = [self authorizationOverlayView];
+    KayokoStatusOverlayView *overlayView = [self authorizationOverlayView];
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    [overlayView setCheckingTitle:[bundle localizedStringForKey:@"Check Product Authorization" value:nil table:@"Root"]
-                         subtitle:nil];
+    [overlayView setLoadingTitle:[bundle localizedStringForKey:@"Check Product Authorization" value:nil table:@"Root"]
+                        subtitle:nil];
 }
 
-- (KayokoAuthorizationOverlayView *)authorizationOverlayView {
+- (KayokoStatusOverlayView *)authorizationOverlayView {
     if (!_authorizationOverlayView) {
-        _authorizationOverlayView = [[KayokoAuthorizationOverlayView alloc] initWithFrame:CGRectZero];
+        _authorizationOverlayView = [[KayokoStatusOverlayView alloc] initWithFrame:CGRectZero];
         _authorizationOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
         __weak typeof(self) weakSelf = self;
-        _authorizationOverlayView.retryHandler = ^{
+        _authorizationOverlayView.tapHandler = ^{
           [weakSelf retryAuthorizationCheck];
         };
     }
@@ -347,7 +347,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
         [[self authorizationOverlayView]
             setFailureTitle:[bundle localizedStringForKey:@"Read Account Failed" value:nil table:@"Root"]
                    subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
-               retryEnabled:NO];
+              actionEnabled:NO];
         break;
     }
     case KayokoPurchaseAuthorizationStateNetworkFailed: {
@@ -359,7 +359,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
                                                                                  value:nil
                                                                                  table:@"Root"]
                                                 subtitle:subtitle
-                                            retryEnabled:YES];
+                                           actionEnabled:YES];
         break;
     }
     case KayokoPurchaseAuthorizationStateInvalidResponse: {
@@ -373,7 +373,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
                                                                                  value:nil
                                                                                  table:@"Root"]
                                                 subtitle:[NSString stringWithFormat:format, statusMessage]
-                                            retryEnabled:YES];
+                                           actionEnabled:YES];
         break;
     }
     case KayokoPurchaseAuthorizationStateNotPurchased: {
@@ -385,7 +385,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
         [[self authorizationOverlayView]
             setFailureTitle:[bundle localizedStringForKey:@"Authorization Not Found" value:nil table:@"Root"]
                    subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
-               retryEnabled:NO];
+              actionEnabled:NO];
         break;
     }
     }
@@ -431,7 +431,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 }
 
 - (void)dismissAuthorizationOverlayAnimated:(BOOL)animated {
-    KayokoAuthorizationOverlayView *overlayView = _authorizationOverlayView;
+    KayokoStatusOverlayView *overlayView = _authorizationOverlayView;
     if (!overlayView) {
         return;
     }

@@ -2,8 +2,8 @@
 "Are you sure you want to clear all favorite items? This action cannot be undone." = "Are you sure you want to clear all favorite items? This action cannot be undone.";
 "Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
 "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state.";
-"Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed." = "Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed.";
+"Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone." = "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone.";
 "Auto" = "Auto";
 "Automatic Paste Mode" = "Automatic Paste Mode";
@@ -18,6 +18,11 @@
 "Gesture Recognizer" = "Gesture Recognizer";
 "Ignore Universal Clipboard" = "Ignore Universal Clipboard";
 "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices.";
+"Import" = "Import";
+"Import Complete" = "Import Complete";
+"Import from CopyVault" = "Import from CopyVault";
+"Importing from CopyVault…" = "Importing from CopyVault…";
+"Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes.";
 "Maintenance" = "Maintenance";
 "OK" = "OK";
 "Reset" = "Reset";
@@ -26,7 +31,12 @@
 "Restore Tags" = "Restore Tags";
 "Simulated" = "Simulated";
 "System" = "System";
+"Tap the screen to close." = "Tap the screen to close.";
+"Tap the screen to restart SpringBoard and finish importing." = "Tap the screen to restart SpringBoard and finish importing.";
+"Tap the screen to restart SpringBoard and restore Kayoko." = "Tap the screen to restart SpringBoard and restore Kayoko.";
+"The import could not be completed." = "The import could not be completed.";
 "Unable to Deactivate" = "Unable to Deactivate";
+"Unable to Import" = "Unable to Import";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Unable to Restore Tags" = "Unable to Restore Tags";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable.";

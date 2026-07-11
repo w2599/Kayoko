@@ -4,6 +4,7 @@ TOOL_NAME := kayoko_updater
 kayoko_updater_USE_MODULES := 0
 
 kayoko_updater_FILES += main.m
+kayoko_updater_FILES += KayokoCopyVaultImporter.m
 kayoko_updater_FILES += KayokoPostinstallUpdater.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryStore.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryMigrator.m

@@ -276,12 +276,6 @@ NS_ASSUME_NONNULL_END
 
     BOOL success = [self rebuildStaleSearchIndexesWithError:error];
     if (success) {
-        success = [self setMetadataValue:[@(kKayokoHistoryStoreSearchIndexVersion) stringValue]
-                                  forKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey
-                                   error:error];
-    }
-
-    if (success) {
         return [self commitTransactionWithError:error];
     }
 
@@ -706,6 +700,77 @@ NS_ASSUME_NONNULL_END
         if (!success) {
             break;
         }
+    }
+
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
+- (BOOL)importItemDictionariesByHistoryKey:
+            (NSDictionary<NSString *, NSArray<NSDictionary<NSString *, id> *> *> *)itemsByHistoryKey
+                                     error:(NSError **)error {
+    if ([itemsByHistoryKey count] == 0) {
+        return YES;
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    NSMutableArray<NSString *> *historyKeys = [[itemsByHistoryKey allKeys] mutableCopy];
+    [historyKeys sortUsingSelector:@selector(compare:)];
+
+    BOOL success = YES;
+    for (NSString *historyKey in historyKeys) {
+        NSArray<NSDictionary<NSString *, id> *> *items = itemsByHistoryKey[historyKey];
+        for (NSDictionary<NSString *, id> *dictionary in [items reverseObjectEnumerator]) {
+            NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
+            if ([content length] == 0) {
+                continue;
+            }
+
+            sqlite3_stmt *statement = NULL;
+            const char *sql = "SELECT 1 FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
+            if (![self prepareStatement:sql statement:&statement error:error]) {
+                success = NO;
+                break;
+            }
+
+            sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
+            int stepResult = sqlite3_step(statement);
+            BOOL itemExists = stepResult == SQLITE_ROW;
+            if (stepResult != SQLITE_ROW && stepResult != SQLITE_DONE) {
+                [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+                success = NO;
+            }
+            sqlite3_finalize(statement);
+
+            if (!success) {
+                break;
+            }
+            if (itemExists) {
+                continue;
+            }
+
+            success = [self upsertItemDictionaryWithoutTransaction:dictionary inHistoryKey:historyKey error:error];
+            if (!success) {
+                break;
+            }
+        }
+        if (!success) {
+            break;
+        }
+    }
+
+    if (success) {
+        success = [self setMetadataValue:[@(kKayokoHistoryStoreSearchIndexVersion) stringValue]
+                                  forKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey
+                                   error:error];
     }
 
     if (success) {
@@ -1186,9 +1251,8 @@ NS_ASSUME_NONNULL_END
     NSNumber *sequence = @([self nextSequence]);
     NSNumber *now = @([[NSDate date] timeIntervalSince1970]);
     id capturedAtValue = dictionary[kKayokoItemKeyCapturedAt];
-    NSTimeInterval capturedAtTimestamp = [capturedAtValue isKindOfClass:[NSNumber class]]
-                                             ? [capturedAtValue doubleValue]
-                                             : [now doubleValue];
+    NSTimeInterval capturedAtTimestamp =
+        [capturedAtValue isKindOfClass:[NSNumber class]] ? [capturedAtValue doubleValue] : [now doubleValue];
     if (!isfinite(capturedAtTimestamp) || capturedAtTimestamp <= 0.0) {
         capturedAtTimestamp = [now doubleValue];
     }
@@ -1200,18 +1264,17 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    if (![self
-            executeStatement:
-                @"INSERT INTO history_items "
-                 "(history_key, bundle_identifier, content, image_name, image_width, image_height, has_link, "
-                 "created_at, updated_at, sequence, tag_uuid, note, search_index_version) "
-                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
-                    bindings:@[
-                        historyKey, bundleIdentifier, content, imageName, @(imagePixelWidth), @(imagePixelHeight),
-                        hasLink, capturedAt, now, sequence,
-                        [tagUUID length] > 0 ? tagUUID : (id)[NSNull null], [note length] > 0 ? note : (id)[NSNull null]
-                    ]
-                       error:error]) {
+    if (![self executeStatement:
+                   @"INSERT INTO history_items "
+                    "(history_key, bundle_identifier, content, image_name, image_width, image_height, has_link, "
+                    "created_at, updated_at, sequence, tag_uuid, note, search_index_version) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                       bindings:@[
+                           historyKey, bundleIdentifier, content, imageName, @(imagePixelWidth), @(imagePixelHeight),
+                           hasLink, capturedAt, now, sequence, [tagUUID length] > 0 ? tagUUID : (id)[NSNull null],
+                           [note length] > 0 ? note : (id)[NSNull null]
+                       ]
+                          error:error]) {
         return NO;
     }
 

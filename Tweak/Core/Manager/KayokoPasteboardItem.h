@@ -9,6 +9,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+FOUNDATION_EXPORT NSString *const kKayokoContinuityBundleIdentifier;
+
 static NSString *const kKayokoItemKeyBundleIdentifier = @"bundle_identifier";
 static NSString *const kKayokoItemKeyContent = @"content";
 static NSString *const kKayokoItemKeyImageName = @"image_name";
