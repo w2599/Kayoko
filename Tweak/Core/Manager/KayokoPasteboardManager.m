@@ -261,6 +261,10 @@ NS_ASSUME_NONNULL_END
     [_historyRepository checkpointWriteAheadLog];
 }
 
+- (void)resetThumbnailMemoryCache {
+    [_thumbnailCache removeAllMemoryCachedThumbnails];
+}
+
 #pragma mark - Image Storage Helpers
 
 - (NSString *)randomStringWithLength:(NSUInteger)length {

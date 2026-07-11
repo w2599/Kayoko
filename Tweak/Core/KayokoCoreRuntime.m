@@ -1100,6 +1100,10 @@ NS_ASSUME_NONNULL_END
     [self hideImmediately];
 }
 
+- (void)resetThumbnailMemoryCache {
+    [[KayokoPasteboardManager sharedInstance] resetThumbnailMemoryCache];
+}
+
 - (void)clearFavorites {
     if ([self isPackageMaintenanceMode]) {
         return;
