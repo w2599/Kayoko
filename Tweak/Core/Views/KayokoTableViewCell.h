@@ -22,8 +22,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       content:(KayokoTableViewCellContent *)content
               reuseIdentifier:(NSString *)reuseIdentifier;
++ (NSString *)reuseIdentifierForContent:(KayokoTableViewCellContent *)content;
 + (CGSize)contentImageViewSizeForPreviewLineCount:(NSUInteger)previewLineCount;
 + (CGSize)contentImageThumbnailSize;
+- (void)applyContent:(KayokoTableViewCellContent *)content;
 - (void)setContentImage:(nullable UIImage *)image forImageName:(NSString *)imageName;
 
 @end

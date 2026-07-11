@@ -46,7 +46,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-
 @implementation KayokoNoteEditorViewController
 
 - (instancetype)init {
@@ -81,7 +80,7 @@ NS_ASSUME_NONNULL_BEGIN
                                    action:@selector(handleTextFieldEditingChanged:)
                          forControlEvents:UIControlEventEditingChanged];
     [[noteEditorView saveButton] setTitle:[bundle localizedStringForKey:@"Save" value:nil table:@"Tweak"]
-                                  forState:UIControlStateNormal];
+                                 forState:UIControlStateNormal];
     [[noteEditorView saveButton] addTarget:self
                                     action:@selector(handleSaveButtonPressed)
                           forControlEvents:UIControlEventTouchUpInside];
@@ -101,8 +100,8 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)prepareForItem:(KayokoPasteboardItem *)item
-      presentationCell:(KayokoTableViewCell *)presentationCell
-            cellHeight:(CGFloat)cellHeight
+       presentationCell:(KayokoTableViewCell *)presentationCell
+             cellHeight:(CGFloat)cellHeight
     keyboardBottomInset:(CGFloat)keyboardBottomInset {
     [self loadViewIfNeeded];
     [self setItem:item];
@@ -160,14 +159,13 @@ NS_ASSUME_NONNULL_BEGIN
     }
 
     CGFloat keyboardBottomInset = [self lastValidKeyboardBottomInset];
-    if (keyboardBottomInset > 0 &&
-        fabs([noteEditorView keyboardBottomInset] - keyboardBottomInset) > 0.5) {
-        [[self delegate]
-            noteEditorViewController:self
-            didUpdateKeyboardBottomInset:keyboardBottomInset
-            animationDuration:0.25
-            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState |
-                    UIViewAnimationOptionAllowUserInteraction];
+    if (keyboardBottomInset > 0 && fabs([noteEditorView keyboardBottomInset] - keyboardBottomInset) > 0.5) {
+        [[self delegate] noteEditorViewController:self
+                     didUpdateKeyboardBottomInset:keyboardBottomInset
+                                animationDuration:0.25
+                                          options:UIViewAnimationOptionCurveEaseInOut |
+                                                  UIViewAnimationOptionBeginFromCurrentState |
+                                                  UIViewAnimationOptionAllowUserInteraction];
     }
 
     UITextField *textField = [noteEditorView textField];
@@ -236,7 +234,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)updateKeyboardBottomInset:(CGFloat)keyboardBottomInset
-          withAnimationParametersFromNotification:(NSNotification *)notification {
+    withAnimationParametersFromNotification:(NSNotification *)notification {
     KayokoNoteEditorView *view = [self noteEditorView];
     keyboardBottomInset = MAX(keyboardBottomInset, 0);
     if (fabs([view keyboardBottomInset] - keyboardBottomInset) <= 0.5) {
@@ -250,9 +248,9 @@ NS_ASSUME_NONNULL_BEGIN
                                      UIViewAnimationOptionBeginFromCurrentState |
                                      UIViewAnimationOptionAllowUserInteraction;
     [[self delegate] noteEditorViewController:self
-               didUpdateKeyboardBottomInset:keyboardBottomInset
-                          animationDuration:duration
-                                    options:options];
+                 didUpdateKeyboardBottomInset:keyboardBottomInset
+                            animationDuration:duration
+                                      options:options];
 }
 
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {

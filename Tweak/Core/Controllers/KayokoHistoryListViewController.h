@@ -71,8 +71,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(nullable void (^)(BOOL success))completion;
 - (void)updateTagUUID:(nullable NSString *)tagUUID forItem:(KayokoPasteboardItem *)item;
 - (void)updateNote:(nullable NSString *)note
-            forItem:(KayokoPasteboardItem *)item
-         completion:(nullable void (^)(void))completion;
+           forItem:(KayokoPasteboardItem *)item
+        completion:(nullable void (^)(void))completion;
 - (KayokoTableViewCell *)presentationCellForItem:(KayokoPasteboardItem *)item;
 - (void)setCellPresentationHidden:(BOOL)hidden forItem:(KayokoPasteboardItem *)item;
 - (nullable KayokoTableViewCell *)visibleCellForItem:(KayokoPasteboardItem *)item;

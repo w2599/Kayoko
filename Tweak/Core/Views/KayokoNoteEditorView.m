@@ -31,7 +31,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-
 @implementation KayokoNoteEditorView
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -115,8 +114,8 @@ NS_ASSUME_NONNULL_BEGIN
     CGRect bounds = [self bounds];
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
     CGFloat minimumContentOriginY = MAX(safeAreaInsets.top, 0);
-    CGFloat contentOriginY = MAX(CGRectGetHeight(bounds) - [self keyboardBottomInset] - [self editingContentHeight],
-                                 minimumContentOriginY);
+    CGFloat contentOriginY =
+        MAX(CGRectGetHeight(bounds) - [self keyboardBottomInset] - [self editingContentHeight], minimumContentOriginY);
     CGFloat y = contentOriginY + kKayokoNoteEditorPreviewTopSpacing;
     CGFloat width = MAX(CGRectGetWidth(bounds) - safeAreaInsets.left - safeAreaInsets.right, 0);
     return CGRectMake(safeAreaInsets.left, y, width, [self previewCellHeight]);
@@ -142,22 +141,14 @@ NS_ASSUME_NONNULL_BEGIN
 
     CGFloat inputY = CGRectGetMaxY(previewFrame) + kKayokoNoteEditorInputTopSpacing;
     [[self inputRowView] setFrame:CGRectMake(leadingInset, inputY, availableWidth, kKayokoNoteEditorInputHeight)];
-    [[self textField]
-        setFrame:CGRectMake(0,
-                            0,
-                            MAX(textFieldWidth - kKayokoNoteEditorTextTrailingInset, 0),
-                            kKayokoNoteEditorInputHeight)];
+    [[self textField] setFrame:CGRectMake(0, 0, MAX(textFieldWidth - kKayokoNoteEditorTextTrailingInset, 0),
+                                          kKayokoNoteEditorInputHeight)];
     CGFloat separatorWidth = 1.0 / [UIScreen mainScreen].scale;
     [[self inputSeparatorView]
-        setFrame:CGRectMake(textFieldWidth,
-                            kKayokoNoteEditorSeparatorVerticalInset,
-                            separatorWidth,
+        setFrame:CGRectMake(textFieldWidth, kKayokoNoteEditorSeparatorVerticalInset, separatorWidth,
                             kKayokoNoteEditorInputHeight - kKayokoNoteEditorSeparatorVerticalInset * 2)];
-    [[self saveButton]
-        setFrame:CGRectMake(textFieldWidth + separatorWidth,
-                            0,
-                            MAX(buttonWidth - separatorWidth, 0),
-                            kKayokoNoteEditorInputHeight)];
+    [[self saveButton] setFrame:CGRectMake(textFieldWidth + separatorWidth, 0, MAX(buttonWidth - separatorWidth, 0),
+                                           kKayokoNoteEditorInputHeight)];
 
     CGFloat spacerHeight = MIN([self keyboardBottomInset], CGRectGetHeight(bounds));
     [[self keyboardSpacerView]

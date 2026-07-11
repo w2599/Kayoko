@@ -21,6 +21,14 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
 @implementation KayokoTableViewCell
 
++ (NSString *)reuseIdentifierForContent:(KayokoTableViewCellContent *)content {
+    NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), kKayokoTableViewCellMaximumPreviewLineCount);
+    BOOL hasContentImageSlot = [content contentImage] || [[content thumbnailImageName] length] > 0;
+    BOOL hasTagDot = [[content tagHexColor] length] > 0;
+    return [NSString
+        stringWithFormat:@"KayokoTableViewCell-%lu-%d-%d", (unsigned long)lineCount, hasContentImageSlot, hasTagDot];
+}
+
 + (CGSize)contentImageViewSizeForPreviewLineCount:(NSUInteger)previewLineCount {
     NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoTableViewCellMaximumPreviewLineCount);
     CGFloat height = kKayokoTableViewCellContentImageSingleLineHeight +
@@ -178,6 +186,62 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
     }
 
     return self;
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    [self setHidden:NO];
+    [self setRepresentedImageName:nil];
+    [[self iconImageView] setImage:nil];
+    [[self headerLabel] setAttributedText:nil];
+    [[self headerLabel] setText:nil];
+    [[self tagDotView] setBackgroundColor:nil];
+    [[self contentLabel] setAttributedText:nil];
+    [[self contentLabel] setText:nil];
+    [[self contentImageView] setImage:nil];
+    [[self contentImageView] setBackgroundColor:[UIColor tertiarySystemFillColor]];
+}
+
+- (void)applyContent:(KayokoTableViewCellContent *)content {
+    [[self iconImageView] setImage:[content icon]];
+
+    if ([content attributedDisplayName]) {
+        NSMutableAttributedString *attributedDisplayName = [[content attributedDisplayName] mutableCopy];
+        NSRange fullRange = NSMakeRange(0, [attributedDisplayName length]);
+        [attributedDisplayName addAttribute:NSFontAttributeName value:[[self headerLabel] font] range:fullRange];
+        [attributedDisplayName addAttribute:NSForegroundColorAttributeName
+                                      value:[[self headerLabel] textColor]
+                                      range:fullRange];
+        [[self headerLabel] setAttributedText:attributedDisplayName];
+    } else {
+        [[self headerLabel] setAttributedText:nil];
+        [[self headerLabel] setText:[content displayName]];
+    }
+
+    if ([self tagDotView]) {
+        [[self tagDotView] setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[content tagHexColor]]];
+    }
+
+    NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), kKayokoTableViewCellMaximumPreviewLineCount);
+    [[self contentLabel] setNumberOfLines:lineCount];
+    if ([content attributedContentText]) {
+        NSMutableAttributedString *attributedText = [[content attributedContentText] mutableCopy];
+        NSRange fullRange = NSMakeRange(0, [attributedText length]);
+        [attributedText addAttribute:NSFontAttributeName value:[[self contentLabel] font] range:fullRange];
+        [attributedText addAttribute:NSForegroundColorAttributeName
+                               value:[[self contentLabel] textColor]
+                               range:fullRange];
+        [[self contentLabel] setAttributedText:attributedText];
+    } else {
+        [[self contentLabel] setAttributedText:nil];
+        [[self contentLabel] setText:[content contentText] ?: @""];
+    }
+
+    UIImage *contentImage = [content contentImage];
+    [self setRepresentedImageName:[content thumbnailImageName]];
+    [[self contentImageView] setImage:contentImage];
+    [[self contentImageView]
+        setBackgroundColor:contentImage ? [UIColor clearColor] : [UIColor tertiarySystemFillColor]];
 }
 
 - (void)setContentImage:(UIImage *)image forImageName:(NSString *)imageName {

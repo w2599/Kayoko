@@ -1000,8 +1000,8 @@ NS_ASSUME_NONNULL_END
 #pragma mark - User Metadata
 
 - (NSDictionary<NSString *, NSString *> *)storedUserMetadataForHistoryKey:(NSString *)historyKey
-                                                                   content:(NSString *)content
-                                                                     error:(NSError **)error {
+                                                                  content:(NSString *)content
+                                                                    error:(NSError **)error {
     if ([historyKey length] == 0 || [content length] == 0) {
         return @{};
     }
@@ -1045,8 +1045,9 @@ NS_ASSUME_NONNULL_END
                                                              key:kKayokoItemKeyBundleIdentifier
                                                         fallback:@"com.apple.springboard"];
     NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
-    NSDictionary<NSString *, NSString *> *storedMetadata =
-        [self storedUserMetadataForHistoryKey:historyKey content:content error:error];
+    NSDictionary<NSString *, NSString *> *storedMetadata = [self storedUserMetadataForHistoryKey:historyKey
+                                                                                         content:content
+                                                                                           error:error];
     if (error && *error) {
         return NO;
     }
@@ -1068,17 +1069,17 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    if (![self executeStatement:
-                   @"INSERT INTO history_items "
-                    "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence, "
-                    "tag_uuid, note, search_index_version) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
-                       bindings:@[
-                           historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence,
-                           [tagUUID length] > 0 ? tagUUID : (id)[NSNull null],
-                           [note length] > 0 ? note : (id)[NSNull null]
-                       ]
-                          error:error]) {
+    if (![self
+            executeStatement:
+                @"INSERT INTO history_items "
+                 "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence, "
+                 "tag_uuid, note, search_index_version) "
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                    bindings:@[
+                        historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence,
+                        [tagUUID length] > 0 ? tagUUID : (id)[NSNull null], [note length] > 0 ? note : (id)[NSNull null]
+                    ]
+                       error:error]) {
         return NO;
     }
 

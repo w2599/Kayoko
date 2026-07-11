@@ -14,9 +14,9 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoSearchCriteria.h"
+#import "KayokoThumbnailCache.h"
 
 #import <HBLog.h>
-#import <ImageIO/ImageIO.h>
 #import <roothide.h>
 
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
@@ -130,8 +130,7 @@ NS_ASSUME_NONNULL_END
     NSFileManager *_fileManager;
 
     dispatch_queue_t _pasteboardQueue;
-    dispatch_queue_t _thumbnailQueue;
-    NSCache<NSString *, UIImage *> *_thumbnailCache;
+    KayokoThumbnailCache *_thumbnailCache;
 
     BOOL _isWritingPasteboardItem;
     KayokoPasteboardPendingWrite *_pendingPasteboardWrite;
@@ -212,10 +211,7 @@ NS_ASSUME_NONNULL_END
             _pasteboardQueue = dispatch_queue_create("com.82flex.kayoko.queue.pasteboard",
                                                      DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         }
-        _thumbnailQueue =
-            dispatch_queue_create("com.82flex.kayoko.queue.thumbnail", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
-        _thumbnailCache = [[NSCache alloc] init];
-        [_thumbnailCache setCountLimit:80];
+        _thumbnailCache = [[KayokoThumbnailCache alloc] init];
         _automaticPromotionMode = kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue;
         _pendingPasteboardWrite = [[KayokoPasteboardPendingWrite alloc] init];
         __weak typeof(self) weakSelf = self;
@@ -1083,90 +1079,16 @@ NS_ASSUME_NONNULL_END
     return [UIImage imageWithData:imageData];
 }
 
-- (NSString *)thumbnailCacheKeyForImageName:(NSString *)imageName targetSize:(CGSize)targetSize scale:(CGFloat)scale {
-    return [NSString
-        stringWithFormat:@"%@|%.0fx%.0f|%.2f", imageName, ceil(targetSize.width), ceil(targetSize.height), scale];
-}
-
-- (NSUInteger)thumbnailMaximumPixelSizeForImageProperties:(NSDictionary<NSString *, id> *)properties
-                                               targetSize:(CGSize)targetSize
-                                                    scale:(CGFloat)scale {
-    CGFloat targetPixelWidth = MAX(ceil(targetSize.width * scale), 1);
-    CGFloat targetPixelHeight = MAX(ceil(targetSize.height * scale), 1);
-    CGFloat imagePixelWidth = [properties[(NSString *)kCGImagePropertyPixelWidth] doubleValue];
-    CGFloat imagePixelHeight = [properties[(NSString *)kCGImagePropertyPixelHeight] doubleValue];
-    NSUInteger orientation = [properties[(NSString *)kCGImagePropertyOrientation] unsignedIntegerValue];
-    if (orientation >= 5 && orientation <= 8) {
-        CGFloat swappedWidth = imagePixelHeight;
-        imagePixelHeight = imagePixelWidth;
-        imagePixelWidth = swappedWidth;
-    }
-
-    if (imagePixelWidth <= 0 || imagePixelHeight <= 0) {
-        return (NSUInteger)ceil(MAX(targetPixelWidth, targetPixelHeight));
-    }
-
-    CGFloat fillScale = MAX(targetPixelWidth / imagePixelWidth, targetPixelHeight / imagePixelHeight);
-    CGFloat thumbnailPixelWidth = imagePixelWidth * fillScale;
-    CGFloat thumbnailPixelHeight = imagePixelHeight * fillScale;
-    return (NSUInteger)ceil(MAX(thumbnailPixelWidth, thumbnailPixelHeight));
-}
-
 - (void)getThumbnailForItem:(KayokoPasteboardItem *)item
                  targetSize:(CGSize)targetSize
                  completion:(void (^)(UIImage *_Nullable image))completion {
     NSString *imageName = [[item imageName] copy];
-    if ([imageName length] == 0) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          completion(nil);
-        });
-        return;
-    }
-
-    CGFloat scale = [[UIScreen mainScreen] scale];
-    NSString *cacheKey = [self thumbnailCacheKeyForImageName:imageName targetSize:targetSize scale:scale];
-    UIImage *cachedThumbnail = [_thumbnailCache objectForKey:cacheKey];
-    if (cachedThumbnail) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          completion(cachedThumbnail);
-        });
-        return;
-    }
-
-    NSString *imagePath = [[KayokoPasteboardManager historyImagesPath] stringByAppendingPathComponent:imageName];
-    NSURL *imageURL = [NSURL fileURLWithPath:imagePath];
-
-    dispatch_async(_thumbnailQueue, ^{
-      CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);
-      UIImage *thumbnailImage = nil;
-      if (imageSource) {
-          NSDictionary<NSString *, id> *properties =
-              CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL));
-          NSUInteger maximumPixelSize = [self thumbnailMaximumPixelSizeForImageProperties:properties ?: @{}
-                                                                               targetSize:targetSize
-                                                                                    scale:scale];
-          NSDictionary *options = @{
-              (NSString *)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
-              (NSString *)kCGImageSourceCreateThumbnailWithTransform : @YES,
-              (NSString *)kCGImageSourceShouldCacheImmediately : @YES,
-              (NSString *)kCGImageSourceThumbnailMaxPixelSize : @(maximumPixelSize),
-          };
-          CGImageRef thumbnail = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, (__bridge CFDictionaryRef)options);
-          if (thumbnail) {
-              thumbnailImage = [UIImage imageWithCGImage:thumbnail scale:scale orientation:UIImageOrientationUp];
-              CFRelease(thumbnail);
-          }
-          CFRelease(imageSource);
-      }
-
-      if (thumbnailImage) {
-          [_thumbnailCache setObject:thumbnailImage forKey:cacheKey];
-      }
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        completion(thumbnailImage);
-      });
-    });
+    NSString *imagePath = [[KayokoPasteboardManager historyImagesPath] stringByAppendingPathComponent:imageName ?: @""];
+    [_thumbnailCache thumbnailForImageName:imageName ?: @""
+                                 imagePath:imagePath
+                                targetSize:targetSize
+                                     scale:[[UIScreen mainScreen] scale]
+                                completion:completion];
 }
 
 #pragma mark - Notifications

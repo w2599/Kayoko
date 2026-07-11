@@ -39,8 +39,7 @@ NS_ASSUME_NONNULL_END
     }];
 }
 
-- (nullable NSAttributedString *)attributedTextForText:(NSString *)text
-                                            searchText:(nullable NSString *)searchText {
+- (nullable NSAttributedString *)attributedTextForText:(NSString *)text searchText:(nullable NSString *)searchText {
     NSString *trimmedSearchText =
         [searchText ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if ([text length] == 0 || [trimmedSearchText length] == 0) {
@@ -76,9 +75,9 @@ NS_ASSUME_NONNULL_END
     NSString *displayName = [[item note] length] > 0 ? [item note] : sourceDisplayName;
     [content setIcon:[[self metadataProvider] iconForBundleIdentifier:bundleIdentifier]];
     [content setDisplayName:displayName];
-    [content setAttributedDisplayName:[[item note] length] > 0
-                                          ? [self attributedTextForText:displayName searchText:searchText]
-                                          : nil];
+    [content setAttributedDisplayName:[[item note] length] > 0 ? [self attributedTextForText:displayName
+                                                                                  searchText:searchText]
+                                                               : nil];
     KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[item tagUUID]];
     [content setTagHexColor:[tag hexColor]];
     [content setContentText:contentText];
