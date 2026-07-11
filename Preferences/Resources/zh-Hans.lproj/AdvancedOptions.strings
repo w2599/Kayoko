@@ -14,6 +14,7 @@
 "Clear History" = "清空历史记录";
 "Copy Path" = "拷贝路径";
 "Dangerous Zone" = "危险区域";
+"Data Unavailable" = "数据不可用";
 "Deactivate" = "反激活";
 "Gesture Recognizer" = "手势识别器";
 "Ignore Universal Clipboard" = "忽略通用剪贴板";
@@ -34,6 +35,7 @@
 "Tap the screen to close." = "轻点屏幕以关闭。";
 "Tap the screen to restart SpringBoard and finish importing." = "轻点屏幕以注销并完成导入。";
 "Tap the screen to restart SpringBoard and restore Kayoko." = "轻点屏幕以注销并恢复 Kayoko。";
+"The CopyVault data directory could not be found or read." = "找不到 CopyVault 数据目录，或当前无法读取该目录。";
 "The import could not be completed." = "无法完成导入。";
 "Unable to Deactivate" = "反激活失败";
 "Unable to Import" = "导入失败";

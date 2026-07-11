@@ -14,6 +14,7 @@
 "Clear History" = "Clear History";
 "Copy Path" = "Copy Path";
 "Dangerous Zone" = "Dangerous Zone";
+"Data Unavailable" = "Data Unavailable";
 "Deactivate" = "Deactivate";
 "Gesture Recognizer" = "Gesture Recognizer";
 "Ignore Universal Clipboard" = "Ignore Universal Clipboard";
@@ -34,6 +35,7 @@
 "Tap the screen to close." = "Tap the screen to close.";
 "Tap the screen to restart SpringBoard and finish importing." = "Tap the screen to restart SpringBoard and finish importing.";
 "Tap the screen to restart SpringBoard and restore Kayoko." = "Tap the screen to restart SpringBoard and restore Kayoko.";
+"The CopyVault data directory could not be found or read." = "The CopyVault data directory could not be found or read.";
 "The import could not be completed." = "The import could not be completed.";
 "Unable to Deactivate" = "Unable to Deactivate";
 "Unable to Import" = "Unable to Import";

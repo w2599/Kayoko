@@ -11,6 +11,7 @@
 
 #import <CommonCrypto/CommonDigest.h>
 #import <ImageIO/ImageIO.h>
+#import <math.h>
 
 static NSString *const kKayokoCopyVaultImporterErrorDomain = @"com.82flex.kayoko.copyvault-importer";
 static NSString *const kKayokoCopyVaultHistorySection = @"History";
@@ -46,6 +47,7 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 @property(nonatomic, strong) KayokoTagStore *tagStore;
 @property(nonatomic, strong) NSDateFormatter *dateFormatter;
 @property(nonatomic, copy) NSDictionary<NSString *, NSString *> *categoryTitlesByIdentifier;
+- (NSString *)hexColorForCategoryTitle:(NSString *)title;
 @end
 
 @implementation KayokoCopyVaultImporter
@@ -208,7 +210,8 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
             if ([item.categoryTitle length] > 0) {
                 KayokoTag *tag = tagsByTitle[item.categoryTitle];
                 if (!tag) {
-                    tag = [KayokoTag tagWithTitle:item.categoryTitle hexColor:@"#ADADB0FF"];
+                    tag = [KayokoTag tagWithTitle:item.categoryTitle
+                                         hexColor:[self hexColorForCategoryTitle:item.categoryTitle]];
                     tagsByTitle[item.categoryTitle] = tag;
                     [tags addObject:tag];
                     didAddTag = YES;
@@ -519,6 +522,60 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         return nil;
     }
     return self.categoryTitlesByIdentifier[categoryIdentifier] ?: categoryIdentifier;
+}
+
+- (NSString *)hexColorForCategoryTitle:(NSString *)title {
+    NSData *titleData = [[title precomposedStringWithCanonicalMapping] dataUsingEncoding:NSUTF8StringEncoding];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256([titleData bytes], (CC_LONG)[titleData length], digest);
+
+    double hue = (double)(((uint16_t)digest[0] << 8) | digest[1]) / 65536.0;
+    double saturation = 0.55 + ((double)digest[2] / 255.0) * 0.20;
+    double brightness = 0.78 + ((double)digest[3] / 255.0) * 0.14;
+    double scaledHue = hue * 6.0;
+    NSInteger sector = (NSInteger)floor(scaledHue);
+    double fraction = scaledHue - sector;
+    double minimum = brightness * (1.0 - saturation);
+    double descending = brightness * (1.0 - saturation * fraction);
+    double ascending = brightness * (1.0 - saturation * (1.0 - fraction));
+    double red = 0.0;
+    double green = 0.0;
+    double blue = 0.0;
+    switch (sector) {
+    case 0:
+        red = brightness;
+        green = ascending;
+        blue = minimum;
+        break;
+    case 1:
+        red = descending;
+        green = brightness;
+        blue = minimum;
+        break;
+    case 2:
+        red = minimum;
+        green = brightness;
+        blue = ascending;
+        break;
+    case 3:
+        red = minimum;
+        green = descending;
+        blue = brightness;
+        break;
+    case 4:
+        red = ascending;
+        green = minimum;
+        blue = brightness;
+        break;
+    default:
+        red = brightness;
+        green = minimum;
+        blue = descending;
+        break;
+    }
+
+    return [NSString stringWithFormat:@"#%02lX%02lX%02lXFF", (long)lrint(red * 255.0), (long)lrint(green * 255.0),
+                                      (long)lrint(blue * 255.0)];
 }
 
 #pragma mark - Commit

@@ -16,6 +16,7 @@
 #import <roothide.h>
 
 static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82flex.kayoko";
+static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documents/CopyVault";
 
 @interface NSTask : NSObject
 - (void)setLaunchPath:(NSString *)launchPath;
@@ -25,6 +26,10 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 - (void)launch;
 - (void)waitUntilExit;
 - (int)terminationStatus;
+@end
+
+@interface KayokoAdvancedOptionsListController ()
+- (NSString *)localizedCopyVaultImportFailureDetail:(NSString *)detail;
 @end
 
 @implementation KayokoAdvancedOptionsListController {
@@ -200,6 +205,29 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     }
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    BOOL isDirectory = NO;
+    BOOL directoryExists = [fileManager fileExistsAtPath:kKayokoCopyVaultDataDirectoryPath isDirectory:&isDirectory];
+    if (!directoryExists || !isDirectory || ![fileManager isReadableFileAtPath:kKayokoCopyVaultDataDirectoryPath]) {
+        UIAlertController *unavailableAlert = [UIAlertController
+            alertControllerWithTitle:[bundle localizedStringForKey:@"Data Unavailable"
+                                                             value:nil
+                                                             table:@"AdvancedOptions"]
+                             message:[bundle localizedStringForKey:
+                                                 @"The CopyVault data directory could not be found or read."
+                                                             value:nil
+                                                             table:@"AdvancedOptions"]
+                      preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"OK"
+                                                                                       value:nil
+                                                                                       table:@"AdvancedOptions"]
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:nil];
+        [unavailableAlert addAction:action];
+        [self presentViewController:unavailableAlert animated:YES completion:nil];
+        return;
+    }
+
     UIAlertController *alert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Import from CopyVault"
                                                          value:nil
@@ -362,6 +390,7 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
         return;
     }
     _copyVaultImportInProgress = YES;
+    self.navigationController.view.userInteractionEnabled = NO;
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
@@ -370,6 +399,7 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
                                                          value:nil
                                                          table:@"AdvancedOptions"]
                         subtitle:nil];
+    [overlayView animateAppearance];
 
     NSString *updaterPath = [self kayokoUpdaterPath];
     if ([updaterPath length] == 0) {
@@ -420,7 +450,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
                                    : [mainBundle localizedStringForKey:@"The import could not be completed."
                                                                  value:nil
                                                                  table:@"AdvancedOptions"];
-            [self showCopyVaultImportFailureReason:reason requiresRespring:launched];
+            [self showCopyVaultImportFailureReason:[self localizedCopyVaultImportFailureReason:reason]
+                                  requiresRespring:launched];
           });
       }
     });
@@ -432,6 +463,7 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
         _copyVaultImportOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
     }
     if (!_copyVaultImportOverlayView.superview) {
+        _copyVaultImportOverlayView.alpha = 0.0;
         [self.view addSubview:_copyVaultImportOverlayView];
         [NSLayoutConstraint activateConstraints:@[
             [_copyVaultImportOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -440,11 +472,69 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
             [_copyVaultImportOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
         ]];
     }
-    _copyVaultImportOverlayView.alpha = 1.0;
     return _copyVaultImportOverlayView;
 }
 
+- (NSString *)localizedCopyVaultImportFailureReason:(NSString *)reason {
+    if ([reason length] == 0) {
+        return reason;
+    }
+
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *localizedReason = [bundle localizedStringForKey:reason value:reason table:@"Tweak"];
+    if (![localizedReason isEqualToString:reason]) {
+        return localizedReason;
+    }
+
+    NSArray<NSString *> *formatKeys = @[
+        @"CopyVault contains unsupported content: %@", @"CopyVault data is invalid: %@",
+        @"Unable to read CopyVault data: %@"
+    ];
+    for (NSString *formatKey in formatKeys) {
+        NSRange placeholderRange = [formatKey rangeOfString:@"%@"];
+        NSString *prefix = [formatKey substringToIndex:placeholderRange.location];
+        if (![reason hasPrefix:prefix]) {
+            continue;
+        }
+
+        NSString *detail = [reason substringFromIndex:[prefix length]];
+        NSString *localizedFormat = [bundle localizedStringForKey:formatKey value:formatKey table:@"Tweak"];
+        return [NSString stringWithFormat:localizedFormat, [self localizedCopyVaultImportFailureDetail:detail]];
+    }
+    return reason;
+}
+
+- (NSString *)localizedCopyVaultImportFailureDetail:(NSString *)detail {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *localizedDetail = [bundle localizedStringForKey:detail value:detail table:@"Tweak"];
+    if (![localizedDetail isEqualToString:detail]) {
+        return localizedDetail;
+    }
+
+    NSArray<NSString *> *formatKeys = @[
+        @"%@ contains an invalid item", @"%@ contains an invalid payload", @"%@ has no contents", @"%@ is not an array",
+        @"conflicting image %@", @"image %@ already contains different data", @"invalid %@ timestamp",
+        @"invalid item path %@", @"invalid timestamp %@"
+    ];
+    for (NSString *formatKey in formatKeys) {
+        NSRange placeholderRange = [formatKey rangeOfString:@"%@"];
+        NSString *prefix = [formatKey substringToIndex:placeholderRange.location];
+        NSString *suffix = [formatKey substringFromIndex:NSMaxRange(placeholderRange)];
+        if (![detail hasPrefix:prefix] || ![detail hasSuffix:suffix] ||
+            [detail length] < [prefix length] + [suffix length]) {
+            continue;
+        }
+
+        NSRange valueRange = NSMakeRange([prefix length], [detail length] - [prefix length] - [suffix length]);
+        NSString *value = [detail substringWithRange:valueRange];
+        NSString *localizedFormat = [bundle localizedStringForKey:formatKey value:formatKey table:@"Tweak"];
+        return [NSString stringWithFormat:localizedFormat, value];
+    }
+    return detail;
+}
+
 - (void)showCopyVaultImportSuccess {
+    self.navigationController.view.userInteractionEnabled = YES;
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
     [overlayView
@@ -455,11 +545,18 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
           actionEnabled:YES];
     __weak typeof(self) weakSelf = self;
     overlayView.tapHandler = ^{
-      [weakSelf respring];
+      [weakSelf dismissCopyVaultImportOverlayWithCompletion:^{
+        [weakSelf respring];
+      }];
     };
 }
 
 - (void)showCopyVaultImportFailureReason:(NSString *)reason requiresRespring:(BOOL)requiresRespring {
+    self.navigationController.view.userInteractionEnabled = YES;
+    if (requiresRespring) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:kKayokoNotificationKeyCopyVaultImportRequiresRestart
+                                                            object:nil];
+    }
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSString *actionMessage =
         [bundle localizedStringForKey:(requiresRespring ? @"Tap the screen to restart SpringBoard and restore Kayoko."
@@ -474,7 +571,9 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     __weak typeof(self) weakSelf = self;
     overlayView.tapHandler = ^{
       if (requiresRespring) {
-          [weakSelf respring];
+          [weakSelf dismissCopyVaultImportOverlayWithCompletion:^{
+            [weakSelf respring];
+          }];
       } else {
           [weakSelf dismissCopyVaultImportOverlay];
       }
@@ -482,11 +581,26 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 }
 
 - (void)dismissCopyVaultImportOverlay {
+    [self dismissCopyVaultImportOverlayWithCompletion:nil];
+}
+
+- (void)dismissCopyVaultImportOverlayWithCompletion:(void (^)(void))completion {
     KayokoStatusOverlayView *overlayView = _copyVaultImportOverlayView;
-    [overlayView removeFromSuperview];
-    if (_copyVaultImportOverlayView == overlayView) {
-        _copyVaultImportOverlayView = nil;
+    if (!overlayView) {
+        if (completion) {
+            completion();
+        }
+        return;
     }
+    [overlayView animateDisappearanceWithCompletion:^{
+      [overlayView removeFromSuperview];
+      if (self->_copyVaultImportOverlayView == overlayView) {
+          self->_copyVaultImportOverlayView = nil;
+      }
+      if (completion) {
+          completion();
+      }
+    }];
 }
 
 - (void)resetThumbnailCache {

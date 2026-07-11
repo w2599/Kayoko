@@ -5,12 +5,15 @@
 
 #import "KayokoStatusOverlayView.h"
 
+static NSTimeInterval const kKayokoStatusOverlayTransitionDuration = 0.25;
+
 @interface KayokoStatusOverlayView ()
 @property(nonatomic, strong) UIActivityIndicatorView *activityIndicatorView;
 @property(nonatomic, strong) UIImageView *statusImageView;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UILabel *subtitleLabel;
 @property(nonatomic, strong) UITapGestureRecognizer *actionTapRecognizer;
+@property(nonatomic, assign) BOOL hasConfiguredState;
 @end
 
 @implementation KayokoStatusOverlayView
@@ -82,11 +85,13 @@
 }
 
 - (void)setLoadingTitle:(NSString *)title subtitle:(NSString *)subtitle {
-    self.actionTapRecognizer.enabled = NO;
-    self.titleLabel.text = title;
-    self.subtitleLabel.text = [subtitle length] > 0 ? subtitle : @" ";
-    self.statusImageView.hidden = YES;
-    [self.activityIndicatorView startAnimating];
+    [self performStateTransition:^{
+      self.actionTapRecognizer.enabled = NO;
+      self.titleLabel.text = title;
+      self.subtitleLabel.text = [subtitle length] > 0 ? subtitle : @" ";
+      self.statusImageView.hidden = YES;
+      [self.activityIndicatorView startAnimating];
+    }];
 }
 
 - (void)setFailureTitle:(NSString *)title subtitle:(NSString *)subtitle actionEnabled:(BOOL)actionEnabled {
@@ -110,13 +115,64 @@
              imageName:(NSString *)imageName
              tintColor:(UIColor *)tintColor
          actionEnabled:(BOOL)actionEnabled {
-    self.actionTapRecognizer.enabled = actionEnabled;
-    self.titleLabel.text = title;
-    self.subtitleLabel.text = [subtitle length] > 0 ? subtitle : @" ";
-    [self.activityIndicatorView stopAnimating];
-    self.statusImageView.image = [UIImage systemImageNamed:imageName];
-    self.statusImageView.tintColor = tintColor;
-    self.statusImageView.hidden = NO;
+    [self performStateTransition:^{
+      self.actionTapRecognizer.enabled = actionEnabled;
+      self.titleLabel.text = title;
+      self.subtitleLabel.text = [subtitle length] > 0 ? subtitle : @" ";
+      [self.activityIndicatorView stopAnimating];
+      self.statusImageView.image = [UIImage systemImageNamed:imageName];
+      self.statusImageView.tintColor = tintColor;
+      self.statusImageView.hidden = NO;
+    }];
+}
+
+- (void)performStateTransition:(void (^)(void))changes {
+    BOOL animated = self.hasConfiguredState && self.superview;
+    self.hasConfiguredState = YES;
+    if (!animated) {
+        changes();
+        return;
+    }
+
+    [UIView transitionWithView:self
+                      duration:kKayokoStatusOverlayTransitionDuration
+                       options:UIViewAnimationOptionTransitionCrossDissolve |
+                               UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowAnimatedContent
+                    animations:changes
+                    completion:nil];
+}
+
+- (void)animateAppearance {
+    if (!self.superview || self.alpha >= 1.0) {
+        return;
+    }
+    self.userInteractionEnabled = YES;
+    [UIView transitionWithView:self.superview
+                      duration:kKayokoStatusOverlayTransitionDuration
+                       options:UIViewAnimationOptionTransitionCrossDissolve |
+                               UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowAnimatedContent
+                    animations:^{
+                      self.alpha = 1.0;
+                    }
+                    completion:nil];
+}
+
+- (void)animateDisappearanceWithCompletion:(void (^)(void))completion {
+    self.userInteractionEnabled = NO;
+    UIView *containerView = self.superview ?: self;
+    [UIView transitionWithView:containerView
+        duration:kKayokoStatusOverlayTransitionDuration
+        options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState |
+                UIViewAnimationOptionAllowAnimatedContent
+        animations:^{
+          self.alpha = 0.0;
+        }
+        completion:^(BOOL finished) {
+          (void)finished;
+          if (completion) {
+              completion();
+          }
+        }];
 }
 
 - (void)handleActionTap {

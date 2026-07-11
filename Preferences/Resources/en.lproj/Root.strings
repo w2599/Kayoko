@@ -36,6 +36,7 @@
 "Item Details" = "Item Details";
 "Item details show when an item was last captured, along with its text length or image dimensions." = "Item details show when an item was last captured, along with its text length or image dimensions.";
 "Kayoko" = "Kayoko";
+"Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko." = "Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko.";
 "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio";
 "Made with ♥ by OwnGoal Studio" = "Made with ♥ by OwnGoal Studio";
 "Maximum Amount" = "Maximum Amount";
@@ -59,6 +60,7 @@
 "Respring" = "Respring";
 "Respring Now" = "Respring Now";
 "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost." = "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost.";
+"Restart Required" = "Restart Required";
 "Save Images" = "Save Images";
 "Save Text" = "Save Text";
 "Server returned an invalid response. Tap the screen to retry: %@" = "Server returned an invalid response. Tap the screen to retry: %@";

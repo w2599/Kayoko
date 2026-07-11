@@ -36,6 +36,7 @@
 "Item Details" = "条目详情";
 "Item details show when an item was last captured, along with its text length or image dimensions." = "显示最近捕获时间，并附带文本字数或图片尺寸。";
 "Kayoko" = "Kayoko";
+"Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko." = "导入失败前 Kayoko 已进入维护模式。你需要立即重启 SpringBoard，才能继续使用 Kayoko。";
 "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko 的持续维护，来自每一位用户的购买支持。原版 GPLv3 许可允许有偿发布，本版本也延续同一份开源承诺，不加防盗版限制（DRM）。若 Kayoko 让你的日常输入更顺手，欢迎通过 Havoc 支持后续维护。\n\n「乌龙工作室」倾情献制";
 "Made with ♥ by OwnGoal Studio" = "「乌龙工作室」倾情献制";
 "Maximum Amount" = "最大数量";
@@ -59,6 +60,7 @@
 "Respring" = "注销";
 "Respring Now" = "立即重启";
 "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost." = "这会重新启动 SpringBoard，并关闭所有 App。未保存的内容可能会丢失。";
+"Restart Required" = "需要立即重启";
 "Save Images" = "保存图像";
 "Save Text" = "保存文本";
 "Server returned an invalid response. Tap the screen to retry: %@" = "服务器返回了无效的响应，轻点屏幕以重试：%@";
