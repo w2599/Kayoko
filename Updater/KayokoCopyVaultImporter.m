@@ -5,12 +5,15 @@
 
 #import "KayokoCopyVaultImporter.h"
 #import "KayokoHistoryStore.h"
+#import "KayokoImportFileStager.h"
 #import "KayokoPasteboardItem.h"
+#import "KayokoRichTextRepresentation.h"
 #import "KayokoTag.h"
 #import "KayokoTagStore.h"
 
 #import <CommonCrypto/CommonDigest.h>
 #import <ImageIO/ImageIO.h>
+#import <sys/stat.h>
 #import <math.h>
 
 static NSString *const kKayokoCopyVaultImporterErrorDomain = @"com.82flex.kayoko.copyvault-importer";
@@ -23,9 +26,10 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 @property(nonatomic, strong) NSMutableDictionary<NSString *, id> *dictionary;
 @property(nonatomic, copy) NSString *historyKey;
 @property(nonatomic, copy, nullable) NSString *categoryTitle;
-@property(nonatomic, copy, nullable) NSString *sourceUniqueIdentifier;
 @property(nonatomic, copy, nullable) NSString *imageName;
 @property(nonatomic, strong, nullable) NSData *imageData;
+@property(nonatomic, copy, nullable) NSString *richTextName;
+@property(nonatomic, strong, nullable) NSData *richTextData;
 @end
 
 @implementation KayokoCopyVaultPreparedItem
@@ -47,6 +51,7 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 @property(nonatomic, strong) KayokoTagStore *tagStore;
 @property(nonatomic, strong) NSDateFormatter *dateFormatter;
 @property(nonatomic, copy) NSDictionary<NSString *, NSString *> *categoryTitlesByIdentifier;
+@property(nonatomic, assign) NSUInteger skippedItemCount;
 - (NSString *)hexColorForCategoryTitle:(NSString *)title;
 @end
 
@@ -72,10 +77,14 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 
 #pragma mark - Import
 
-- (BOOL)runWithError:(NSError **)error {
+- (BOOL)runWithSkippedItemCount:(NSUInteger *)skippedItemCount error:(NSError **)error {
+    self.skippedItemCount = 0;
     NSFileManager *fileManager = [NSFileManager defaultManager];
     BOOL isDirectory = NO;
-    if (![fileManager fileExistsAtPath:self.sourceDirectoryPath isDirectory:&isDirectory] || !isDirectory) {
+    struct stat sourceDirectoryStat;
+    if (![fileManager fileExistsAtPath:self.sourceDirectoryPath isDirectory:&isDirectory] || !isDirectory ||
+        lstat([self.sourceDirectoryPath fileSystemRepresentation], &sourceDirectoryStat) != 0 ||
+        !S_ISDIR(sourceDirectoryStat.st_mode) || ![fileManager isReadableFileAtPath:self.sourceDirectoryPath]) {
         [self populateError:error code:1 formatKey:@"CopyVault data directory was not found." detail:nil];
         return NO;
     }
@@ -92,6 +101,8 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 
     NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *existingContentByHistoryKey =
         [[NSMutableDictionary alloc] init];
+    NSMutableDictionary<NSString *, NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *>
+        *existingItemsByHistoryKey = [[NSMutableDictionary alloc] init];
     for (NSString *historyKey in @[ kKayokoCopyVaultHistoryKey, kKayokoCopyVaultFavoritesKey ]) {
         NSError *readError = nil;
         NSArray<NSDictionary<NSString *, id> *> *items = [self.historyStore itemsForHistoryKey:historyKey
@@ -104,13 +115,17 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         }
 
         NSMutableSet<NSString *> *contents = [[NSMutableSet alloc] initWithCapacity:[items count]];
+        NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *itemsByContent =
+            [[NSMutableDictionary alloc] initWithCapacity:[items count]];
         for (NSDictionary<NSString *, id> *item in items) {
             NSString *content = [self stringValue:item[kKayokoItemKeyContent]];
             if ([content length] > 0) {
                 [contents addObject:content];
+                itemsByContent[content] = item;
             }
         }
         existingContentByHistoryKey[historyKey] = contents;
+        existingItemsByHistoryKey[historyKey] = itemsByContent;
     }
 
     NSMutableArray<KayokoCopyVaultPreparedItem *> *preparedItems = [[NSMutableArray alloc] init];
@@ -144,19 +159,20 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
                 return NO;
             }
 
+            NSString *sourceUniqueIdentifier =
+                [self normalizedUniqueIdentifier:[self stringValue:recordValue[@"unique"]]];
+            BOOL duplicateUniqueIdentifier =
+                [sourceUniqueIdentifier length] > 0 && [seenUniqueIdentifiers containsObject:sourceUniqueIdentifier];
+            if ([sourceUniqueIdentifier length] > 0) {
+                [seenUniqueIdentifiers addObject:sourceUniqueIdentifier];
+            }
+
             NSArray<KayokoCopyVaultPreparedItem *> *recordItems = [self preparedItemsForRecord:recordValue
                                                                                  sourceSection:sourceSection
                                                                                     historyKey:historyKey
                                                                                          error:error];
             if (!recordItems) {
                 return NO;
-            }
-
-            NSString *sourceUniqueIdentifier = [[recordItems firstObject] sourceUniqueIdentifier];
-            BOOL duplicateUniqueIdentifier =
-                [sourceUniqueIdentifier length] > 0 && [seenUniqueIdentifiers containsObject:sourceUniqueIdentifier];
-            if ([sourceUniqueIdentifier length] > 0) {
-                [seenUniqueIdentifiers addObject:sourceUniqueIdentifier];
             }
 
             for (KayokoCopyVaultPreparedItem *item in recordItems) {
@@ -172,7 +188,11 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
                 [seenContents addObject:content];
 
                 BOOL alreadyExists = [existingContentByHistoryKey[historyKey] containsObject:content];
+                NSDictionary<NSString *, id> *existingItem = existingItemsByHistoryKey[historyKey][content];
+                BOOL canFillRichText = [item.richTextName length] > 0 &&
+                    [[self stringValue:existingItem[kKayokoItemKeyRichTextName]] length] == 0;
                 if (!alreadyExists ||
+                    canFillRichText ||
                     ([item.imageName length] > 0 &&
                      ![fileManager fileExistsAtPath:[self.historyStore.imagesPath
                                                         stringByAppendingPathComponent:item.imageName]])) {
@@ -182,11 +202,20 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         }
     }
 
+    NSString *tagsPath = self.tagStore.tagsPath;
+    BOOL originalTagsFileExisted = [fileManager fileExistsAtPath:tagsPath];
+    NSData *originalTagsData = nil;
+    if (originalTagsFileExisted) {
+        originalTagsData = [NSData dataWithContentsOfFile:tagsPath options:0 error:error];
+        if (!originalTagsData) {
+            return NO;
+        }
+    }
+
     NSMutableArray<KayokoTag *> *tags = [self.tagStore loadTagsWithError:error];
     if (!tags) {
         return NO;
     }
-    NSArray<KayokoTag *> *originalTags = [[NSArray alloc] initWithArray:tags copyItems:YES];
     NSMutableDictionary<NSString *, KayokoTag *> *tagsByTitle = [[NSMutableDictionary alloc] init];
     for (KayokoTag *tag in tags) {
         if ([[tag title] length] > 0 && !tagsByTitle[[tag title]]) {
@@ -202,10 +231,14 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         }
             .mutableCopy;
     NSMutableDictionary<NSString *, NSData *> *imageDataByName = [[NSMutableDictionary alloc] init];
+    NSMutableDictionary<NSString *, NSData *> *richTextDataByName = [[NSMutableDictionary alloc] init];
 
     for (KayokoCopyVaultPreparedItem *item in preparedItems) {
         NSString *content = [self stringValue:item.dictionary[kKayokoItemKeyContent]];
         BOOL alreadyExists = [existingContentByHistoryKey[item.historyKey] containsObject:content];
+        NSDictionary<NSString *, id> *existingItem = existingItemsByHistoryKey[item.historyKey][content];
+        BOOL canFillRichText = [item.richTextName length] > 0 &&
+            [[self stringValue:existingItem[kKayokoItemKeyRichTextName]] length] == 0;
         if (!alreadyExists) {
             if ([item.categoryTitle length] > 0) {
                 KayokoTag *tag = tagsByTitle[item.categoryTitle];
@@ -219,6 +252,8 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
                 item.dictionary[kKayokoItemKeyTagUUID] = tag.uuid;
             }
             [itemsByHistoryKey[item.historyKey] addObject:item.dictionary];
+        } else if (canFillRichText) {
+            [itemsByHistoryKey[item.historyKey] addObject:item.dictionary];
         }
 
         if ([item.imageName length] > 0 && item.imageData) {
@@ -230,14 +265,30 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
             }
             imageDataByName[item.imageName] = item.imageData;
         }
+        if ([item.richTextName length] > 0 && item.richTextData && (!alreadyExists || canFillRichText)) {
+            NSData *existingPlannedData = richTextDataByName[item.richTextName];
+            if (existingPlannedData && ![existingPlannedData isEqualToData:item.richTextData]) {
+                [self populateInvalidDataError:error
+                                        detail:[NSString stringWithFormat:@"conflicting rich text %@",
+                                                                          item.richTextName]];
+                return NO;
+            }
+            richTextDataByName[item.richTextName] = item.richTextData;
+        }
     }
 
-    return [self commitItemsByHistoryKey:itemsByHistoryKey
-                         imageDataByName:imageDataByName
-                                    tags:tags
-                            originalTags:originalTags
-                           didChangeTags:didAddTag
-                                   error:error];
+    BOOL success = [self commitItemsByHistoryKey:itemsByHistoryKey
+                                 imageDataByName:imageDataByName
+                              richTextDataByName:richTextDataByName
+                                            tags:tags
+                                 originalTagsData:originalTagsData
+                          originalTagsFileExisted:originalTagsFileExisted
+                                   didChangeTags:didAddTag
+                                           error:error];
+    if (skippedItemCount) {
+        *skippedItemCount = self.skippedItemCount;
+    }
+    return success;
 }
 
 #pragma mark - Record Preparation
@@ -254,15 +305,22 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
     }
 
     NSDate *capturedAt = [self.dateFormatter dateFromString:time];
-    if (!capturedAt) {
+    if (!capturedAt || ![[self.dateFormatter stringFromDate:capturedAt] isEqualToString:time]) {
         [self populateInvalidDataError:error detail:[NSString stringWithFormat:@"invalid timestamp %@", time]];
         return nil;
     }
 
-    NSString *recordPath = [[self.sourceDirectoryPath stringByAppendingPathComponent:sourceSection]
+    NSString *sectionPath = [self.sourceDirectoryPath stringByAppendingPathComponent:sourceSection];
+    struct stat sectionStat;
+    if (lstat([sectionPath fileSystemRepresentation], &sectionStat) != 0 || !S_ISDIR(sectionStat.st_mode)) {
+        [self populateInvalidDataError:error
+                                detail:[NSString stringWithFormat:@"invalid item path %@", sourceSection]];
+        return nil;
+    }
+
+    NSString *recordPath = [sectionPath
         stringByAppendingPathComponent:[time stringByAppendingPathExtension:@"plist"]];
-    NSString *standardizedSectionPath = [[[self.sourceDirectoryPath stringByAppendingPathComponent:sourceSection]
-        stringByStandardizingPath] stringByAppendingString:@"/"];
+    NSString *standardizedSectionPath = [[sectionPath stringByStandardizingPath] stringByAppendingString:@"/"];
     if (![[recordPath stringByStandardizingPath] hasPrefix:standardizedSectionPath]) {
         [self populateInvalidDataError:error detail:[NSString stringWithFormat:@"invalid item path %@", time]];
         return nil;
@@ -307,7 +365,12 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
                                                                         sourceName:time
                                                                              error:error];
         if (!item) {
-            return nil;
+            if (error && *error) {
+                return nil;
+            }
+            self.skippedItemCount++;
+            contentIndex++;
+            continue;
         }
         [preparedItems addObject:item];
         contentIndex++;
@@ -326,19 +389,21 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
                                                      contentIndex:(NSUInteger)contentIndex
                                                        sourceName:(NSString *)sourceName
                                                             error:(NSError **)error {
+    (void)sourceName;
+    (void)error;
     KayokoCopyVaultImagePayload *imagePayload = [self imagePayloadFromContents:contents];
     NSString *text = imagePayload ? nil : [self textFromContents:contents];
+    KayokoRichTextRepresentation *richText = imagePayload ? nil : [self richTextRepresentationFromContents:contents];
+    if ([text length] == 0 && richText) {
+        text = [richText plainText];
+    }
     if (!imagePayload && [text length] == 0) {
-        NSArray<NSString *> *types = [[contents allKeys] sortedArrayUsingSelector:@selector(compare:)];
-        NSString *detail = [NSString stringWithFormat:@"%@ (%@)", sourceName, [types componentsJoinedByString:@", "]];
-        [self populateError:error code:3 formatKey:@"CopyVault contains unsupported content: %@" detail:detail];
         return nil;
     }
 
     KayokoCopyVaultPreparedItem *item = [[KayokoCopyVaultPreparedItem alloc] init];
     item.historyKey = historyKey;
     item.categoryTitle = categoryTitle;
-    item.sourceUniqueIdentifier = uniqueIdentifier;
 
     NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : bundleIdentifier,
@@ -359,6 +424,7 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         dictionary[kKayokoItemKeyImageName] = imageName;
         dictionary[kKayokoItemKeyImagePixelWidth] = @(imagePayload.pixelWidth);
         dictionary[kKayokoItemKeyImagePixelHeight] = @(imagePayload.pixelHeight);
+        dictionary[kKayokoItemKeyImageByteCount] = @([imagePayload.data length]);
         dictionary[kKayokoItemKeyHasLink] = @NO;
         item.imageName = imageName;
         item.imageData = imagePayload.data;
@@ -368,6 +434,13 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         dictionary[kKayokoItemKeyImagePixelWidth] = @0;
         dictionary[kKayokoItemKeyImagePixelHeight] = @0;
         dictionary[kKayokoItemKeyHasLink] = @([text hasPrefix:@"http://"] || [text hasPrefix:@"https://"]);
+        if (richText) {
+            NSString *richTextName = [richText stableFileName];
+            dictionary[kKayokoItemKeyRichTextUTI] = richText.typeIdentifier;
+            dictionary[kKayokoItemKeyRichTextName] = richTextName;
+            item.richTextName = richTextName;
+            item.richTextData = richText.data;
+        }
     }
 
     item.dictionary = dictionary;
@@ -377,34 +450,62 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 #pragma mark - Payload Selection
 
 - (KayokoCopyVaultImagePayload *)imagePayloadFromContents:(NSDictionary<NSString *, id> *)contents {
-    NSData *pngData = [self dataValueForKeys:@[ @"copyvault.public.png", @"public.png" ] inDictionary:contents];
-    NSData *jpegData = [self dataValueForKeys:@[ @"copyvault.public.jpeg", @"public.jpeg", @"public.jpg" ]
-                                 inDictionary:contents];
-    NSData *UIKitData = [self dataValueForKeys:@[ @"copyvault.com.apple.uikit.image", @"com.apple.uikit.image" ]
-                                  inDictionary:contents];
-
-    KayokoCopyVaultImagePayload *pngPayload = [self imagePayloadForData:pngData extension:@"png"];
-    if ([self imageDataHasAlpha:pngData] && pngPayload) {
-        return pngPayload;
+    KayokoCopyVaultImagePayload *nonAlphaPNG = nil;
+    for (NSString *key in @[ @"copyvault.public.png", @"public.png" ]) {
+        NSData *data = [contents[key] isKindOfClass:[NSData class]] ? contents[key] : nil;
+        KayokoCopyVaultImagePayload *payload = [self imagePayloadForData:data extension:@"png"];
+        if (!payload) {
+            continue;
+        }
+        if ([self imageDataHasAlpha:data]) {
+            return payload;
+        }
+        if (!nonAlphaPNG) {
+            nonAlphaPNG = payload;
+        }
     }
 
-    KayokoCopyVaultImagePayload *jpegPayload = [self imagePayloadForData:jpegData extension:@"jpg"];
-    if (jpegPayload) {
-        return jpegPayload;
+    for (NSString *key in @[ @"copyvault.public.jpeg", @"public.jpeg", @"public.jpg" ]) {
+        NSData *data = [contents[key] isKindOfClass:[NSData class]] ? contents[key] : nil;
+        KayokoCopyVaultImagePayload *payload = [self imagePayloadForData:data extension:@"jpg"];
+        if (payload) {
+            return payload;
+        }
     }
-    if (pngPayload) {
-        return pngPayload;
+    if (nonAlphaPNG) {
+        return nonAlphaPNG;
     }
 
-    if (UIKitData) {
-        NSString *extension =
-            [UIKitData length] >= 8 && memcmp([UIKitData bytes], "\x89PNG\r\n\x1a\n", 8) == 0 ? @"png" : @"jpg";
-        return [self imagePayloadForData:UIKitData extension:extension];
+    for (NSString *key in @[ @"copyvault.com.apple.uikit.image", @"com.apple.uikit.image" ]) {
+        NSData *data = [contents[key] isKindOfClass:[NSData class]] ? contents[key] : nil;
+        KayokoCopyVaultImagePayload *payload = [self imagePayloadForData:data extension:nil];
+        if (payload) {
+            return payload;
+        }
+    }
+    return nil;
+}
+
+- (KayokoRichTextRepresentation *)richTextRepresentationFromContents:(NSDictionary<NSString *, id> *)contents {
+    NSArray<NSString *> *types = @[ @"com.apple.flat-rtfd", @"public.rtfd", @"public.rtf", @"public.html" ];
+    for (NSString *type in types) {
+        for (NSString *key in @[ type, [@"copyvault." stringByAppendingString:type] ]) {
+            id value = contents[key];
+            if (!value) {
+                continue;
+            }
+            KayokoRichTextRepresentation *representation =
+                [KayokoRichTextRepresentation preferredRepresentationFromDictionary:@{type : value}];
+            if (representation) {
+                return representation;
+            }
+        }
     }
     return nil;
 }
 
 - (KayokoCopyVaultImagePayload *)imagePayloadForData:(NSData *)data extension:(NSString *)extension {
+    (void)extension;
     if ([data length] == 0) {
         return nil;
     }
@@ -412,17 +513,40 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
     if (!source) {
         return nil;
     }
+    CFStringRef type = CGImageSourceGetType(source);
+    NSString *detectedExtension = nil;
+    if (type && CFEqual(type, CFSTR("public.png"))) {
+        detectedExtension = @"png";
+    } else if (type && (CFEqual(type, CFSTR("public.jpeg")) || CFEqual(type, CFSTR("public.jpg")))) {
+        detectedExtension = @"jpg";
+    }
+    NSDictionary *decodeOptions = @{
+        (NSString *)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
+        (NSString *)kCGImageSourceThumbnailMaxPixelSize : @1,
+        (NSString *)kCGImageSourceShouldCacheImmediately : @YES
+    };
+    CGImageRef decodedImage = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)decodeOptions);
     NSDictionary *properties = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source, 0, NULL));
     CFRelease(source);
     NSUInteger width = [properties[(NSString *)kCGImagePropertyPixelWidth] unsignedIntegerValue];
     NSUInteger height = [properties[(NSString *)kCGImagePropertyPixelHeight] unsignedIntegerValue];
-    if (width == 0 || height == 0) {
+    NSUInteger orientation = [properties[(NSString *)kCGImagePropertyOrientation] unsignedIntegerValue];
+    if ([detectedExtension length] == 0 || !decodedImage || width == 0 || height == 0) {
+        if (decodedImage) {
+            CGImageRelease(decodedImage);
+        }
         return nil;
+    }
+    CGImageRelease(decodedImage);
+    if (orientation >= 5 && orientation <= 8) {
+        NSUInteger swappedWidth = width;
+        width = height;
+        height = swappedWidth;
     }
 
     KayokoCopyVaultImagePayload *payload = [[KayokoCopyVaultImagePayload alloc] init];
     payload.data = data;
-    payload.extension = extension;
+    payload.extension = detectedExtension;
     payload.pixelWidth = width;
     payload.pixelHeight = height;
     return payload;
@@ -448,15 +572,13 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         @"copyvault.public.url", @"public.file-url", @"copyvault.public.file-url"
     ];
     for (NSString *type in preferredTypes) {
-        NSString *value = [self stringValue:contents[type]];
+        id representation = contents[type];
+        NSString *value = [self stringValue:representation];
+        if (!value && [representation isKindOfClass:[NSData class]]) {
+            value = [[NSString alloc] initWithData:representation encoding:NSUTF8StringEncoding];
+        }
         if ([value length] > 0) {
             return value;
-        }
-    }
-    for (id value in [contents allValues]) {
-        NSString *string = [self stringValue:value];
-        if ([string length] > 0) {
-            return string;
         }
     }
     return nil;
@@ -582,84 +704,93 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
 
 - (BOOL)commitItemsByHistoryKey:(NSDictionary<NSString *, NSArray<NSDictionary<NSString *, id> *> *> *)itemsByHistoryKey
                 imageDataByName:(NSDictionary<NSString *, NSData *> *)imageDataByName
+             richTextDataByName:(NSDictionary<NSString *, NSData *> *)richTextDataByName
                            tags:(NSArray<KayokoTag *> *)tags
-                   originalTags:(NSArray<KayokoTag *> *)originalTags
+               originalTagsData:(NSData *)originalTagsData
+        originalTagsFileExisted:(BOOL)originalTagsFileExisted
                   didChangeTags:(BOOL)didChangeTags
                           error:(NSError **)error {
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSString *stagingPath = [self.historyStore.imagesPath
-        stringByAppendingPathComponent:[@".copyvault-import-" stringByAppendingString:[[NSUUID UUID] UUIDString]]];
-    if (![fileManager createDirectoryAtPath:stagingPath withIntermediateDirectories:YES attributes:nil error:error]) {
+    NSString *dataDirectoryPath = [self.historyStore.databasePath stringByDeletingLastPathComponent];
+    KayokoImportFileStager *fileStager =
+        [[KayokoImportFileStager alloc] initWithBaseDirectoryPath:dataDirectoryPath prefix:@"copyvault-import"];
+    if (![fileStager addDataByName:imageDataByName targetDirectory:self.historyStore.imagesPath error:error] ||
+        ![fileStager addDataByName:richTextDataByName
+                  targetDirectory:self.historyStore.richTextPath
+                            error:error]) {
+        NSError *rollbackError = nil;
+        if (![fileStager rollbackWithError:&rollbackError] && error) {
+            *error = rollbackError;
+        }
         return NO;
-    }
-
-    NSMutableArray<NSString *> *stagedImageNames = [[NSMutableArray alloc] init];
-    for (NSString *imageName in imageDataByName) {
-        NSString *targetPath = [self.historyStore.imagesPath stringByAppendingPathComponent:imageName];
-        NSData *targetData = [NSData dataWithContentsOfFile:targetPath];
-        if (targetData) {
-            if (![targetData isEqualToData:imageDataByName[imageName]]) {
-                [fileManager removeItemAtPath:stagingPath error:nil];
-                [self populateInvalidDataError:error
-                                        detail:[NSString stringWithFormat:@"image %@ already contains different data",
-                                                                          imageName]];
-                return NO;
-            }
-            continue;
-        }
-
-        NSString *stagedPath = [stagingPath stringByAppendingPathComponent:imageName];
-        if (![imageDataByName[imageName] writeToFile:stagedPath options:NSDataWritingAtomic error:error]) {
-            [fileManager removeItemAtPath:stagingPath error:nil];
-            return NO;
-        }
-        [stagedImageNames addObject:imageName];
     }
 
     if (didChangeTags && ![self.tagStore saveTags:tags error:error]) {
-        [fileManager removeItemAtPath:stagingPath error:nil];
+        NSError *rollbackError = nil;
+        if (![fileStager rollbackWithError:&rollbackError] && error) {
+            *error = rollbackError;
+        }
         return NO;
     }
 
-    NSMutableArray<NSString *> *movedImageNames = [[NSMutableArray alloc] init];
-    for (NSString *imageName in stagedImageNames) {
-        NSString *sourcePath = [stagingPath stringByAppendingPathComponent:imageName];
-        NSString *targetPath = [self.historyStore.imagesPath stringByAppendingPathComponent:imageName];
-        if (![fileManager moveItemAtPath:sourcePath toPath:targetPath error:error]) {
-            [self rollbackTags:originalTags didChangeTags:didChangeTags movedImages:movedImageNames];
-            [fileManager removeItemAtPath:stagingPath error:nil];
-            return NO;
+    if (![fileStager commitWithError:error]) {
+        NSError *rollbackError = nil;
+        if (![self rollbackTagsWithData:originalTagsData
+                             fileExisted:originalTagsFileExisted
+                           didChangeTags:didChangeTags
+                                   error:&rollbackError] && error) {
+            *error = rollbackError;
         }
-        [movedImageNames addObject:imageName];
+        return NO;
     }
 
     BOOL imported = [self.historyStore importItemDictionariesByHistoryKey:itemsByHistoryKey error:error];
     if (!imported) {
-        [self rollbackTags:originalTags didChangeTags:didChangeTags movedImages:movedImageNames];
-        [fileManager removeItemAtPath:stagingPath error:nil];
+        NSError *tagRollbackError = nil;
+        BOOL restoredTags = [self rollbackTagsWithData:originalTagsData
+                                           fileExisted:originalTagsFileExisted
+                                         didChangeTags:didChangeTags
+                                                 error:&tagRollbackError];
+        NSError *fileRollbackError = nil;
+        BOOL restoredFiles = [fileStager rollbackWithError:&fileRollbackError];
+        if (!restoredTags && error) {
+            *error = tagRollbackError;
+        } else if (!restoredFiles && error) {
+            *error = fileRollbackError;
+        }
         return NO;
     }
 
-    [fileManager removeItemAtPath:stagingPath error:nil];
     return YES;
 }
 
-- (void)rollbackTags:(NSArray<KayokoTag *> *)originalTags
-       didChangeTags:(BOOL)didChangeTags
-         movedImages:(NSArray<NSString *> *)movedImageNames {
-    if (didChangeTags) {
-        [self.tagStore saveTags:originalTags error:nil];
+- (BOOL)rollbackTagsWithData:(NSData *)originalTagsData
+                 fileExisted:(BOOL)fileExisted
+               didChangeTags:(BOOL)didChangeTags
+                       error:(NSError **)error {
+    if (!didChangeTags) {
+        return YES;
     }
+    if (fileExisted) {
+        return [originalTagsData writeToFile:self.tagStore.tagsPath options:NSDataWritingAtomic error:error];
+    }
+
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    for (NSString *imageName in movedImageNames) {
-        [fileManager removeItemAtPath:[self.historyStore.imagesPath stringByAppendingPathComponent:imageName]
-                                error:nil];
+    if (![fileManager fileExistsAtPath:self.tagStore.tagsPath]) {
+        return YES;
     }
+    return [fileManager removeItemAtPath:self.tagStore.tagsPath error:error];
 }
 
 #pragma mark - Values and Errors
 
 - (NSDictionary<NSString *, id> *)dictionaryPropertyListAtPath:(NSString *)path error:(NSError **)error {
+    struct stat sourceStat;
+    if (lstat([path fileSystemRepresentation], &sourceStat) == 0 && !S_ISREG(sourceStat.st_mode)) {
+        [self populateInvalidDataError:error
+                                detail:[NSString stringWithFormat:@"invalid item path %@", [path lastPathComponent]]];
+        return nil;
+    }
+
     NSData *data = [NSData dataWithContentsOfFile:path options:0 error:error];
     if (!data) {
         if (error && *error) {
@@ -682,16 +813,6 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
         return nil;
     }
     return propertyList;
-}
-
-- (NSData *)dataValueForKeys:(NSArray<NSString *> *)keys inDictionary:(NSDictionary<NSString *, id> *)dictionary {
-    for (NSString *key in keys) {
-        id value = dictionary[key];
-        if ([value isKindOfClass:[NSData class]] && [value length] > 0) {
-            return value;
-        }
-    }
-    return nil;
 }
 
 - (NSString *)stringValue:(id)value {
@@ -721,10 +842,6 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
     return result;
 }
 
-- (NSString *)localizedStringForKey:(NSString *)key {
-    return [self.tagStore.localizationBundle localizedStringForKey:key value:key table:@"Tweak"] ?: key;
-}
-
 - (void)populateInvalidDataError:(NSError **)error detail:(NSString *)detail {
     [self populateError:error code:2 formatKey:@"CopyVault data is invalid: %@" detail:detail];
 }
@@ -733,8 +850,7 @@ static NSString *const kKayokoCopyVaultFavoritesKey = @"favorites";
     if (!error) {
         return;
     }
-    NSString *format = [self localizedStringForKey:formatKey];
-    NSString *description = [detail length] > 0 ? [NSString stringWithFormat:format, detail] : format;
+    NSString *description = [detail length] > 0 ? [NSString stringWithFormat:formatKey, detail] : formatKey;
     *error = [NSError errorWithDomain:kKayokoCopyVaultImporterErrorDomain
                                  code:code
                              userInfo:@{NSLocalizedDescriptionKey : description}];

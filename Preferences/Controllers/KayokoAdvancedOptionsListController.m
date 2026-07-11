@@ -16,6 +16,7 @@
 #import <roothide.h>
 
 static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82flex.kayoko";
+static NSString *const kKayokoCopyLogDataDirectoryPath = @"/var/mobile/Library/CopyLog";
 static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documents/CopyVault";
 
 @interface NSTask : NSObject
@@ -29,12 +30,42 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
 @end
 
 @interface KayokoAdvancedOptionsListController ()
-- (NSString *)localizedCopyVaultImportFailureDetail:(NSString *)detail;
+- (NSString *)localizedExternalImportFailureDetail:(NSString *)detail;
 @end
 
 @implementation KayokoAdvancedOptionsListController {
-    KayokoStatusOverlayView *_copyVaultImportOverlayView;
-    BOOL _copyVaultImportInProgress;
+    KayokoStatusOverlayView *_externalImportOverlayView;
+    BOOL _externalImportInProgress;
+    BOOL _externalImportOverlayHiddenForNavigation;
+}
+
+#pragma mark - Lifecycle
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+
+    BOOL isLeavingNavigationStack =
+        [self isMovingFromParentViewController] || [[self navigationController] isBeingDismissed];
+    if (!isLeavingNavigationStack || _externalImportInProgress || !_externalImportOverlayView ||
+        _externalImportOverlayView.alpha <= 0.0) {
+        return;
+    }
+
+    // Keep the overlay attached so a cancelled interactive pop can fade it back in.
+    _externalImportOverlayHiddenForNavigation = YES;
+    [_externalImportOverlayView animateDisappearanceWithCompletion:nil];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+
+    if (!_externalImportOverlayHiddenForNavigation) {
+        return;
+    }
+    _externalImportOverlayHiddenForNavigation = NO;
+    if (!_externalImportInProgress && _externalImportOverlayView.superview) {
+        [_externalImportOverlayView animateAppearance];
+    }
 }
 
 #pragma mark - Specifiers
@@ -199,25 +230,52 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+- (void)importCopyLogPrompt {
+    [self presentExternalImportPromptForSourceName:kKayokoExternalImportSourceCopyLog
+                                 dataDirectoryPath:jbroot(kKayokoCopyLogDataDirectoryPath)
+                                          titleKey:@"Import from CopyLog"
+                                        messageKey:@"Kayoko will merge CopyLog snippets and favorite items with your "
+                                                    "current data. Existing Kayoko items will be kept. SpringBoard "
+                                                    "must restart when the import finishes."
+                                   loadingTitleKey:@"Importing from CopyLog…"
+                                           command:@"import-copylog"];
+}
+
 - (void)importCopyVaultPrompt {
-    if (_copyVaultImportInProgress) {
+    [self presentExternalImportPromptForSourceName:kKayokoExternalImportSourceCopyVault
+                                 dataDirectoryPath:kKayokoCopyVaultDataDirectoryPath
+                                          titleKey:@"Import from CopyVault"
+                                        messageKey:@"Kayoko will merge CopyVault history and archived items with your "
+                                                    "current data. Existing Kayoko items will be kept. SpringBoard "
+                                                    "must restart when the import finishes."
+                                   loadingTitleKey:@"Importing from CopyVault…"
+                                           command:@"import-copyvault"];
+}
+
+- (void)presentExternalImportPromptForSourceName:(NSString *)sourceName
+                               dataDirectoryPath:(NSString *)dataDirectoryPath
+                                        titleKey:(NSString *)titleKey
+                                      messageKey:(NSString *)messageKey
+                                 loadingTitleKey:(NSString *)loadingTitleKey
+                                         command:(NSString *)command {
+    if (_externalImportInProgress) {
         return;
     }
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSFileManager *fileManager = [NSFileManager defaultManager];
     BOOL isDirectory = NO;
-    BOOL directoryExists = [fileManager fileExistsAtPath:kKayokoCopyVaultDataDirectoryPath isDirectory:&isDirectory];
-    if (!directoryExists || !isDirectory || ![fileManager isReadableFileAtPath:kKayokoCopyVaultDataDirectoryPath]) {
-        UIAlertController *unavailableAlert = [UIAlertController
-            alertControllerWithTitle:[bundle localizedStringForKey:@"Data Unavailable"
-                                                             value:nil
-                                                             table:@"AdvancedOptions"]
-                             message:[bundle localizedStringForKey:
-                                                 @"The CopyVault data directory could not be found or read."
-                                                             value:nil
-                                                             table:@"AdvancedOptions"]
-                      preferredStyle:UIAlertControllerStyleAlert];
+    BOOL directoryExists = [fileManager fileExistsAtPath:dataDirectoryPath isDirectory:&isDirectory];
+    if (!directoryExists || !isDirectory || ![fileManager isReadableFileAtPath:dataDirectoryPath]) {
+        NSString *unavailableFormat = [bundle localizedStringForKey:@"The %@ data directory could not be found or read."
+                                                              value:nil
+                                                              table:@"AdvancedOptions"];
+        UIAlertController *unavailableAlert =
+            [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Data Unavailable"
+                                                                                value:nil
+                                                                                table:@"AdvancedOptions"]
+                                                message:[NSString stringWithFormat:unavailableFormat, sourceName]
+                                         preferredStyle:UIAlertControllerStyleAlert];
         UIAlertAction *action = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"OK"
                                                                                        value:nil
                                                                                        table:@"AdvancedOptions"]
@@ -229,24 +287,16 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
     }
 
     UIAlertController *alert = [UIAlertController
-        alertControllerWithTitle:[bundle localizedStringForKey:@"Import from CopyVault"
-                                                         value:nil
-                                                         table:@"AdvancedOptions"]
-                         message:[bundle localizedStringForKey:
-                                             @"Kayoko will merge CopyVault history and archived items with your "
-                                              "current data. Existing Kayoko items will be kept. SpringBoard must "
-                                              "restart when the import finishes."
-                                                         value:nil
-                                                         table:@"AdvancedOptions"]
+        alertControllerWithTitle:[bundle localizedStringForKey:titleKey value:nil table:@"AdvancedOptions"]
+                         message:[bundle localizedStringForKey:messageKey value:nil table:@"AdvancedOptions"]
                   preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *importAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Import"
-                                                                                         value:nil
-                                                                                         table:@"AdvancedOptions"]
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:^(UIAlertAction *action) {
-                                                           (void)action;
-                                                           [self importCopyVault];
-                                                         }];
+    UIAlertAction *importAction = [UIAlertAction
+        actionWithTitle:[bundle localizedStringForKey:@"Import" value:nil table:@"AdvancedOptions"]
+                  style:UIAlertActionStyleDefault
+                handler:^(UIAlertAction *action) {
+                  (void)action;
+                  [self importExternalDataSource:sourceName command:command loadingTitleKey:loadingTitleKey];
+                }];
     UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
                                                                                          value:nil
                                                                                          table:@"AdvancedOptions"]
@@ -385,29 +435,30 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
 
 #pragma mark - Maintenance Actions
 
-- (void)importCopyVault {
-    if (_copyVaultImportInProgress) {
+- (void)importExternalDataSource:(NSString *)sourceName
+                         command:(NSString *)command
+                 loadingTitleKey:(NSString *)loadingTitleKey {
+    if (_externalImportInProgress) {
         return;
     }
-    _copyVaultImportInProgress = YES;
+    _externalImportInProgress = YES;
     self.navigationController.view.userInteractionEnabled = NO;
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
+    KayokoStatusOverlayView *overlayView = [self externalImportOverlayView];
     overlayView.tapHandler = nil;
-    [overlayView setLoadingTitle:[bundle localizedStringForKey:@"Importing from CopyVault…"
-                                                         value:nil
-                                                         table:@"AdvancedOptions"]
+    [overlayView setLoadingTitle:[bundle localizedStringForKey:loadingTitleKey value:nil table:@"AdvancedOptions"]
                         subtitle:nil];
     [overlayView animateAppearance];
 
     NSString *updaterPath = [self kayokoUpdaterPath];
     if ([updaterPath length] == 0) {
-        _copyVaultImportInProgress = NO;
-        [self showCopyVaultImportFailureReason:[bundle localizedStringForKey:@"The import could not be completed."
-                                                                       value:nil
-                                                                       table:@"AdvancedOptions"]
-                              requiresRespring:NO];
+        _externalImportInProgress = NO;
+        [self showExternalImportFailureReason:[bundle localizedStringForKey:@"The import could not be completed."
+                                                                      value:nil
+                                                                      table:@"AdvancedOptions"]
+                                       source:sourceName
+                             requiresRespring:NO];
         return;
     }
 
@@ -415,67 +466,99 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
       @autoreleasepool {
           BOOL launched = NO;
           int terminationStatus = -1;
-          NSString *output = nil;
+          __block NSData *standardOutputData = nil;
+          __block NSData *standardErrorData = nil;
+          NSString *exceptionReason = nil;
           @try {
-              NSPipe *outputPipe = [NSPipe pipe];
+              NSPipe *standardOutputPipe = [NSPipe pipe];
+              NSPipe *standardErrorPipe = [NSPipe pipe];
               NSTask *task = [[NSTask alloc] init];
               [task setLaunchPath:updaterPath];
-              [task setArguments:@[ @"import-copyvault" ]];
-              [task setStandardOutput:outputPipe];
-              [task setStandardError:outputPipe];
+              [task setArguments:@[ command ]];
+              [task setStandardOutput:standardOutputPipe];
+              [task setStandardError:standardErrorPipe];
               [task launch];
               launched = YES;
 
-              NSData *outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
+              dispatch_group_t outputGroup = dispatch_group_create();
+              dispatch_group_async(outputGroup, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                standardOutputData = [[standardOutputPipe fileHandleForReading] readDataToEndOfFile];
+              });
+              dispatch_group_async(outputGroup, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                standardErrorData = [[standardErrorPipe fileHandleForReading] readDataToEndOfFile];
+              });
               [task waitUntilExit];
               terminationStatus = [task terminationStatus];
-              if ([outputData length] > 0) {
-                  output = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
-                  output = [output stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-              }
+              dispatch_group_wait(outputGroup, DISPATCH_TIME_FOREVER);
           } @catch (NSException *exception) {
-              output = [exception reason];
+              exceptionReason = [exception reason];
           }
 
           dispatch_async(dispatch_get_main_queue(), ^{
-            self->_copyVaultImportInProgress = NO;
+            self->_externalImportInProgress = NO;
             if (launched && terminationStatus == 0) {
-                [self showCopyVaultImportSuccess];
+                [self
+                    showExternalImportSuccessForSource:sourceName
+                                      skippedItemCount:[self
+                                                           skippedItemCountFromStandardOutputData:standardOutputData]];
                 return;
             }
 
+            NSString *standardError = nil;
+            if ([standardErrorData length] > 0) {
+                standardError = [[NSString alloc] initWithData:standardErrorData encoding:NSUTF8StringEncoding];
+                standardError =
+                    [standardError stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            }
             NSBundle *mainBundle = [NSBundle bundleForClass:[self class]];
-            NSString *reason = [output length] > 0
-                                   ? output
+            NSString *reason = [standardError length] > 0 ? standardError
+                               : [exceptionReason length] > 0
+                                   ? exceptionReason
                                    : [mainBundle localizedStringForKey:@"The import could not be completed."
                                                                  value:nil
                                                                  table:@"AdvancedOptions"];
-            [self showCopyVaultImportFailureReason:[self localizedCopyVaultImportFailureReason:reason]
-                                  requiresRespring:launched];
+            [self showExternalImportFailureReason:[self localizedExternalImportFailureReason:reason]
+                                           source:sourceName
+                                 requiresRespring:launched];
           });
       }
     });
 }
 
-- (KayokoStatusOverlayView *)copyVaultImportOverlayView {
-    if (!_copyVaultImportOverlayView) {
-        _copyVaultImportOverlayView = [[KayokoStatusOverlayView alloc] initWithFrame:CGRectZero];
-        _copyVaultImportOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
+- (NSUInteger)skippedItemCountFromStandardOutputData:(NSData *)standardOutputData {
+    if ([standardOutputData length] == 0) {
+        return 0;
     }
-    if (!_copyVaultImportOverlayView.superview) {
-        _copyVaultImportOverlayView.alpha = 0.0;
-        [self.view addSubview:_copyVaultImportOverlayView];
-        [NSLayoutConstraint activateConstraints:@[
-            [_copyVaultImportOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-            [_copyVaultImportOverlayView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [_copyVaultImportOverlayView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-            [_copyVaultImportOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-        ]];
+
+    NSError *error = nil;
+    id object = [NSJSONSerialization JSONObjectWithData:standardOutputData options:0 error:&error];
+    NSNumber *skippedValue = [object isKindOfClass:[NSDictionary class]] ? object[@"skipped"] : nil;
+    if (![skippedValue isKindOfClass:[NSNumber class]] || [skippedValue longLongValue] < 0) {
+        NSLog(@"Kayoko: Unable to read external import summary: %@", error ?: object);
+        return 0;
     }
-    return _copyVaultImportOverlayView;
+    return [skippedValue unsignedIntegerValue];
 }
 
-- (NSString *)localizedCopyVaultImportFailureReason:(NSString *)reason {
+- (KayokoStatusOverlayView *)externalImportOverlayView {
+    if (!_externalImportOverlayView) {
+        _externalImportOverlayView = [[KayokoStatusOverlayView alloc] initWithFrame:CGRectZero];
+        _externalImportOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
+    }
+    if (!_externalImportOverlayView.superview) {
+        _externalImportOverlayView.alpha = 0.0;
+        [self.view addSubview:_externalImportOverlayView];
+        [NSLayoutConstraint activateConstraints:@[
+            [_externalImportOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [_externalImportOverlayView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [_externalImportOverlayView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [_externalImportOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    }
+    return _externalImportOverlayView;
+}
+
+- (NSString *)localizedExternalImportFailureReason:(NSString *)reason {
     if ([reason length] == 0) {
         return reason;
     }
@@ -487,6 +570,7 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
     }
 
     NSArray<NSString *> *formatKeys = @[
+        @"CopyLog data is invalid: %@", @"Unable to read CopyLog data: %@",
         @"CopyVault contains unsupported content: %@", @"CopyVault data is invalid: %@",
         @"Unable to read CopyVault data: %@"
     ];
@@ -499,12 +583,12 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
 
         NSString *detail = [reason substringFromIndex:[prefix length]];
         NSString *localizedFormat = [bundle localizedStringForKey:formatKey value:formatKey table:@"Tweak"];
-        return [NSString stringWithFormat:localizedFormat, [self localizedCopyVaultImportFailureDetail:detail]];
+        return [NSString stringWithFormat:localizedFormat, [self localizedExternalImportFailureDetail:detail]];
     }
-    return reason;
+    return [self localizedExternalImportFailureDetail:reason];
 }
 
-- (NSString *)localizedCopyVaultImportFailureDetail:(NSString *)detail {
+- (NSString *)localizedExternalImportFailureDetail:(NSString *)detail {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSString *localizedDetail = [bundle localizedStringForKey:detail value:detail table:@"Tweak"];
     if (![localizedDetail isEqualToString:detail]) {
@@ -512,9 +596,10 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
     }
 
     NSArray<NSString *> *formatKeys = @[
-        @"%@ contains an invalid item", @"%@ contains an invalid payload", @"%@ has no contents", @"%@ is not an array",
-        @"conflicting image %@", @"image %@ already contains different data", @"invalid %@ timestamp",
-        @"invalid item path %@", @"invalid timestamp %@"
+        @"%@ contains an invalid item", @"%@ contains an invalid payload", @"%@ has no contents", @"%@ has no items",
+        @"%@ is not an array", @"%@ is not readable", @"conflicting image %@", @"conflicting rich text %@",
+        @"image %@ already contains different data", @"invalid %@ timestamp", @"invalid item path %@",
+        @"invalid timestamp %@", @"Imported file %@ already contains different data."
     ];
     for (NSString *formatKey in formatKeys) {
         NSRange placeholderRange = [formatKey rangeOfString:@"%@"];
@@ -533,35 +618,52 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
     return detail;
 }
 
-- (void)showCopyVaultImportSuccess {
+- (void)showExternalImportSuccessForSource:(NSString *)sourceName skippedItemCount:(NSUInteger)skippedItemCount {
     self.navigationController.view.userInteractionEnabled = YES;
     [[NSNotificationCenter defaultCenter]
-        postNotificationName:kKayokoNotificationKeyCopyVaultImportRequiresRestart
+        postNotificationName:kKayokoNotificationKeyExternalImportRequiresRestart
                       object:nil
-                    userInfo:@{kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded : @YES}];
+                    userInfo:@{
+                        kKayokoNotificationUserInfoKeyExternalImportSucceeded : @YES,
+                        kKayokoNotificationUserInfoKeyExternalImportSource : sourceName
+                    }];
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
-    [overlayView
-        setSuccessTitle:[bundle localizedStringForKey:@"Import Complete" value:nil table:@"AdvancedOptions"]
-               subtitle:[bundle localizedStringForKey:@"Tap the screen to restart SpringBoard and finish importing."
-                                                value:nil
-                                                table:@"AdvancedOptions"]
-          actionEnabled:YES];
+    NSString *restartMessage = [bundle localizedStringForKey:@"Tap the screen to restart SpringBoard and finish "
+                                                              "importing."
+                                                       value:nil
+                                                       table:@"AdvancedOptions"];
+    NSString *subtitle = restartMessage;
+    if (skippedItemCount > 0) {
+        NSString *summaryKey = skippedItemCount == 1 ? @"%lu unsupported item was not imported."
+                                                     : @"%lu unsupported items were not imported.";
+        NSString *summaryFormat = [bundle localizedStringForKey:summaryKey value:nil table:@"AdvancedOptions"];
+        NSString *summary = [NSString stringWithFormat:summaryFormat, (unsigned long)skippedItemCount];
+        subtitle = [NSString stringWithFormat:@"%@\n\n%@", summary, restartMessage];
+    }
+    KayokoStatusOverlayView *overlayView = [self externalImportOverlayView];
+    [overlayView setSuccessTitle:[bundle localizedStringForKey:@"Import Complete" value:nil table:@"AdvancedOptions"]
+                        subtitle:subtitle
+                   actionEnabled:YES];
     __weak typeof(self) weakSelf = self;
     overlayView.tapHandler = ^{
-      [weakSelf dismissCopyVaultImportOverlayWithCompletion:^{
+      [weakSelf dismissExternalImportOverlayWithCompletion:^{
         [weakSelf respring];
       }];
     };
 }
 
-- (void)showCopyVaultImportFailureReason:(NSString *)reason requiresRespring:(BOOL)requiresRespring {
+- (void)showExternalImportFailureReason:(NSString *)reason
+                                 source:(NSString *)sourceName
+                       requiresRespring:(BOOL)requiresRespring {
     self.navigationController.view.userInteractionEnabled = YES;
     if (requiresRespring) {
         [[NSNotificationCenter defaultCenter]
-            postNotificationName:kKayokoNotificationKeyCopyVaultImportRequiresRestart
+            postNotificationName:kKayokoNotificationKeyExternalImportRequiresRestart
                           object:nil
-                        userInfo:@{kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded : @NO}];
+                        userInfo:@{
+                            kKayokoNotificationUserInfoKeyExternalImportSucceeded : @NO,
+                            kKayokoNotificationUserInfoKeyExternalImportSource : sourceName
+                        }];
     }
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSString *actionMessage =
@@ -570,28 +672,28 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
                                 value:nil
                                 table:@"AdvancedOptions"];
     NSString *subtitle = [NSString stringWithFormat:@"%@\n\n%@", reason, actionMessage];
-    KayokoStatusOverlayView *overlayView = [self copyVaultImportOverlayView];
+    KayokoStatusOverlayView *overlayView = [self externalImportOverlayView];
     [overlayView setFailureTitle:[bundle localizedStringForKey:@"Unable to Import" value:nil table:@"AdvancedOptions"]
                         subtitle:subtitle
                    actionEnabled:YES];
     __weak typeof(self) weakSelf = self;
     overlayView.tapHandler = ^{
       if (requiresRespring) {
-          [weakSelf dismissCopyVaultImportOverlayWithCompletion:^{
+          [weakSelf dismissExternalImportOverlayWithCompletion:^{
             [weakSelf respring];
           }];
       } else {
-          [weakSelf dismissCopyVaultImportOverlay];
+          [weakSelf dismissExternalImportOverlay];
       }
     };
 }
 
-- (void)dismissCopyVaultImportOverlay {
-    [self dismissCopyVaultImportOverlayWithCompletion:nil];
+- (void)dismissExternalImportOverlay {
+    [self dismissExternalImportOverlayWithCompletion:nil];
 }
 
-- (void)dismissCopyVaultImportOverlayWithCompletion:(void (^)(void))completion {
-    KayokoStatusOverlayView *overlayView = _copyVaultImportOverlayView;
+- (void)dismissExternalImportOverlayWithCompletion:(void (^)(void))completion {
+    KayokoStatusOverlayView *overlayView = _externalImportOverlayView;
     if (!overlayView) {
         if (completion) {
             completion();
@@ -600,8 +702,8 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
     }
     [overlayView animateDisappearanceWithCompletion:^{
       [overlayView removeFromSuperview];
-      if (self->_copyVaultImportOverlayView == overlayView) {
-          self->_copyVaultImportOverlayView = nil;
+      if (self->_externalImportOverlayView == overlayView) {
+          self->_externalImportOverlayView = nil;
       }
       if (completion) {
           completion();

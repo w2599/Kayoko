@@ -39,7 +39,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoRootListController () <UISearchResultsUpdating>
-- (void)presentCopyVaultImportRestartReminderIfNeeded;
+- (void)presentExternalImportRestartReminderIfNeeded;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -56,8 +56,9 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     KayokoStatusOverlayView *_authorizationOverlayView;
     BOOL _authorizationCheckInProgress;
     NSUInteger _authorizationCheckGeneration;
-    BOOL _copyVaultImportRestartReminderPending;
-    BOOL _copyVaultImportRestartReminderSucceeded;
+    BOOL _externalImportRestartReminderPending;
+    BOOL _externalImportRestartReminderSucceeded;
+    NSString *_externalImportRestartReminderSource;
 }
 
 #pragma mark - Lifecycle
@@ -82,8 +83,8 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
                                                  name:UIApplicationWillEnterForegroundNotification
                                                object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(copyVaultImportRequiresRestart:)
-                                                 name:kKayokoNotificationKeyCopyVaultImportRequiresRestart
+                                             selector:@selector(externalImportRequiresRestart:)
+                                                 name:kKayokoNotificationKeyExternalImportRequiresRestart
                                                object:nil];
 }
 
@@ -187,30 +188,45 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [[self navigationController] setToolbarHidden:YES animated:animated];
-    [self presentCopyVaultImportRestartReminderIfNeeded];
+    [self presentExternalImportRestartReminderIfNeeded];
 }
 
-- (void)copyVaultImportRequiresRestart:(NSNotification *)notification {
-    _copyVaultImportRestartReminderPending = YES;
-    _copyVaultImportRestartReminderSucceeded =
-        [notification.userInfo[kKayokoNotificationUserInfoKeyCopyVaultImportSucceeded] boolValue];
+- (void)externalImportRequiresRestart:(NSNotification *)notification {
+    _externalImportRestartReminderPending = YES;
+    _externalImportRestartReminderSucceeded =
+        [notification.userInfo[kKayokoNotificationUserInfoKeyExternalImportSucceeded] boolValue];
+    NSString *source = notification.userInfo[kKayokoNotificationUserInfoKeyExternalImportSource];
+    _externalImportRestartReminderSource = [source isKindOfClass:[NSString class]] ? [source copy] : nil;
 }
 
-- (void)presentCopyVaultImportRestartReminderIfNeeded {
-    if (!_copyVaultImportRestartReminderPending || self.presentedViewController) {
+- (void)presentExternalImportRestartReminderIfNeeded {
+    if (!_externalImportRestartReminderPending || self.presentedViewController) {
         return;
     }
-    _copyVaultImportRestartReminderPending = NO;
+    _externalImportRestartReminderPending = NO;
 
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    NSString *messageKey = _copyVaultImportRestartReminderSucceeded
-                               ? @"CopyVault data was imported successfully. Restart SpringBoard now to finish the "
-                                  "import and continue using Kayoko."
-                               : @"Kayoko entered maintenance mode before the import failed. Restart SpringBoard now "
-                                  "to continue using Kayoko.";
+    NSString *message = nil;
+    if (_externalImportRestartReminderSucceeded && [_externalImportRestartReminderSource length] > 0) {
+        NSString *format = [bundle localizedStringForKey:@"%@ data was imported successfully. Restart SpringBoard "
+                                                          "now to finish the import and continue using Kayoko."
+                                                   value:nil
+                                                   table:@"Root"];
+        message = [NSString stringWithFormat:format, _externalImportRestartReminderSource];
+    } else if (_externalImportRestartReminderSucceeded) {
+        message = [bundle localizedStringForKey:@"The data was imported successfully. Restart SpringBoard now to "
+                                                 "finish the import and continue using Kayoko."
+                                          value:nil
+                                          table:@"Root"];
+    } else {
+        message = [bundle localizedStringForKey:@"Kayoko entered maintenance mode before the import failed. Restart "
+                                                 "SpringBoard now to continue using Kayoko."
+                                          value:nil
+                                          table:@"Root"];
+    }
     UIAlertController *alert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Restart Required" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:messageKey value:nil table:@"Root"]
+                         message:message
                   preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction *restartAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
                                                                                           value:nil

@@ -18,6 +18,7 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 
 @property(nonatomic, copy, readonly) NSString *databasePath;
 @property(nonatomic, copy, readonly) NSString *imagesPath;
+@property(nonatomic, copy, readonly) NSString *richTextPath;
 @property(nonatomic, assign, readonly) KayokoHistoryStoreLockingMode lockingMode;
 @property(nonatomic, assign, readonly) NSInteger busyTimeoutMilliseconds;
 

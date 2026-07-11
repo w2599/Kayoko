@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoTableViewCellContentProvider ()
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
 @property(nonatomic, strong) NSRelativeDateTimeFormatter *relativeDateTimeFormatter;
+@property(nonatomic, strong) NSByteCountFormatter *byteCountFormatter;
 @property(nonatomic, strong) NSCache<NSString *, NSNumber *> *characterCountCache;
 @end
 
@@ -35,6 +36,8 @@ NS_ASSUME_NONNULL_END
         if ([localizationIdentifier length] > 0) {
             [_relativeDateTimeFormatter setLocale:[[NSLocale alloc] initWithLocaleIdentifier:localizationIdentifier]];
         }
+        _byteCountFormatter = [[NSByteCountFormatter alloc] init];
+        [_byteCountFormatter setCountStyle:NSByteCountFormatterCountStyleFile];
         _characterCountCache = [[NSCache alloc] init];
         [_characterCountCache setCountLimit:256];
     }
@@ -132,7 +135,7 @@ NS_ASSUME_NONNULL_END
         isImage ? itemDetailsMode != kKayokoItemDetailsModeOff : itemDetailsMode == kKayokoItemDetailsModeAll;
     [content setShowsDetail:showsDetail];
     if (showsDetail) {
-        NSMutableArray<NSString *> *detailComponents = [[NSMutableArray alloc] initWithCapacity:2];
+        NSMutableArray<NSString *> *detailComponents = [[NSMutableArray alloc] initWithCapacity:3];
         if ([item capturedAt]) {
             [detailComponents addObject:[self relativeTimeTextForDate:[item capturedAt]]];
         }
@@ -141,6 +144,10 @@ NS_ASSUME_NONNULL_END
                 [detailComponents
                     addObject:[NSString stringWithFormat:@"%lu×%lu", (unsigned long)[item imagePixelWidth],
                                                          (unsigned long)[item imagePixelHeight]]];
+            }
+            if ([item imageByteCount] > 0) {
+                [detailComponents
+                    addObject:[self.byteCountFormatter stringFromByteCount:(long long)[item imageByteCount]]];
             }
         } else {
             NSUInteger characterCount = [self visibleCharacterCountForText:[item content] ?: @""];

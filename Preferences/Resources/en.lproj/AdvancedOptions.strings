@@ -21,8 +21,11 @@
 "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices.";
 "Import" = "Import";
 "Import Complete" = "Import Complete";
+"Import from CopyLog" = "Import from CopyLog";
 "Import from CopyVault" = "Import from CopyVault";
+"Importing from CopyLog…" = "Importing from CopyLog…";
 "Importing from CopyVault…" = "Importing from CopyVault…";
+"Kayoko will merge CopyLog snippets and favorite items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko will merge CopyLog snippets and favorite items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes.";
 "Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes.";
 "Maintenance" = "Maintenance";
 "OK" = "OK";
@@ -35,11 +38,14 @@
 "Tap the screen to close." = "Tap the screen to close.";
 "Tap the screen to restart SpringBoard and finish importing." = "Tap the screen to restart SpringBoard and finish importing.";
 "Tap the screen to restart SpringBoard and restore Kayoko." = "Tap the screen to restart SpringBoard and restore Kayoko.";
+"The %@ data directory could not be found or read." = "The %@ data directory could not be found or read.";
 "The CopyVault data directory could not be found or read." = "The CopyVault data directory could not be found or read.";
 "The import could not be completed." = "The import could not be completed.";
 "Unable to Deactivate" = "Unable to Deactivate";
 "Unable to Import" = "Unable to Import";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Unable to Restore Tags" = "Unable to Restore Tags";
+"%lu unsupported item was not imported." = "%lu unsupported item was not imported.";
+"%lu unsupported items were not imported." = "%lu unsupported items were not imported.";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable.";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.";
