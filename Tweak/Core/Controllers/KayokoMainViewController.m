@@ -185,6 +185,9 @@ NS_ASSUME_NONNULL_END
         [_previewViewController setTagAssignmentHandler:^(KayokoPasteboardItem *item, NSString *historyKey) {
           [weakSelf handleTagAssignmentForItem:item historyKey:historyKey];
         }];
+        [_previewViewController setHapticFeedbackHandler:^(UIImpactFeedbackStyle style) {
+          [[weakSelf panelPresentationController] triggerHapticFeedbackWithStyle:style];
+        }];
         [self addChildViewController:_previewViewController];
         KayokoHeaderView *previewHeaderView = [[_previewViewController previewView] headerView];
         [_mainView installFullContentView:[_previewViewController previewView] headerView:previewHeaderView hidden:YES];
