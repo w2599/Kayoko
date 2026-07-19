@@ -478,6 +478,9 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
 - (void)reloadDataWithItems:(NSArray *)items {
     NSArray *safeItems = items ?: @[];
     [self setAllItems:safeItems];
+    CGPoint previousContentOffset = [self contentOffset];
+    BOOL shouldRestoreContentOffset = ([self contentSize].height > [self bounds].size.height) &&
+                                      (previousContentOffset.y > -[self adjustedContentInset].top);
 
     // 刷新数据时，重置搜索状态。
     if ([self searchBar]) {
@@ -493,6 +496,18 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
     // 允许再次“下拉出现”。
     [self setDidHideSearchHeader:NO];
     [self hideSearchHeaderIfNeededAnimated:NO];
+
+    if (shouldRestoreContentOffset) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self layoutIfNeeded];
+            CGFloat minimumOffsetY = -[self adjustedContentInset].top;
+            CGFloat maximumOffsetY = MAX(minimumOffsetY,
+                                         [self contentSize].height - [self bounds].size.height +
+                                             [self adjustedContentInset].bottom);
+            CGFloat restoredOffsetY = MIN(MAX(previousContentOffset.y, minimumOffsetY), maximumOffsetY);
+            [self setContentOffset:CGPointMake(previousContentOffset.x, restoredOffsetY) animated:NO];
+        });
+    }
 }
 
 - (void)removeItemDictionaryFromAllItems:(NSDictionary *)dictionary {
