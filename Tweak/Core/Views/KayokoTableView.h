@@ -24,7 +24,7 @@
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL showRecordedTime;
 
-- (instancetype)initWithName:(NSString *)name;
+- (instancetype)initWithName:(NSString *)name rowHeight:(CGFloat)rowHeight;
 - (void)reloadDataWithItems:(NSArray *)items;
 - (UIContextualAction *)tokenSelectionActionForItem:(PasteboardItem *)item;
 

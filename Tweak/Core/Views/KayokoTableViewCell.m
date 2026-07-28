@@ -10,7 +10,9 @@
 #import "PasteboardManager.h"
 #import <substrate.h>
 
-@interface KayokoTableViewCell ()
+@interface KayokoTableViewCell () {
+    CGFloat _rowHeight;
+}
 @property(nonatomic, assign) BOOL showRecordedTime;
 @property(nonatomic, assign) BOOL itemHasImage;
 @property(nonatomic, copy) NSString *itemContentText;
@@ -53,10 +55,12 @@
                       andItem:(PasteboardItem *)item
           showRecordedTime:(BOOL)showRecordedTime
                historyKey:(NSString *)historyKey
-              reuseIdentifier:(NSString *)reuseIdentifier {
+              reuseIdentifier:(NSString *)reuseIdentifier
+              rowHeight:(CGFloat)rowHeight {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
+        _rowHeight = rowHeight;
         [self configureStaticSubviews];
         [self configureWithItem:item showRecordedTime:showRecordedTime historyKey:historyKey];
     }
@@ -70,7 +74,7 @@
     [self setIconImageView:[[UIImageView alloc] init]];
     [[self iconImageView] setContentMode:UIViewContentModeScaleAspectFit];
     [[self iconImageView] setClipsToBounds:YES];
-    [[[self iconImageView] layer] setCornerRadius:10];
+    [[[self iconImageView] layer] setCornerRadius:kKayokoCornerRadius];
     [[self iconImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
     [self addSubview:[self iconImageView]];
 
@@ -88,7 +92,7 @@
 
     [self setRemarkContainer:[[UIView alloc] init]];
     [[self remarkContainer] setBackgroundColor:[[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.15]];
-    [[[self remarkContainer] layer] setCornerRadius:6];
+    [[[self remarkContainer] layer] setCornerRadius:kKayokoCornerRadius];
     [[[self remarkContainer] layer] setMasksToBounds:NO];
     [[[self remarkContainer] layer] setShadowColor:[[UIColor blackColor] colorWithAlphaComponent:0.12].CGColor];
     [[[self remarkContainer] layer] setShadowOffset:CGSizeMake(0, 0.5)];
@@ -109,7 +113,7 @@
     [self setContentImageView:[[UIImageView alloc] init]];
     [[self contentImageView] setContentMode:UIViewContentModeScaleAspectFill];
     [[self contentImageView] setClipsToBounds:YES];
-    [[[self contentImageView] layer] setCornerRadius:4];
+    [[[self contentImageView] layer] setCornerRadius:kKayokoCornerRadius - 2.0];
     [[self contentImageView] setHidden:YES];
     [[self contentImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
     [self addSubview:[self contentImageView]];
@@ -124,29 +128,30 @@
 
     [self setRemarkWidthConstraint:[[[self remarkContainer] widthAnchor] constraintEqualToConstant:0]];
     [self setHeaderTrailingToRemarkConstraint:[[[self headerLabel] trailingAnchor] constraintEqualToAnchor:[[self remarkContainer] leadingAnchor]
-                                                                                                 constant:-12]];
+                                                                                                 constant:-kKayokoMargin]];
     [self setHeaderTrailingToEdgeConstraint:[[[self headerLabel] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]
-                                                                                               constant:-16]];
+                                                                                               constant:-kKayokoMargin]];
     [self setContentTrailingToRemarkConstraint:[[[self contentImageView] trailingAnchor] constraintEqualToAnchor:[[self remarkContainer] leadingAnchor]
-                                                                                                           constant:-12]];
+                                                                                                           constant:-kKayokoMargin]];
     [self setContentTrailingToEdgeConstraint:[[[self contentImageView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]
-                                                                                                         constant:-16]];
+                                                                                                         constant:-kKayokoMargin]];
 
+    CGFloat KayokoHeightAnchor = _rowHeight - 4.0; // Adjust for top and bottom padding
     [NSLayoutConstraint activateConstraints:@[
-        [[[self iconImageView] widthAnchor] constraintEqualToConstant:40],
-        [[[self iconImageView] heightAnchor] constraintEqualToConstant:40],
+        [[[self iconImageView] widthAnchor] constraintEqualToConstant:KayokoHeightAnchor],
+        [[[self iconImageView] heightAnchor] constraintEqualToConstant:KayokoHeightAnchor],
         [[[self iconImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
-        [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:24],
+        [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:kKayokoMargin],
 
-        [[[self iconTimeLabel] widthAnchor] constraintEqualToConstant:52],
-        [[[self iconTimeLabel] heightAnchor] constraintEqualToAnchor:[[self iconImageView] heightAnchor]],
+        [[[self iconTimeLabel] widthAnchor] constraintEqualToConstant:_rowHeight],
+        [[[self iconTimeLabel] heightAnchor] constraintEqualToConstant:KayokoHeightAnchor],
         [[[self iconTimeLabel] centerYAnchor] constraintEqualToAnchor:[[self iconImageView] centerYAnchor]],
         [[[self iconTimeLabel] centerXAnchor] constraintEqualToAnchor:[[self iconImageView] centerXAnchor]],
 
         [self remarkWidthConstraint],
-        [[[self remarkContainer] heightAnchor] constraintEqualToConstant:40],
+        [[[self remarkContainer] heightAnchor] constraintEqualToConstant:KayokoHeightAnchor],
         [[[self remarkContainer] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
-        [[[self remarkContainer] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-24],
+        [[[self remarkContainer] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-kKayokoMargin],
 
         [[[self remarkLabel] topAnchor] constraintEqualToAnchor:[[self remarkContainer] topAnchor] constant:4],
         [[[self remarkLabel] bottomAnchor] constraintEqualToAnchor:[[self remarkContainer] bottomAnchor] constant:-4],
@@ -154,11 +159,13 @@
         [[[self remarkLabel] trailingAnchor] constraintEqualToAnchor:[[self remarkContainer] trailingAnchor] constant:-4],
 
         [[[self headerLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
-        [[[self headerLabel] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor] constant:12],
+        [[[self headerLabel] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor] constant:kKayokoMargin],
 
-        [[[self contentImageView] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor] constant:12],
-        [[[self contentImageView] topAnchor] constraintEqualToAnchor:[self topAnchor] constant:8],
-        [[[self contentImageView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor] constant:-8]
+        [[[self contentImageView] heightAnchor] constraintEqualToConstant:KayokoHeightAnchor],
+        [[[self contentImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
+        [[[self contentImageView] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor] constant:kKayokoMargin],
+        [[[self contentImageView] topAnchor] constraintEqualToAnchor:[self topAnchor] constant:4],
+        [[[self contentImageView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor] constant:-4]
     ]];
 
     [[self headerTrailingToEdgeConstraint] setActive:YES];

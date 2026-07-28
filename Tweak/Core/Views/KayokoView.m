@@ -28,7 +28,6 @@ static CGFloat const kKayokoSegmentedMultiplier = 0.39; // 切换按钮宽度比
 static CGFloat const kKayokoSecondaryHeaderButtonAlpha = 0.75; // 次级头部按钮透明度
 static CGFloat const kKayokoHideTranslationMultiplier = 1.0; // 收起时向下滑动的距离比例
 static NSTimeInterval const kKayokoAnimationDuration = 0.08; // 收起动画时长
-static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
 
 @interface KayokoView ()
 @property(nonatomic, strong) UIView *edgeIndicatorView;
@@ -275,7 +274,7 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
  *
  * @param frame
  */
-- (instancetype)initWithFrame:(CGRect)frame {
+- (instancetype)initWithFrame:(CGRect)frame rowHeight:(CGFloat)rowHeight {
     self = [super initWithFrame:frame];
 
     if (self) {
@@ -405,6 +404,9 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
 
         [[self clearButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
 
+        // 计算按钮边距
+        CGFloat kKayokoButtonAnchor = (rowHeight - 3.0) / 2.0;
+
         [NSLayoutConstraint activateConstraints:@[
             [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self headerView] centerYAnchor]],
             [[[self clearButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor] constant:kKayokoButtonAnchor]
@@ -466,10 +468,11 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
         [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:[[PasteboardManager localizationBundle]
                                                                                    localizedStringForKey:@"History"
                                                                                                    value:nil
-                                                                                                   table:@"Tweak"]]];
+                                                                                                   table:@"Tweak"]
+                                                                     rowHeight:rowHeight]];
 
         // Match header height to list item height.
-        [[self headerHeightConstraint] setConstant:[[self historyTableView] rowHeight]];
+        [[self headerHeightConstraint] setConstant:rowHeight];
 
         [self addSubview:[self historyTableView]];
 
@@ -481,11 +484,11 @@ static CGFloat const kKayokoButtonAnchor = 32.0; // 按钮边距
             [[[self historyTableView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
-        [self
-            setFavoritesTableView:[[KayokoFavoritesTableView alloc] initWithName:[[PasteboardManager localizationBundle]
+        [self setFavoritesTableView:[[KayokoFavoritesTableView alloc] initWithName:[[PasteboardManager localizationBundle]
                                                                                      localizedStringForKey:@"Favorites"
                                                                                                      value:nil
-                                                                                                     table:@"Tweak"]]];
+                                                                                                     table:@"Tweak"]
+                                                                     rowHeight:rowHeight]];
         // 默认展示历史：历史可见、收藏隐藏
         [[self favoritesTableView] setHidden:YES];
         [self addSubview:[self favoritesTableView]];

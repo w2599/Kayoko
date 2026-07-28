@@ -31,7 +31,8 @@
 "Play Sound Effects" = "播放声音效果";
 "Play Haptic Feedback" = "播放触觉反馈";
 "Appearance" = "外观";
-"Height (Points)" = "高度";
+"Height (Points)" = "界面高度";
+"Row Height (Points)" = "列表行高";
 "Try out your changes by typing, copying and pasting text." = "尝试输入、拷贝和粘贴文本以查看效果。";
 "Wishing on a star…" = "在星星上许个愿…";
 "Tools" = "工具";

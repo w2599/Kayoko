@@ -24,6 +24,7 @@ OBJC_EXTERN BOOL kayokoPrefsShowRecordedTimeInFavorites;
 OBJC_EXTERN BOOL kayokoPrefsPlaySoundEffects;
 OBJC_EXTERN BOOL kayokoPrefsPlayHapticFeedback;
 OBJC_EXTERN CGFloat kayokoPrefsHeightInPoints;
+OBJC_EXTERN CGFloat kayokoPrefsTableViewRowHeight;
 
 OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
 

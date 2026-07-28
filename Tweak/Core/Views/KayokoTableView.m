@@ -12,7 +12,6 @@
 
 #import <objc/runtime.h>
 
-static CGFloat const kKayokoTableViewRowHeight = 46.6;
 static CGFloat const kKayokoSearchBarHeight = 44.0;
 
 @interface KayokoTableView ()
@@ -65,7 +64,8 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
                                                                    andItem:item
                                                           showRecordedTime:[self showRecordedTime]
                                                                 historyKey:[self historyKey]
-                                                            reuseIdentifier:@"KayokoTableViewCell"];
+                                                            reuseIdentifier:@"KayokoTableViewCell"
+                                                            rowHeight:[self rowHeight]];
     UILongPressGestureRecognizer *gesture =
         [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPressGestureRecognizer:)];
     [cell addGestureRecognizer:gesture];
@@ -299,7 +299,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
  *
  * @param name The associated name with the table view that's displayed on the main view.
  */
-- (instancetype)initWithName:(NSString *)name {
+- (instancetype)initWithName:(NSString *)name rowHeight:(CGFloat)rowHeight {
     self = [super init];
 
     if (self) {
@@ -307,8 +307,7 @@ static CGFloat const kKayokoSearchBarHeight = 44.0;
         [self setDelegate:self];
         [self setDataSource:self];
         [self setBackgroundColor:[UIColor clearColor]];
-        [self setRowHeight:kKayokoTableViewRowHeight];
-
+        [self setRowHeight:rowHeight];
         [self configureSearchBarIfNeeded];
     }
 

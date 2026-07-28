@@ -44,6 +44,7 @@ BOOL kayokoPrefsPlaySoundEffects = NO;
 BOOL kayokoPrefsPlayHapticFeedback = NO;
 
 CGFloat kayokoPrefsHeightInPoints = 420;
+CGFloat kayokoPrefsTableViewRowHeight = 54.0;
 
 
 static NSTimeInterval lastPasteFeedbackOccurred = 0;
@@ -392,7 +393,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
     if (!kayokoView) {
         CGFloat panelWidth = KayokoPanelWidthForWindow((UIWindow *)self);
         CGFloat panelHeight = KayokoPanelHeightForWindow((UIWindow *)self);
-        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, 0, panelWidth, panelHeight)];
+        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, 0, panelWidth, panelHeight) rowHeight:kayokoPrefsTableViewRowHeight];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [kayokoView setAlwaysShowFavoritesOnShow:kayokoPrefsAlwaysShowFavoritesOnShow];
         [kayokoView setShowRecordedTimeInHistory:kayokoPrefsShowRecordedTimeInHistory];
@@ -601,6 +602,7 @@ static void load_preferences() {
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
         kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
+        kPreferenceKeyTableViewRowHeight : @(kPreferenceKeyTableViewRowHeightDefaultValue)
     };
 
     NSMutableDictionary *effectivePreferences = [defaultPreferences mutableCopy];
@@ -636,6 +638,7 @@ static void load_preferences() {
     kayokoPrefsPlaySoundEffects = [effectivePreferences[kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [effectivePreferences[kPreferenceKeyPlayHapticFeedback] boolValue];
     kayokoPrefsHeightInPoints = [effectivePreferences[kPreferenceKeyHeightInPoints] doubleValue];
+    kayokoPrefsTableViewRowHeight = [effectivePreferences[kPreferenceKeyTableViewRowHeight] doubleValue];
 
     [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
     [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
@@ -648,6 +651,7 @@ static void load_preferences() {
         [kayokoView setAlwaysShowFavoritesOnShow:kayokoPrefsAlwaysShowFavoritesOnShow];
         [kayokoView setShowRecordedTimeInHistory:kayokoPrefsShowRecordedTimeInHistory];
         [kayokoView setShowRecordedTimeInFavorites:kayokoPrefsShowRecordedTimeInFavorites];
+        // [kayokoView setRowHeight:kayokoPrefsTableViewRowHeight];
         [kayokoView reload];
         UIWindow *statusBarWindow = (UIWindow *)[kayokoView superview];
         kayokoDesiredScreenY = KayokoBaseScreenYForWindow(statusBarWindow);

@@ -244,6 +244,26 @@
 			<key>isContinuous</key>
 			<true/>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>label</key>
+			<string>Row Height (Points)</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>KayokoSliderCell</string>
+			<key>default</key>
+			<real>54</real>
+			<key>key</key>
+			<string>TableViewRowHeight</string>
+			<key>min</key>
+			<real>40</real>
+			<key>max</key>
+			<real>100</real>
+			<key>isContinuous</key>
+			<true/>
+		</dict>
 
 		<dict>
 			<key>cell</key>

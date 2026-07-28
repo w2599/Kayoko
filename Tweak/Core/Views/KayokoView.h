@@ -45,6 +45,7 @@ static NSUInteger const kBackButtonImageSize = 20;
 @property(nonatomic, assign) BOOL showRecordedTimeInHistory;
 @property(nonatomic, assign) BOOL showRecordedTimeInFavorites;
 @property(nonatomic, assign) BOOL cleaning;
+- (instancetype)initWithFrame:(CGRect)frame rowHeight:(CGFloat)rowHeight;
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)show;
 - (void)hide;

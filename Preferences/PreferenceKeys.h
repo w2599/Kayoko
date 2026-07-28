@@ -31,6 +31,7 @@ static NSString *const kPreferenceKeyShowRecordedTimeInFavorites = @"ShowRecorde
 static NSString *const kPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
 static NSString *const kPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
 static NSString *const kPreferenceKeyHeightInPoints = @"HeightInPoints";
+static NSString *const kPreferenceKeyTableViewRowHeight = @"TableViewRowHeight";
 
 static BOOL const kPreferenceKeyEnabledDefaultValue = YES;
 static NSUInteger const kPreferenceKeyMaximumHistoryAmountDefaultValue = 200;
@@ -47,3 +48,4 @@ static BOOL const kPreferenceKeyShowRecordedTimeInFavoritesDefaultValue = NO;
 static BOOL const kPreferenceKeyPlaySoundEffectsDefaultValue = YES;
 static BOOL const kPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
 static CGFloat const kPreferenceKeyHeightInPointsDefaultValue = 420;
+static CGFloat const kPreferenceKeyTableViewRowHeightDefaultValue = 54.0;
