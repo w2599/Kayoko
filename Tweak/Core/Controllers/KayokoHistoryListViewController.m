@@ -624,12 +624,16 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    CGFloat rowHeight = [self itemHeightInPoints] > 0 ? [self itemHeightInPoints] : 65;
+        BOOL hasNote = [[item note] length] > 0;
     __weak KayokoTableViewCell *weakCell = cell;
     [[self cellContentProvider] loadThumbnailForItem:item
-                                          targetSize:[KayokoTableViewCell contentImageThumbnailSize]
-                                          completion:^(UIImage *_Nullable image) {
-                                            [weakCell setContentImage:image forImageName:imageName];
-                                          }];
+                                targetSize:[KayokoTableViewCell contentImageThumbnailSizeForRowHeight:rowHeight
+                                tableWidth:CGRectGetWidth([[self tableView] bounds])
+                                hasNote:hasNote]
+                                completion:^(UIImage *_Nullable image) {
+                                    [weakCell setContentImage:image forImageName:imageName];
+                                }];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {

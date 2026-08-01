@@ -16,7 +16,7 @@ static NSUInteger const kKayokoThumbnailPendingWriteCostLimit = 16 * 1024 * 1024
 static CGFloat const kKayokoThumbnailDiskCacheJPEGQuality = 0.9;
 static NSString *const kKayokoThumbnailDefaultCacheDirectoryPath =
     @"/var/mobile/Library/Caches/com.zqbb.kayoko/thumbnails/v2";
-static NSString *const kKayokoThumbnailCacheRecipeVersion = @"2";
+static NSString *const kKayokoThumbnailCacheRecipeVersion = @"3";
 static unsigned char const kKayokoThumbnailContainerMagic[] = {'K', 'Y', 'T', '2'};
 static NSUInteger const kKayokoThumbnailContainerHeaderLength =
     sizeof(kKayokoThumbnailContainerMagic) + sizeof(uint64_t) + CC_SHA256_DIGEST_LENGTH;

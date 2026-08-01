@@ -10,7 +10,7 @@
 #import "KayokoTagColorFormatter.h"
 
 static CGFloat const kKayokoTableViewCellTagDotSize = 7;
-static CGFloat const kKayokoTableViewCellContentImageWidth = 70;
+static CGFloat const kKayokoTableViewCellContentImageThumbnailOversampling = 2.8;
 static CGFloat const kKayokoTableViewCellColumnWidth = 70;
 static CGFloat const kKayokoTableViewCellNoteWidth = kKayokoTableViewCellColumnWidth;
 static CGFloat const kKayokoTableViewCellNoteHeight = 40;
@@ -67,8 +67,18 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
                                       hasContentImageSlot, hasTagDot, hasContentText, hasNote];
 }
 
-+ (CGSize)contentImageThumbnailSize {
-    return CGSizeMake(kKayokoTableViewCellContentImageWidth, 80);
++ (CGSize)contentImageThumbnailSizeForRowHeight:(CGFloat)rowHeight
+                                      tableWidth:(CGFloat)tableWidth
+                                        hasNote:(BOOL)hasNote {
+    CGFloat imageHeight = MAX(rowHeight - kKayokoTableViewCellVerticalContentInset, 1);
+    CGFloat imageTrailingInset = hasNote
+                                     ? 24 + kKayokoTableViewCellNoteWidth + kKayokoTableViewCellContentColumnSpacing
+                                     : 24;
+    CGFloat imageLeadingOffset = 24 + imageHeight + 16;
+    CGFloat imageWidth = MAX(tableWidth - imageLeadingOffset - imageTrailingInset, imageHeight);
+    CGFloat thumbnailHeight = imageHeight * kKayokoTableViewCellContentImageThumbnailOversampling;
+    CGFloat thumbnailWidth = imageWidth * kKayokoTableViewCellContentImageThumbnailOversampling;
+    return CGSizeMake(thumbnailWidth, thumbnailHeight);
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
@@ -138,6 +148,8 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
 
             [[self contentImageView] setContentMode:UIViewContentModeScaleAspectFill];
             [[self contentImageView] setClipsToBounds:YES];
+            [[[self contentImageView] layer] setMagnificationFilter:kCAFilterTrilinear];
+            [[[self contentImageView] layer] setMinificationFilter:kCAFilterTrilinear];
             [[self contentImageView]
                 setBackgroundColor:contentImage ? [UIColor clearColor] : [UIColor tertiarySystemFillColor]];
             [[[self contentImageView] layer] setCornerRadius:kKayokoTableViewCellContentImageCornerRadius];
