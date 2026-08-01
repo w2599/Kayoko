@@ -236,6 +236,19 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Show Kayoko</string>
+			<key>action</key>
+			<string>showKayoko</string>
+		</dict>
+		
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Height (Points)</string>
 		</dict>
@@ -281,7 +294,7 @@
 			<key>min</key>
 			<real>40</real>
 			<key>max</key>
-			<real>120</real>
+			<real>100</real>
 			<key>showValue</key>
 			<true/>
 			<key>isContinuous</key>
@@ -293,15 +306,6 @@
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.height.reload</string>
 		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSButtonCell</string>
-			<key>label</key>
-			<string>Show Kayoko</string>
-			<key>action</key>
-			<string>showKayoko</string>
-		</dict>
-
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>

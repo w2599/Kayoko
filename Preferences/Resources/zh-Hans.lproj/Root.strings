@@ -37,8 +37,8 @@
 "No favorites yet." = "暂无收藏";
 "Feature-rich clipboard manager for iOS." = "功能丰富的 iOS 剪贴板管理器。";
 "Feedbacks" = "反馈";
-"Height (Points)" = "高度";
-"List Item Height (Points)" = "单项高度";
+"Height (Points)" = "界面高度";
+"List Item Height (Points)" = "表项高度";
 "History" = "历史";
 "History Only" = "仅历史记录";
 "Images Only" = "仅图片";
