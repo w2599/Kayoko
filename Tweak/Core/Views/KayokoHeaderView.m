@@ -13,10 +13,10 @@ static CGFloat const kKayokoHeaderHeight = 48; // 标题视图的高度。
 static CGFloat const kKayokoTitleTapControlHeight = 44; // 标题标签的点击区域高度。
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8; // 标题标签点击区域与历史分段控件之间的间距。
 static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44; // 右侧按钮之间的间距。
-static CGFloat const kKayokoGrabberTopSpacing = -1; // 抓取条与标题视图顶部之间的间距。
+static CGFloat const kKayokoGrabberTopSpacing = -2; // 抓取条与标题视图顶部之间的间距。
 static CGFloat const kKayokoHeaderButtonTouchSize = 44; // 标题视图中按钮的触控区域大小。
 static CGFloat const kKayokoHeaderControlsVerticalOffset = 2; // 控件相对 Header 几何中心的视觉补偿。
-static CGFloat const kKayokoTableViewCellIconLeadingInset = 24;
+static CGFloat const kKayokoTableViewCellIconLeadingInset = 16;
 static CGFloat const kKayokoTableViewCellVerticalContentInset = 8;
 static CGFloat const kKayokoTableViewCellDefaultRowHeight = 65;
 
@@ -66,15 +66,16 @@ static CGFloat const kKayokoTableViewCellDefaultRowHeight = 65;
         NSString *favoritesSegmentTitle = [localizationBundle localizedStringForKey:@"Favorites"
                                                                                  value:@"Favorites"
                                                                                  table:@"Tweak"];
-        _historySegmentedControl = [[UISegmentedControl alloc]
-            initWithItems:@[ historySegmentTitle, favoritesSegmentTitle ]];
+        _historySegmentedControl = [[UISegmentedControl alloc] initWithItems:@[ historySegmentTitle, favoritesSegmentTitle ]];
         [_historySegmentedControl setSelectedSegmentIndex:0];
         [_historySegmentedControl setApportionsSegmentWidthsByContent:NO];
-        [_historySegmentedControl setSelectedSegmentTintColor:[UIColor tertiarySystemFillColor]];
-        [_historySegmentedControl setTitleTextAttributes:@{
-            NSFontAttributeName : [UIFont systemFontOfSize:15 weight:UIFontWeightRegular],
-            NSForegroundColorAttributeName : [UIColor labelColor]
-        } forState:UIControlStateNormal];
+
+        [_historySegmentedControl setBackgroundColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor secondarySystemBackgroundColor];
+            }
+            return [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.36];
+        }]];
         [self addSubview:_historySegmentedControl];
         [_historySegmentedControl setTranslatesAutoresizingMaskIntoConstraints:NO];
 

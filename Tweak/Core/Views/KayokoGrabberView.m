@@ -49,7 +49,7 @@
 }
 
 - (void)updateLineColor {
-    UIColor *lineColor = [[UIColor labelColor] colorWithAlphaComponent:0.28];
+    UIColor *lineColor = [[UIColor labelColor] colorWithAlphaComponent:0.20];
     [[self lineLayer] setStrokeColor:[lineColor CGColor]];
 }
 

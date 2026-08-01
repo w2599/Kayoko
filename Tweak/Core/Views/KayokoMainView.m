@@ -12,7 +12,7 @@
 #import "KayokoPasteboardManager.h"
 
 static NSTimeInterval const kKayokoContentTransitionDuration = 0.2;
-static CGFloat const kKayokoMainViewTopCornerRadius = 26;
+static CGFloat const kKayokoMainViewTopCornerRadius = 32;
 
 @interface KayokoMainView ()
 
@@ -60,7 +60,7 @@ static CGFloat const kKayokoMainViewTopCornerRadius = 26;
         [[self layer] setCornerRadius:kKayokoMainViewTopCornerRadius];
         [[self layer] setMaskedCorners:kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner];
 
-        [self setBlurEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+        [self setBlurEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
         [self setBlurEffectView:[[UIVisualEffectView alloc] initWithEffect:[self blurEffect]]];
         [[self blurEffectView] setClipsToBounds:YES];
         [[[self blurEffectView] layer] setCornerRadius:kKayokoMainViewTopCornerRadius];
@@ -73,6 +73,20 @@ static CGFloat const kKayokoMainViewTopCornerRadius = 26;
             [[[self blurEffectView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
             [[[self blurEffectView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
             [[[self blurEffectView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
+
+        UIView *backgroundTintView = [[UIView alloc] init];
+        [backgroundTintView setUserInteractionEnabled:NO];
+        [backgroundTintView setBackgroundColor:[[UIColor blackColor] colorWithAlphaComponent:0.20]];
+        [[backgroundTintView layer] setCornerRadius:kKayokoMainViewTopCornerRadius];
+        [[backgroundTintView layer] setMaskedCorners:kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner];
+        [self addSubview:backgroundTintView];
+        [backgroundTintView setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[backgroundTintView topAnchor] constraintEqualToAnchor:[self topAnchor]],
+            [[backgroundTintView leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[backgroundTintView trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[backgroundTintView bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
         NSString *historyTitle = [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"History"
