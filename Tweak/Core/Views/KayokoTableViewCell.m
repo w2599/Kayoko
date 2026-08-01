@@ -37,11 +37,15 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
 
 @interface KayokoTableViewCell ()
 @property(nonatomic, copy, nullable) NSString *representedImageName;
+@property(nonatomic, strong, nullable) NSDate *capturedAt;
+@property(nonatomic, strong) UILabel *timestampLabel;
+@property(nonatomic, assign) BOOL showsTimestamp;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *iconHeightConstraint;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *iconWidthConstraint;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *contentImageHeightConstraint;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *noteHeightConstraint;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *contentLabelHeightConstraint;
+- (void)updateTimestampDisplay;
 @end
 
 @implementation KayokoTableViewCell
@@ -103,6 +107,24 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
             [self iconHeightConstraint],
             [[[self iconImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
             [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:24]
+        ]];
+
+        [self setTimestampLabel:[[UILabel alloc] init]];
+        [[self timestampLabel] setFont:[UIFont systemFontOfSize:9 weight:UIFontWeightSemibold]];
+        [[self timestampLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.92]];
+        [[self timestampLabel] setTextAlignment:NSTextAlignmentCenter];
+        [[self timestampLabel] setNumberOfLines:2];
+        [[self timestampLabel] setLineBreakMode:NSLineBreakByClipping];
+        [[self timestampLabel] setAdjustsFontSizeToFitWidth:YES];
+        [[self timestampLabel] setMinimumScaleFactor:0.6];
+        [[self timestampLabel] setHidden:YES];
+        [self addSubview:[self timestampLabel]];
+        [[self timestampLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self timestampLabel] widthAnchor] constraintEqualToAnchor:[[self iconImageView] widthAnchor]],
+            [[[self timestampLabel] heightAnchor] constraintEqualToAnchor:[[self iconImageView] heightAnchor]],
+            [[[self timestampLabel] centerXAnchor] constraintEqualToAnchor:[[self iconImageView] centerXAnchor]],
+            [[[self timestampLabel] centerYAnchor] constraintEqualToAnchor:[[self iconImageView] centerYAnchor]]
         ]];
 
         UIImage *contentImage = [content contentImage];
@@ -278,6 +300,8 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
     [super prepareForReuse];
     [self setHidden:NO];
     [self setRepresentedImageName:nil];
+    [self setCapturedAt:nil];
+    [self setShowsTimestamp:NO];
     [[self iconImageView] setImage:nil];
     [[self headerLabel] setAttributedText:nil];
     [[self headerLabel] setText:nil];
@@ -292,6 +316,7 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
 
 - (void)applyContent:(KayokoTableViewCellContent *)content {
     [[self iconImageView] setImage:[content icon]];
+    [self setCapturedAt:[content capturedAt]];
 
     if ([content attributedDisplayName]) {
         NSMutableAttributedString *attributedDisplayName = [[content attributedDisplayName] mutableCopy];
@@ -331,6 +356,47 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
     [[self contentImageView] setImage:contentImage];
     [[self contentImageView]
         setBackgroundColor:contentImage ? [UIColor clearColor] : [UIColor tertiarySystemFillColor]];
+    [self updateTimestampDisplay];
+}
+
+- (void)setShowsTimestamp:(BOOL)showsTimestamp {
+    _showsTimestamp = showsTimestamp;
+    [self updateTimestampDisplay];
+}
+
+- (void)updateTimestampDisplay {
+    if (![self iconImageView] || ![self timestampLabel]) {
+        return;
+    }
+
+    BOOL shouldShowTimestamp = [self showsTimestamp] && [self capturedAt] != nil;
+    [[self iconImageView] setHidden:shouldShowTimestamp];
+    [[self timestampLabel] setHidden:!shouldShowTimestamp];
+    if (!shouldShowTimestamp) {
+        [[self timestampLabel] setText:nil];
+        return;
+    }
+
+    static NSDateFormatter *dayMonthFormatter;
+    static NSDateFormatter *timeFormatter;
+    static NSCalendar *calendar;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        dayMonthFormatter = [[NSDateFormatter alloc] init];
+        [dayMonthFormatter setDateFormat:@"MM-dd"];
+        timeFormatter = [[NSDateFormatter alloc] init];
+        [timeFormatter setDateFormat:@"HH:mm"];
+        calendar = [NSCalendar currentCalendar];
+    });
+
+    NSDate *date = [self capturedAt];
+    NSString *timeText = [timeFormatter stringFromDate:date] ?: @"--:--";
+    if ([calendar isDateInToday:date]) {
+        [[self timestampLabel] setText:timeText];
+    } else {
+        NSString *dayMonthText = [dayMonthFormatter stringFromDate:date] ?: @"--/--";
+        [[self timestampLabel] setText:[NSString stringWithFormat:@"%@\n%@", dayMonthText, timeText]];
+    }
 }
 
 - (void)setContentImage:(UIImage *)image forImageName:(NSString *)imageName {

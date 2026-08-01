@@ -152,6 +152,34 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.zqbb.kayoko.preferences</string>
+			<key>key</key>
+			<string>ShowRecordedTimeInHistory</string>
+			<key>label</key>
+			<string>Show Recorded Time (History)</string>
+			<key>PostNotification</key>
+			<string>com.zqbb.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.zqbb.kayoko.preferences</string>
+			<key>key</key>
+			<string>ShowRecordedTimeInFavorites</string>
+			<key>label</key>
+			<string>Show Recorded Time (Favorites)</string>
+			<key>PostNotification</key>
+			<string>com.zqbb.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSLinkCell</string>
 			<key>detail</key>
 			<string>KayokoTagManagementViewController</string>

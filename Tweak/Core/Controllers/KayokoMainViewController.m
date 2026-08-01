@@ -153,6 +153,10 @@ NS_ASSUME_NONNULL_END
         [[[_mainView headerView] historySegmentedControl] addTarget:self
                                       action:@selector(handleFavoritesButtonPressed)
                                 forControlEvents:UIControlEventValueChanged];
+        UILongPressGestureRecognizer *historyTimestampGesture =
+            [[UILongPressGestureRecognizer alloc] initWithTarget:self
+                                                          action:@selector(handleHistoryTimestampLongPress:)];
+        [[[_mainView headerView] historySegmentedControl] addGestureRecognizer:historyTimestampGesture];
         [[[_mainView headerView] trailingButton] addTarget:self
                                                     action:@selector(handleCloseButtonPressed)
                                           forControlEvents:UIControlEventTouchUpInside];
@@ -1360,6 +1364,38 @@ NS_ASSUME_NONNULL_END
 }
 
 #pragma mark - Actions
+
+- (void)setShowsHistoryTimestamp:(BOOL)showsHistoryTimestamp {
+    _showsHistoryTimestamp = showsHistoryTimestamp;
+    [[self historyListViewController] setShowsTimestamp:showsHistoryTimestamp];
+}
+
+- (void)setShowsFavoritesTimestamp:(BOOL)showsFavoritesTimestamp {
+    _showsFavoritesTimestamp = showsFavoritesTimestamp;
+    [[self favoritesListViewController] setShowsTimestamp:showsFavoritesTimestamp];
+}
+
+- (void)handleHistoryTimestampLongPress:(UILongPressGestureRecognizer *)recognizer {
+    if ([recognizer state] != UIGestureRecognizerStateBegan ||
+        [[self panelPresentationController] isAnimating] || [[self mainView] isAnimating] ||
+        [self isAuthorizationRequired] || [self isShowingClearConfirmation] || [self isPreviewActive]) {
+        return;
+    }
+
+    BOOL showsFavorites = [[[self mainView] headerView] historySegmentedControl].selectedSegmentIndex == 1;
+    NSString *historyKey = showsFavorites ? kKayokoHistoryKeyFavorites : kKayokoHistoryKeyHistory;
+    if (![[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
+        return;
+    }
+
+    if (showsFavorites) {
+        [self setShowsFavoritesTimestamp:![self showsFavoritesTimestamp]];
+    } else {
+        [self setShowsHistoryTimestamp:![self showsHistoryTimestamp]];
+    }
+
+    [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+}
 
 - (void)handleFavoritesButtonPressed {
     KayokoHeaderView *headerView = [[self mainView] headerView];

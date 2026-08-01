@@ -23,6 +23,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, weak, nullable) id<KayokoMainViewControllerDelegate> delegate;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) BOOL showsHistoryTimestamp;
+@property(nonatomic, assign) BOOL showsFavoritesTimestamp;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) KayokoInitialViewMode initialViewMode;

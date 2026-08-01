@@ -75,6 +75,7 @@ NS_ASSUME_NONNULL_END
     NSString *noteText = [item note];
     NSString *displayName = isImage ? sourceDisplayName : @"";
     [content setIcon:[[self metadataProvider] iconForBundleIdentifier:bundleIdentifier]];
+    [content setCapturedAt:[item capturedAt]];
     [content setDisplayName:displayName];
     [content setNoteText:noteText];
     [content setAttributedDisplayName:nil];

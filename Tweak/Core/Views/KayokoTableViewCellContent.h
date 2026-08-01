@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoTableViewCellContent : NSObject
 
 @property(nonatomic, strong, nullable) UIImage *icon;
+@property(nonatomic, strong, nullable) NSDate *capturedAt;
 @property(nonatomic, copy) NSString *displayName;
 @property(nonatomic, copy, nullable) NSString *noteText;
 @property(nonatomic, copy, nullable) NSAttributedString *attributedDisplayName;

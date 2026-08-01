@@ -614,6 +614,7 @@ NS_ASSUME_NONNULL_END
                                                           action:@selector(handleLongPressGestureRecognizer:)];
         [cell addGestureRecognizer:gesture];
     }
+    [cell setShowsTimestamp:[self showsTimestamp]];
     return cell;
 }
 
@@ -649,9 +650,19 @@ NS_ASSUME_NONNULL_END
                                                           action:@selector(handleLongPressGestureRecognizer:)];
         [cell addGestureRecognizer:gesture];
     }
+    [cell setShowsTimestamp:[self showsTimestamp]];
     [self loadThumbnailForItem:item intoCell:cell];
     [cell setHidden:[[self presentationHiddenItemContent] isEqualToString:[item content]]];
     return cell;
+}
+
+- (void)setShowsTimestamp:(BOOL)showsTimestamp {
+    if (_showsTimestamp == showsTimestamp) {
+        return;
+    }
+
+    _showsTimestamp = showsTimestamp;
+    [[self tableView] reloadData];
 }
 
 #pragma mark - UITableViewDelegate

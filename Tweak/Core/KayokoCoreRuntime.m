@@ -195,6 +195,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSUInteger maximumHistoryAmount;
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
+@property(nonatomic, assign) BOOL showRecordedTimeInHistory;
+@property(nonatomic, assign) BOOL showRecordedTimeInFavorites;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
@@ -555,6 +557,12 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController automaticallyPaste] != self.automaticallyPaste) {
         [self.mainViewController setAutomaticallyPaste:self.automaticallyPaste];
     }
+    if ([self.mainViewController showsHistoryTimestamp] != self.showRecordedTimeInHistory) {
+        [self.mainViewController setShowsHistoryTimestamp:self.showRecordedTimeInHistory];
+    }
+    if ([self.mainViewController showsFavoritesTimestamp] != self.showRecordedTimeInFavorites) {
+        [self.mainViewController setShowsFavoritesTimestamp:self.showRecordedTimeInFavorites];
+    }
     if ([self.mainViewController dismissOnOutsideTouch] != self.dismissOnOutsideTouch) {
         [self.mainViewController setDismissOnOutsideTouch:self.dismissOnOutsideTouch];
     }
@@ -612,6 +620,8 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyMaximumHistoryAmount : @(kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue),
         kKayokoPreferenceKeySaveText : @(kKayokoPreferenceKeySaveTextDefaultValue),
         kKayokoPreferenceKeySaveImages : @(kKayokoPreferenceKeySaveImagesDefaultValue),
+        kKayokoPreferenceKeyShowRecordedTimeInHistory : @(kKayokoPreferenceKeyShowRecordedTimeInHistoryDefaultValue),
+        kKayokoPreferenceKeyShowRecordedTimeInFavorites : @(kKayokoPreferenceKeyShowRecordedTimeInFavoritesDefaultValue),
         kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
         kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
@@ -642,6 +652,10 @@ NS_ASSUME_NONNULL_END
                                                    unsignedIntegerValue]];
     self.saveText = [[self.preferences objectForKey:kKayokoPreferenceKeySaveText] boolValue];
     self.saveImages = [[self.preferences objectForKey:kKayokoPreferenceKeySaveImages] boolValue];
+    self.showRecordedTimeInHistory =
+        [[self.preferences objectForKey:kKayokoPreferenceKeyShowRecordedTimeInHistory] boolValue];
+    self.showRecordedTimeInFavorites =
+        [[self.preferences objectForKey:kKayokoPreferenceKeyShowRecordedTimeInFavorites] boolValue];
     self.swipeToSelectWords = [[self.preferences objectForKey:kKayokoPreferenceKeySwipeToSelectWords] boolValue];
     self.automaticallyPaste = [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
     self.automaticPasteMode =

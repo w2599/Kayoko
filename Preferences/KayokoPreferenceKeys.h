@@ -51,6 +51,8 @@ static NSString *const kKayokoPreferenceKeyEnabled = @"Enabled";
 static NSString *const kKayokoPreferenceKeyMaximumHistoryAmount = @"MaximumHistoryAmount";
 static NSString *const kKayokoPreferenceKeySaveText = @"SaveText";
 static NSString *const kKayokoPreferenceKeySaveImages = @"SaveImages";
+static NSString *const kKayokoPreferenceKeyShowRecordedTimeInHistory = @"ShowRecordedTimeInHistory";
+static NSString *const kKayokoPreferenceKeyShowRecordedTimeInFavorites = @"ShowRecordedTimeInFavorites";
 static NSString *const kKayokoPreferenceKeySwipeToSelectWords = @"SwipeToSelectWords";
 static NSString *const kKayokoPreferenceKeyActivationMethod = @"ActivationMethod";
 static NSString *const kKayokoPreferenceKeyGestureRecognizerMode = @"GestureRecognizerMode";
@@ -73,6 +75,8 @@ static BOOL const kKayokoPreferenceKeyEnabledDefaultValue = YES;
 static NSUInteger const kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue = 200;
 static BOOL const kKayokoPreferenceKeySaveTextDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeySaveImagesDefaultValue = YES;
+static BOOL const kKayokoPreferenceKeyShowRecordedTimeInHistoryDefaultValue = NO;
+static BOOL const kKayokoPreferenceKeyShowRecordedTimeInFavoritesDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeySwipeToSelectWordsDefaultValue = YES;
 static ActivationMethod const kKayokoPreferenceKeyActivationMethodDefaultValue =
     kActivationMethodDictationKey | kActivationMethodInputSwitcher | kActivationMethodExternalKeyboard;

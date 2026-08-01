@@ -39,6 +39,8 @@
 "Height (Points)" = "界面高度";
 "List Item Height (Points)" = "表项高度";
 "History" = "历史";
+"Show Recorded Time (History)" = "显示时间（历史）";
+"Show Recorded Time (Favorites)" = "显示时间（收藏）";
 "History Only" = "仅历史记录";
 "Images Only" = "仅图片";
 "Input Switcher" = "输入法菜单";

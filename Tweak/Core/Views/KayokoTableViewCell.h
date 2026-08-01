@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)reuseIdentifierForContent:(KayokoTableViewCellContent *)content;
 + (CGSize)contentImageThumbnailSize;
 - (void)applyContent:(KayokoTableViewCellContent *)content;
+- (void)setShowsTimestamp:(BOOL)showsTimestamp;
 - (void)setContentImage:(nullable UIImage *)image forImageName:(NSString *)imageName;
 
 @end
