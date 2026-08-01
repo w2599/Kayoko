@@ -23,7 +23,6 @@
 #import <roothide.h>
 
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
-static NSTimeInterval const kKayokoSimulatedAutomaticPasteDelay = 0.2;
 static NSString *const kKayokoRemoteClipboardPasteboardType = @"com.apple.is-remote-clipboard";
 static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.zqbb.kayoko.pasteboard-manager";
 
@@ -1096,19 +1095,14 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
-- (void)performAutomaticPasteForToken:(NSUInteger)token
-                   automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
+- (void)performAutomaticPasteForToken:(NSUInteger)token automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
     if (automaticPasteMode == kKayokoAutomaticPasteModeSimulated) {
-        HBLogDebug(@"Kayoko: scheduling simulated Cmd+V automatic paste token=%lu delay=%.2f", (unsigned long)token,
-                   kKayokoSimulatedAutomaticPasteDelay);
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kKayokoSimulatedAutomaticPasteDelay * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{
-                         CFNotificationCenterPostNotification(
-                             CFNotificationCenterGetDarwinNotifyCenter(),
+        HBLogDebug(@"Kayoko: scheduling simulated Cmd+V automatic paste token=%lu", (unsigned long)token);
+        dispatch_async(dispatch_get_main_queue(), ^{
+                         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                              (__bridge CFStringRef)kKayokoNotificationKeyPasteWillStart, nil, nil, YES);
                          CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                                              (__bridge CFStringRef)kKayokoNotificationKeyPasteFeedback,
-                                                              nil, nil, YES);
+                             (__bridge CFStringRef)kKayokoNotificationKeyPasteFeedback, nil, nil, YES);
                          [[KayokoKeyboardShortcutSender sharedSender] sendCommandV];
                        });
         return;
