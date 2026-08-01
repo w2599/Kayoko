@@ -16,6 +16,12 @@
 #import "KayokoTableViewCellContent.h"
 #import "KayokoTableViewCellContentProvider.h"
 
+@interface UIKeyboardImpl : UIView
++ (instancetype)sharedInstance;
+- (void)showTokenSelectionPopup:(NSString *)text;
+- (void)showImageTokenSelectionPopup:(UIImage *)image;
+@end
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryListViewController () <UITableViewDelegate, UITableViewDataSource>
@@ -38,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture;
 - (void)loadThumbnailForItem:(KayokoPasteboardItem *)item intoCell:(KayokoTableViewCell *)cell;
+- (UIContextualAction *)tokenSelectionActionForItem:(KayokoPasteboardItem *)item;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -708,6 +715,11 @@ NS_ASSUME_NONNULL_END
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
 
+    UIContextualAction *tokenSelectionAction = [self tokenSelectionActionForItem:item];
+    if (tokenSelectionAction) {
+        [actions addObject:tokenSelectionAction];
+    }
+
     UIContextualAction *moveAction = [self moveActionForItem:item dictionary:dictionary indexPath:indexPath];
     if (moveAction) {
         [actions addObject:moveAction];
@@ -730,7 +742,9 @@ NS_ASSUME_NONNULL_END
         [actions addObject:linkAction];
     }
 
-    return [UISwipeActionsConfiguration configurationWithActions:actions];
+    UISwipeActionsConfiguration *configuration = [UISwipeActionsConfiguration configurationWithActions:actions];
+    [configuration setPerformsFirstActionWithFullSwipe:YES];
+    return configuration;
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
@@ -766,6 +780,44 @@ NS_ASSUME_NONNULL_END
 }
 
 #pragma mark - Swipe Actions
+
+- (UIContextualAction *)tokenSelectionActionForItem:(KayokoPasteboardItem *)item {
+    if (!item) {
+        return nil;
+    }
+
+    Class keyboardImplClass = NSClassFromString(@"UIKeyboardImpl");
+    if (![keyboardImplClass respondsToSelector:@selector(sharedInstance)]) {
+        return nil;
+    }
+
+    UIKeyboardImpl *keyboardImpl = [keyboardImplClass sharedInstance];
+    BOOL isImage = [[item imageName] length] > 0;
+    SEL selector = isImage ? @selector(showImageTokenSelectionPopup:) : @selector(showTokenSelectionPopup:);
+    if (![keyboardImpl respondsToSelector:selector]) {
+        return nil;
+    }
+
+    UIContextualAction *action = [UIContextualAction
+        contextualActionWithStyle:UIContextualActionStyleNormal
+                            title:@""
+                          handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
+                                    void (^completionHandler)(BOOL)) {
+                            [[self delegate] historyListViewControllerDidRequestHide:self];
+                            if (isImage) {
+                                UIImage *image = [[KayokoPasteboardManager sharedInstance] getImageForItem:item];
+                                if (image) {
+                                    [keyboardImpl showImageTokenSelectionPopup:image];
+                                }
+                            } else {
+                                [keyboardImpl showTokenSelectionPopup:[item content] ?: @""];
+                            }
+                            completionHandler(YES);
+                          }];
+    [action setImage:[UIImage systemImageNamed:isImage ? @"photo.on.rectangle" : @"textformat"]];
+    [action setBackgroundColor:[UIColor systemPurpleColor]];
+    return action;
+}
 
 - (UIContextualAction *)moveActionForItem:(KayokoPasteboardItem *)item
                                dictionary:(NSDictionary<NSString *, id> *)dictionary
