@@ -199,7 +199,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL showRecordedTimeInFavorites;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) BOOL automaticallyPaste;
-@property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
 @property(nonatomic, assign) KayokoAutomaticPromotionMode automaticPromotionMode;
 @property(nonatomic, assign) KayokoInitialViewMode initialViewMode;
 @property(nonatomic, assign) BOOL alwaysScrollToTop;
@@ -624,7 +623,6 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyShowRecordedTimeInFavorites : @(kKayokoPreferenceKeyShowRecordedTimeInFavoritesDefaultValue),
         kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
-        kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
         kKayokoPreferenceKeyAutomaticPromotionMode : @(kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue),
         kKayokoPreferenceKeyInitialViewMode : @(kKayokoPreferenceKeyInitialViewModeDefaultValue),
         kKayokoPreferenceKeyAlwaysScrollToTop : @(kKayokoPreferenceKeyAlwaysScrollToTopDefaultValue),
@@ -658,13 +656,6 @@ NS_ASSUME_NONNULL_END
         [[self.preferences objectForKey:kKayokoPreferenceKeyShowRecordedTimeInFavorites] boolValue];
     self.swipeToSelectWords = [[self.preferences objectForKey:kKayokoPreferenceKeySwipeToSelectWords] boolValue];
     self.automaticallyPaste = [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
-    self.automaticPasteMode =
-        [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticPasteMode] unsignedIntegerValue];
-    if (self.automaticPasteMode != kKayokoAutomaticPasteModeClassic &&
-        self.automaticPasteMode != kKayokoAutomaticPasteModeSimulated &&
-        self.automaticPasteMode != kKayokoAutomaticPasteModeAutomatic) {
-        self.automaticPasteMode = kKayokoPreferenceKeyAutomaticPasteModeDefaultValue;
-    }
     self.automaticPromotionMode =
         [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticPromotionMode] unsignedIntegerValue];
     if (self.automaticPromotionMode != kKayokoAutomaticPromotionModeOff &&
@@ -707,9 +698,6 @@ NS_ASSUME_NONNULL_END
     }
     if ([pasteboardManager automaticallyPaste] != self.automaticallyPaste) {
         [pasteboardManager setAutomaticallyPaste:self.automaticallyPaste];
-    }
-    if ([pasteboardManager automaticPasteMode] != self.automaticPasteMode) {
-        [pasteboardManager setAutomaticPasteMode:self.automaticPasteMode];
     }
     if ([pasteboardManager automaticPromotionMode] != self.automaticPromotionMode) {
         [pasteboardManager setAutomaticPromotionMode:self.automaticPromotionMode];

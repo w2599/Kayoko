@@ -28,7 +28,6 @@ static NSString *const kKayokoNotificationKeyCoreImportLegacyFavorites =
     @"com.zqbb.kayoko.core.import-legacy-favorites";
 static NSString *const kKayokoNotificationKeyCopyVaultHistoryShow = @"com.squidforce.copyvault/history/show";
 static NSString *const kKayokoNotificationKeyCopyVaultFavouriteShow = @"com.squidforce.copyvault/favourite/show";
-static NSString *const kKayokoNotificationKeyHelperPaste = @"com.zqbb.kayoko.helper.paste";
 static NSString *const kKayokoNotificationKeyHelperRestoreFocus = @"com.zqbb.kayoko.helper.restore-focus";
 static NSString *const kKayokoNotificationKeyPreferencesReload = @"com.zqbb.kayoko.preferences.reload";
 static NSString *const kKayokoNotificationKeyPreferencesHeightReload = @"com.zqbb.kayoko.preferences.height.reload";

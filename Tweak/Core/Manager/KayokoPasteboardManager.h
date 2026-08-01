@@ -35,7 +35,6 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
 @property(nonatomic, assign) BOOL automaticallyPaste;
-@property(nonatomic, assign) NSUInteger automaticPasteMode;
 @property(nonatomic, assign) NSUInteger automaticPromotionMode;
 @property(nonatomic, assign) BOOL ignoreRemoteReplication;
 @property(nonatomic, copy) NSSet<NSString *> *applicationBlacklist;

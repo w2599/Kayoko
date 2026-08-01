@@ -19,7 +19,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)activateKayoko;
 - (BOOL)activateKayokoAfterCapturingCurrentFocus;
 - (BOOL)activateKayokoFromResponder:(UIResponder *)responder;
-- (void)captureCurrentFirstResponder;
 - (void)restoreCapturedFirstResponder;
 - (void)paste;
 - (void)pasteFromPredictionBar;

@@ -22,7 +22,8 @@
 #import <math.h>
 #import <roothide.h>
 
-static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
+static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 1.0;
+static NSTimeInterval const kKayokoSimulatedAutomaticPasteDelay = 0.05;
 static NSString *const kKayokoRemoteClipboardPasteboardType = @"com.apple.is-remote-clipboard";
 static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.zqbb.kayoko.pasteboard-manager";
 
@@ -42,7 +43,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, readonly, getter=isActive) BOOL active;
 @property(nonatomic, assign, readonly) BOOL shouldAutoPaste;
-@property(nonatomic, assign, readonly) KayokoAutomaticPasteMode automaticPasteMode;
 @property(nonatomic, assign, readonly) NSUInteger token;
 @property(nonatomic, assign, readonly) NSUInteger previousChangeCount;
 
@@ -53,8 +53,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Lifecycle
 
 - (NSUInteger)beginAfterChangeCount:(NSUInteger)previousChangeCount
-                    shouldAutoPaste:(BOOL)shouldAutoPaste
-                 automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode;
+                          shouldAutoPaste:(BOOL)shouldAutoPaste;
 
 #pragma mark - Expiration
 
@@ -78,13 +77,11 @@ NS_ASSUME_NONNULL_END
 @implementation KayokoPasteboardPendingWrite
 
 - (NSUInteger)beginAfterChangeCount:(NSUInteger)previousChangeCount
-                    shouldAutoPaste:(BOOL)shouldAutoPaste
-                 automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
+                          shouldAutoPaste:(BOOL)shouldAutoPaste {
     [self cancelExpirationBlock];
     _token++;
     _active = YES;
     _shouldAutoPaste = shouldAutoPaste;
-    _automaticPasteMode = automaticPasteMode;
     _previousChangeCount = previousChangeCount;
     return _token;
 }
@@ -111,7 +108,6 @@ NS_ASSUME_NONNULL_END
     _token++;
     _active = NO;
     _shouldAutoPaste = NO;
-    _automaticPasteMode = kKayokoAutomaticPasteModeClassic;
     _previousChangeCount = 0;
 }
 
@@ -134,6 +130,7 @@ NS_ASSUME_NONNULL_END
     KayokoThumbnailCache *_thumbnailCache;
 
     BOOL _isWritingPasteboardItem;
+    NSUInteger _lastAutomaticPasteToken;
     KayokoPasteboardPendingWrite *_pendingPasteboardWrite;
 
     KayokoHistoryRepository *_historyRepository;
@@ -942,15 +939,12 @@ NS_ASSUME_NONNULL_END
          fromHistoryWithKey:(NSString *)historyKey
        allowsAutomaticPaste:(BOOL)allowsAutomaticPaste {
     BOOL performsAutomaticPaste = [self automaticallyPaste] && allowsAutomaticPaste;
-    KayokoAutomaticPasteMode automaticPasteMode =
-        performsAutomaticPaste ? [self resolvedAutomaticPasteMode] : kKayokoAutomaticPasteModeClassic;
     if (@available(iOS 16, *)) {
         dispatch_async(_pasteboardQueue, ^{
           [self _reallyWritePasteboardItem:pasteboardItem
                          sourceHistoryItem:sourceHistoryItem
                         fromHistoryWithKey:historyKey
-                           shouldAutoPaste:performsAutomaticPaste
-                        automaticPasteMode:automaticPasteMode];
+                                    shouldAutoPaste:performsAutomaticPaste];
         });
         return;
     }
@@ -958,8 +952,7 @@ NS_ASSUME_NONNULL_END
     [self _reallyWritePasteboardItem:pasteboardItem
                    sourceHistoryItem:sourceHistoryItem
                   fromHistoryWithKey:historyKey
-                     shouldAutoPaste:performsAutomaticPaste
-                  automaticPasteMode:automaticPasteMode];
+                            shouldAutoPaste:performsAutomaticPaste];
 }
 
 - (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
@@ -983,8 +976,7 @@ NS_ASSUME_NONNULL_END
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:item];
     if (didUpdatePasteboard) {
         NSUInteger token = [self beginPendingPasteboardWriteAfterChangeCount:previousChangeCount
-                                                             shouldAutoPaste:NO
-                                                          automaticPasteMode:kKayokoAutomaticPasteModeClassic];
+                                                                                 shouldAutoPaste:NO];
         [self resolvePendingPasteboardWriteForToken:token didExpire:NO];
     } else {
         HBLogDebug(@"Kayoko: copy write did not update pasteboard previousChangeCount=%lu",
@@ -996,8 +988,7 @@ NS_ASSUME_NONNULL_END
 - (void)_reallyWritePasteboardItem:(KayokoPasteboardItem *)pasteboardItem
                  sourceHistoryItem:(KayokoPasteboardItem *)sourceHistoryItem
                 fromHistoryWithKey:(NSString *)historyKey
-                   shouldAutoPaste:(BOOL)shouldAutoPaste
-                automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
+                         shouldAutoPaste:(BOOL)shouldAutoPaste {
     if (_isWritingPasteboardItem) {
         HBLogDebug(@"Kayoko: pasteboard item write ignored because another write is in progress");
         return;
@@ -1008,12 +999,11 @@ NS_ASSUME_NONNULL_END
     [self cancelPendingPasteboardWrite];
     NSUInteger previousChangeCount = [_pasteboard changeCount];
     HBLogDebug(@"Kayoko: pasteboard item write started previousChangeCount=%lu contentLength=%lu hasImage=%@ "
-               @"shouldAutoPaste=%@ automaticallyPaste=%@ automaticPasteMode=%lu automaticPromotionMode=%lu "
+               @"shouldAutoPaste=%@ automaticallyPaste=%@ automaticPromotionMode=%lu "
                @"historyKey=%@",
                (unsigned long)previousChangeCount, (unsigned long)[[pasteboardItem content] length],
                ([[pasteboardItem imageName] length] > 0) ? @"YES" : @"NO", shouldAutoPaste ? @"YES" : @"NO",
-               [self automaticallyPaste] ? @"YES" : @"NO", (unsigned long)[self automaticPasteMode],
-               (unsigned long)[self automaticPromotionMode], historyKey);
+               [self automaticallyPaste] ? @"YES" : @"NO", (unsigned long)[self automaticPromotionMode], historyKey);
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:pasteboardItem];
     if (didUpdatePasteboard) {
         if ([self shouldPromoteSourceHistoryItemFromHistoryKey:historyKey]) {
@@ -1021,8 +1011,7 @@ NS_ASSUME_NONNULL_END
         }
 
         NSUInteger token = [self beginPendingPasteboardWriteAfterChangeCount:previousChangeCount
-                                                             shouldAutoPaste:shouldAutoPaste
-                                                          automaticPasteMode:automaticPasteMode];
+                                                                                 shouldAutoPaste:shouldAutoPaste];
         [self resolvePendingPasteboardWriteForToken:token didExpire:NO];
     } else {
         HBLogDebug(@"Kayoko: pasteboard item write did not update pasteboard previousChangeCount=%lu",
@@ -1033,15 +1022,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSUInteger)beginPendingPasteboardWriteAfterChangeCount:(NSUInteger)previousChangeCount
-                                          shouldAutoPaste:(BOOL)shouldAutoPaste
-                                       automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
+                                                        shouldAutoPaste:(BOOL)shouldAutoPaste {
     NSUInteger token = [_pendingPasteboardWrite beginAfterChangeCount:previousChangeCount
-                                                      shouldAutoPaste:shouldAutoPaste
-                                                   automaticPasteMode:automaticPasteMode];
-    HBLogDebug(@"Kayoko: pending pasteboard write began token=%lu previousChangeCount=%lu shouldAutoPaste=%@ "
-               @"automaticPasteMode=%lu",
-               (unsigned long)token, (unsigned long)previousChangeCount, shouldAutoPaste ? @"YES" : @"NO",
-               (unsigned long)automaticPasteMode);
+                                                                        shouldAutoPaste:shouldAutoPaste];
+     HBLogDebug(@"Kayoko: pending pasteboard write began token=%lu previousChangeCount=%lu shouldAutoPaste=%@",
+                    (unsigned long)token, (unsigned long)previousChangeCount, shouldAutoPaste ? @"YES" : @"NO");
     dispatch_queue_t timeoutQueue = dispatch_get_main_queue();
     if (@available(iOS 16, *)) {
         timeoutQueue = _pasteboardQueue;
@@ -1080,68 +1065,44 @@ NS_ASSUME_NONNULL_END
     }
 
     BOOL shouldAutoPaste = [_pendingPasteboardWrite shouldAutoPaste];
-    KayokoAutomaticPasteMode automaticPasteMode = [_pendingPasteboardWrite automaticPasteMode];
     _lastChangeCount = currentChangeCount;
     [self cancelPendingPasteboardWrite];
 
-    HBLogDebug(@"Kayoko: pending pasteboard write confirmed token=%lu currentChangeCount=%lu shouldAutoPaste=%@ "
-               @"automaticPasteMode=%lu",
-               (unsigned long)token, (unsigned long)currentChangeCount, shouldAutoPaste ? @"YES" : @"NO",
-               (unsigned long)automaticPasteMode);
+    HBLogDebug(@"Kayoko: pending pasteboard write confirmed token=%lu currentChangeCount=%lu shouldAutoPaste=%@",
+               (unsigned long)token, (unsigned long)currentChangeCount, shouldAutoPaste ? @"YES" : @"NO");
     if (shouldAutoPaste) {
-        [self performAutomaticPasteForToken:token automaticPasteMode:automaticPasteMode];
+        [self performAutomaticPasteForToken:token];
     }
 
     return YES;
 }
 
-- (void)performAutomaticPasteForToken:(NSUInteger)token automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
-    if (automaticPasteMode == kKayokoAutomaticPasteModeSimulated) {
-        HBLogDebug(@"Kayoko: scheduling simulated Cmd+V automatic paste token=%lu", (unsigned long)token);
-        dispatch_async(dispatch_get_main_queue(), ^{
-                         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                             (__bridge CFStringRef)kKayokoNotificationKeyPasteWillStart, nil, nil, YES);
-                         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                             (__bridge CFStringRef)kKayokoNotificationKeyPasteFeedback, nil, nil, YES);
-                         [[KayokoKeyboardShortcutSender sharedSender] sendCommandV];
-                       });
+- (void)performAutomaticPasteForToken:(NSUInteger)token {
+    if (![[NSProcessInfo processInfo].processName isEqualToString:@"SpringBoard"]) {
+        HBLogDebug(@"Kayoko: simulated automatic paste skipped outside SpringBoard process=%@",
+                   [NSProcessInfo processInfo].processName);
         return;
     }
 
-    HBLogDebug(@"Kayoko: posting helper paste notification token=%lu", (unsigned long)token);
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (__bridge CFStringRef)kKayokoNotificationKeyHelperPaste, nil, nil, NO);
-}
-
-- (KayokoAutomaticPasteMode)resolvedAutomaticPasteMode {
-    KayokoAutomaticPasteMode automaticPasteMode = (KayokoAutomaticPasteMode)[self automaticPasteMode];
-    if (automaticPasteMode != kKayokoAutomaticPasteModeAutomatic) {
-        return automaticPasteMode;
+    if (_lastAutomaticPasteToken == token) {
+        HBLogDebug(@"Kayoko: simulated automatic paste skipped for duplicate token=%lu", (unsigned long)token);
+        return;
     }
+    _lastAutomaticPasteToken = token;
 
-    BOOL usesClassic = [self effectiveKeyboardHostUsesClassicAutomaticPaste];
-    HBLogDebug(@"Kayoko: automatic paste auto mode resolved to %@", usesClassic ? @"classic" : @"simulated");
-    return usesClassic ? kKayokoAutomaticPasteModeClassic : kKayokoAutomaticPasteModeSimulated;
-}
-
-- (BOOL)effectiveKeyboardHostUsesClassicAutomaticPaste {
-    KayokoKeyboardHostContext *hostContext =
-        [[KayokoKeyboardHostResolver sharedResolver] effectiveExternalKeyboardHostContext];
-    if (!hostContext) {
-        HBLogDebug(@"Kayoko: automatic paste auto mode has no external keyboard host context; using simulated");
-        return NO;
-    }
-
-    BOOL springBoardHost =
-        hostContext.kind == KayokoKeyboardHostKindSpringBoard || hostContext.kind == KayokoKeyboardHostKindSpotlight;
-    BOOL usesClassic = springBoardHost || [hostContext isHelperInjected];
-    HBLogDebug(@"Kayoko: automatic paste auto mode using %@ keyboard host scene=%@ kind=%@ cached=%@ "
-               @"helperMarkerAvailable=%@ helperFlag=%lld injected=%@",
-               hostContext.isCached ? @"cached external" : @"current", hostContext.identifier,
-               [KayokoKeyboardHostResolver stringForHostKind:hostContext.kind], hostContext.isCached ? @"YES" : @"NO",
-               hostContext.helperMarkerAvailable ? @"YES" : @"NO", hostContext.helperInjectedFlag,
-               hostContext.isHelperInjected ? @"YES" : @"NO");
-    return usesClassic;
+    HBLogDebug(@"Kayoko: scheduling simulated Cmd+V automatic paste token=%lu delay=%.2f", (unsigned long)token,
+               kKayokoSimulatedAutomaticPasteDelay);
+    dispatch_async(dispatch_get_main_queue(), ^{
+      CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge CFStringRef)kKayokoNotificationKeyHelperRestoreFocus, nil, nil, YES);
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kKayokoSimulatedAutomaticPasteDelay * NSEC_PER_SEC)),
+                dispatch_get_main_queue(), ^{
+                    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                        (__bridge CFStringRef)kKayokoNotificationKeyPasteWillStart, nil, nil, YES);
+                    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                        (__bridge CFStringRef)kKayokoNotificationKeyPasteFeedback, nil, nil, YES);
+                    [[KayokoKeyboardShortcutSender sharedSender] sendCommandV];
+                });
+    });
 }
 
 - (void)cancelPendingPasteboardWrite {
