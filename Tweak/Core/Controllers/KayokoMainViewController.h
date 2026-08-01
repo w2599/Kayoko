@@ -29,7 +29,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL alwaysScrollToTop;
 @property(nonatomic, assign) KayokoClearButtonMode clearButtonMode;
 @property(nonatomic, assign) NSUInteger previewLineCount;
-@property(nonatomic, assign) KayokoItemDetailsMode itemDetailsMode;
 @property(nonatomic, assign) CGFloat listHeightInPoints;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
 @property(nonatomic, assign, getter=isAuthorizationPassed) BOOL authorizationPassed;

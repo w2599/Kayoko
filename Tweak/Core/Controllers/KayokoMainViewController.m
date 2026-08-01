@@ -115,7 +115,6 @@ NS_ASSUME_NONNULL_END
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _authorizationPassed = YES;
-        _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
         _clearButtonMode = kKayokoPreferenceKeyClearButtonModeDefaultValue;
         _kayokoSupportedInterfaceOrientations = UIInterfaceOrientationMaskAll;
         _presentationMode = KayokoPanelPresentationModePortraitDrawer;
@@ -310,16 +309,6 @@ NS_ASSUME_NONNULL_END
     _previewLineCount = previewLineCount;
     [[self historyListViewController] setPreviewLineCount:previewLineCount];
     [[self favoritesListViewController] setPreviewLineCount:previewLineCount];
-}
-
-- (void)setItemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode {
-    if (itemDetailsMode != kKayokoItemDetailsModeOff && itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
-        itemDetailsMode != kKayokoItemDetailsModeAll) {
-        itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
-    }
-    _itemDetailsMode = itemDetailsMode;
-    [[self historyListViewController] setItemDetailsMode:itemDetailsMode];
-    [[self favoritesListViewController] setItemDetailsMode:itemDetailsMode];
 }
 
 - (void)setListHeightInPoints:(CGFloat)listHeightInPoints {

@@ -11,7 +11,6 @@
 
 static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
 static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
-static CGFloat const kKayokoHistoryListViewDetailLineHeight = 15;
 static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 static CGFloat const kKayokoHistoryListViewVerticalFadeHeight = 20;
@@ -374,7 +373,6 @@ NS_ASSUME_NONNULL_END
         [self setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
         [self setEdgeFadeWidth:kKayokoHistoryListViewVerticalFadeHeight];
         [self setEdgeFadeEnabled:YES];
-        _itemDetailsMode = kKayokoItemDetailsModeImagesOnly;
         [self setPreviewLineCount:2];
     }
 
@@ -390,27 +388,14 @@ NS_ASSUME_NONNULL_END
     [self reloadData];
 }
 
-- (void)setItemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode {
-    if (itemDetailsMode != kKayokoItemDetailsModeOff && itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
-        itemDetailsMode != kKayokoItemDetailsModeAll) {
-        itemDetailsMode = kKayokoItemDetailsModeImagesOnly;
-    }
-    _itemDetailsMode = itemDetailsMode;
-    [self updateRowHeightForCurrentDisplayOptions];
-    [self reloadData];
-}
-
 - (void)setItemHeightInPoints:(CGFloat)itemHeightInPoints {
     _itemHeightInPoints = MAX(itemHeightInPoints, 0);
     [self updateRowHeightForCurrentDisplayOptions];
 }
 
 - (void)updateRowHeightForCurrentDisplayOptions {
-    CGFloat detailHeight =
-        [self itemDetailsMode] == kKayokoItemDetailsModeAll ? kKayokoHistoryListViewDetailLineHeight : 0;
     CGFloat naturalHeight = kKayokoHistoryListViewBaseRowHeight +
-                            ([self previewLineCount] - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight +
-                            detailHeight;
+                            ([self previewLineCount] - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight;
     [self setRowHeight:[self itemHeightInPoints] > 0 ? [self itemHeightInPoints] : naturalHeight];
 }
 

@@ -202,7 +202,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
 @property(nonatomic, assign) NSUInteger previewLineCount;
-@property(nonatomic, assign) KayokoItemDetailsMode itemDetailsMode;
 @property(nonatomic, assign) CGFloat heightInPoints;
 @property(nonatomic, assign) CGFloat listHeightInPoints;
 
@@ -246,7 +245,6 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     if (self) {
         _previewLineCount = 2;
-        _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
         _heightInPoints = 420;
         _listHeightInPoints = kKayokoPreferenceKeyListHeightInPointsDefaultValue;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
@@ -564,9 +562,6 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController previewLineCount] != self.previewLineCount) {
         [self.mainViewController setPreviewLineCount:self.previewLineCount];
     }
-    if ([self.mainViewController itemDetailsMode] != self.itemDetailsMode) {
-        [self.mainViewController setItemDetailsMode:self.itemDetailsMode];
-    }
     if ([self.mainViewController listHeightInPoints] != self.listHeightInPoints) {
         [self.mainViewController setListHeightInPoints:self.listHeightInPoints];
     }
@@ -632,7 +627,6 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyPlaySoundEffects : @(kKayokoPreferenceKeyPlaySoundEffectsDefaultValue),
         kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue),
         kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
-        kKayokoPreferenceKeyItemDetailsMode : @(kKayokoPreferenceKeyItemDetailsModeDefaultValue),
         kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
         kKayokoPreferenceKeyListHeightInPoints : @(kKayokoPreferenceKeyListHeightInPointsDefaultValue),
     }];
@@ -687,11 +681,6 @@ NS_ASSUME_NONNULL_END
     self.playSoundEffects = [[self.preferences objectForKey:kKayokoPreferenceKeyPlaySoundEffects] boolValue];
     self.playHapticFeedback = [[self.preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     self.previewLineCount = [[self.preferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
-    self.itemDetailsMode = [[self.preferences objectForKey:kKayokoPreferenceKeyItemDetailsMode] unsignedIntegerValue];
-    if (self.itemDetailsMode != kKayokoItemDetailsModeOff && self.itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
-        self.itemDetailsMode != kKayokoItemDetailsModeAll) {
-        self.itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
-    }
     self.heightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
     self.listHeightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyListHeightInPoints] doubleValue];
 

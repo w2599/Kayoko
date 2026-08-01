@@ -37,8 +37,6 @@
 "Images Only" = "仅图片";
 "Input Switcher" = "输入法菜单";
 "Invalid Response" = "无效响应";
-"Item Details" = "条目详情";
-"Item details show when an item was last captured, along with its text length or image dimensions and file size." = "显示最近捕获时间，并附带文本字数，或图片尺寸和文件大小。";
 "Kayoko" = "Kayoko";
 "Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko." = "导入失败前 Kayoko 已进入维护模式。你需要立即重启 SpringBoard，才能继续使用 Kayoko。";
 "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko 的持续维护，来自每一位用户的购买支持。原版 GPLv3 许可允许有偿发布，本版本也延续同一份开源承诺，不加防盗版限制（DRM）。若 Kayoko 让你的日常输入更顺手，欢迎通过 Havoc 支持后续维护。\n\n「乌龙工作室」倾情献制";
