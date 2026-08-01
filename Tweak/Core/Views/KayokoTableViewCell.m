@@ -231,19 +231,19 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
             [self addSubview:[self tagDotView]];
             [[self tagDotView] setTranslatesAutoresizingMaskIntoConstraints:NO];
             [NSLayoutConstraint activateConstraints:@[
-                [[[self tagDotView] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] trailingAnchor]
-                                                                  constant:6],
+                [[[self tagDotView] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor]
+                                                                  constant:(kKayokoTableViewCellContentColumnSpacing -
+                                                                            kKayokoTableViewCellTagDotSize) /
+                                                                       2.0],
                 [[[self tagDotView] widthAnchor] constraintEqualToConstant:kKayokoTableViewCellTagDotSize],
                 [[[self tagDotView] heightAnchor] constraintEqualToConstant:kKayokoTableViewCellTagDotSize],
-                [[[self tagDotView] centerYAnchor] constraintEqualToAnchor:[[self headerLabel] centerYAnchor]],
-                [[[self tagDotView] trailingAnchor] constraintLessThanOrEqualToAnchor:textTrailingAnchor
-                                                                             constant:textTrailingConstant]
+                [[[self tagDotView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]
             ]];
-        } else {
-            [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] trailingAnchor]
-                                                        constraintEqualToAnchor:textTrailingAnchor
-                                                                       constant:textTrailingConstant] ]];
         }
+
+        [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] trailingAnchor]
+                                                    constraintEqualToAnchor:textTrailingAnchor
+                                                                   constant:textTrailingConstant] ]];
 
         if (hasContentText) {
             [self setContentLabel:[[KayokoTableViewCellPreviewLabel alloc] init]];
