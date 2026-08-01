@@ -310,8 +310,8 @@ NS_ASSUME_NONNULL_END
     [[self historyListViewController] setItemHeightInPoints:_listHeightInPoints];
     [[self favoritesListViewController] setItemHeightInPoints:_listHeightInPoints];
     [[[self mainView] headerView] setListRowHeight:_listHeightInPoints];
-    [[[[self previewViewController] previewView] headerView] setListRowHeight:_listHeightInPoints];
-    [[[[self wordSelectionViewController] wordSelectionView] headerView] setListRowHeight:_listHeightInPoints];
+    [[[self previewViewController] previewView] setListRowHeight:_listHeightInPoints];
+    [[[self wordSelectionViewController] wordSelectionView] setListRowHeight:_listHeightInPoints];
 }
 
 - (void)setClearButtonMode:(KayokoClearButtonMode)clearButtonMode {

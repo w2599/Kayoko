@@ -31,6 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
 @property(nonatomic, strong, readwrite) KayokoHeaderView *headerView;
 @property(nonatomic, strong, readwrite) UIView *transitionContentView;
+@property(nonatomic, assign) CGFloat contentHorizontalInset;
 
 #pragma mark - Tokens
 
@@ -70,6 +71,7 @@ NS_ASSUME_NONNULL_END
         [self setSelectionGestureOriginalIndexes:[[NSMutableIndexSet alloc] init]];
         [self setSelectedTokenOrderValues:[[NSMutableDictionary alloc] init]];
         [self setSelectionAnchorIndex:NSNotFound];
+        [self setContentHorizontalInset:kKayokoWordSelectionHorizontalInset];
 
         [self setHeaderView:[[KayokoHeaderView alloc] initWithTitle:@""]];
         [self addSubview:[self headerView]];
@@ -123,9 +125,20 @@ NS_ASSUME_NONNULL_END
 
         [self setTagChipBarView:[[KayokoTagChipBarView alloc] initWithFrame:CGRectZero]];
         [[self transitionContentView] addSubview:[self tagChipBarView]];
+        [self setListRowHeight:0];
     }
 
     return self;
+}
+
+- (void)setListRowHeight:(CGFloat)rowHeight {
+    [[self headerView] setListRowHeight:rowHeight];
+
+    rowHeight = rowHeight > 0 ? rowHeight : 65;
+    CGFloat iconSize = MAX(rowHeight - 8, 1);
+    CGFloat iconCenterX = 24 + iconSize / 2.0;
+    [self setContentHorizontalInset:iconCenterX - 20 / 2.0];
+    [self setNeedsLayout];
 }
 
 #pragma mark - Content
@@ -302,8 +315,9 @@ NS_ASSUME_NONNULL_END
 
     CGFloat scrollWidth = CGRectGetWidth([[self scrollView] bounds]);
     CGFloat scrollHeight = CGRectGetHeight([[self scrollView] bounds]);
-    CGFloat availableWidth = MAX(scrollWidth - kKayokoWordSelectionHorizontalInset * 2, 1);
-    CGFloat x = kKayokoWordSelectionHorizontalInset;
+    CGFloat horizontalInset = [self contentHorizontalInset];
+    CGFloat availableWidth = MAX(scrollWidth - horizontalInset * 2, 1);
+    CGFloat x = horizontalInset;
     CGFloat y = kKayokoWordSelectionTopInset;
 
     for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
@@ -311,9 +325,8 @@ NS_ASSUME_NONNULL_END
         CGSize size = [button sizeThatFits:CGSizeMake(availableWidth, kKayokoWordSelectionTokenHeight)];
         CGFloat buttonWidth = MIN(MAX(ceil(size.width), kKayokoWordSelectionTokenHeight), availableWidth);
 
-        if (x > kKayokoWordSelectionHorizontalInset &&
-            x + buttonWidth > kKayokoWordSelectionHorizontalInset + availableWidth) {
-            x = kKayokoWordSelectionHorizontalInset;
+        if (x > horizontalInset && x + buttonWidth > horizontalInset + availableWidth) {
+            x = horizontalInset;
             y += kKayokoWordSelectionTokenHeight + kKayokoWordSelectionLineSpacing;
         }
 
@@ -321,7 +334,7 @@ NS_ASSUME_NONNULL_END
         x += buttonWidth + kKayokoWordSelectionTokenSpacing;
 
         if ([self tokens][index][@"lineBreakAfter"] && index + 1 < [[self tokenButtons] count]) {
-            x = kKayokoWordSelectionHorizontalInset;
+            x = horizontalInset;
             y += kKayokoWordSelectionTokenHeight + kKayokoWordSelectionLineSpacing;
         }
     }

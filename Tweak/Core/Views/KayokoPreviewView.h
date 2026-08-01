@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithName:(NSString *)name;
+- (void)setListRowHeight:(CGFloat)rowHeight;
 - (void)showText:(NSString *)text;
 - (void)showImage:(nullable UIImage *)image;
 - (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags

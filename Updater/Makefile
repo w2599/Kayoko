@@ -1,4 +1,3 @@
-ARCHS := arm64
 TOOL_NAME := kayoko_updater
 
 kayoko_updater_USE_MODULES := 0

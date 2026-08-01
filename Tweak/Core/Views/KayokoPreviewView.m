@@ -73,6 +73,7 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [[[self textView] textContainer] setLineFragmentPadding:0];
         [[self textView] setHidden:YES];
         [[self transitionContentView] addSubview:[self textView]];
+        [self setListRowHeight:0];
 
         [[self textView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
@@ -114,6 +115,17 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
     }
 
     return self;
+}
+
+- (void)setListRowHeight:(CGFloat)rowHeight {
+    [[self headerView] setListRowHeight:rowHeight];
+
+    rowHeight = rowHeight > 0 ? rowHeight : 65;
+    CGFloat iconSize = MAX(rowHeight - 8, 1);
+    CGFloat iconCenterX = 24 + iconSize / 2.0;
+    UIEdgeInsets textContainerInset = [[self textView] textContainerInset];
+    textContainerInset.left = iconCenterX - 20 / 2.0;
+    [[self textView] setTextContainerInset:textContainerInset];
 }
 
 #pragma mark - Tag Bar

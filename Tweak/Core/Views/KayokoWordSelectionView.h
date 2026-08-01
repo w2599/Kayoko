@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^selectionChangedHandler)(void);
 
 - (void)setText:(NSString *)text;
+- (void)setListRowHeight:(CGFloat)rowHeight;
 - (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags
                 selectedTagUUID:(nullable NSString *)selectedTagUUID
                selectionHandler:(nullable void (^)(NSString *_Nullable tagUUID))selectionHandler;

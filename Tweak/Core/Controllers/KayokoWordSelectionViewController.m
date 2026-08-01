@@ -111,16 +111,16 @@ NS_ASSUME_NONNULL_END
 
     KayokoHeaderView *headerView = [[self wordSelectionView] headerView];
     [headerView setHidden:NO];
-    [[headerView titleLabel] setHidden:NO];
+    [[headerView titleLabel] setText:@""];
+    [[headerView titleLabel] setHidden:YES];
     [[headerView historySegmentedControl] setHidden:YES];
-    [headerView setTitleText:[self name]];
     [headerView updateStyleForButton:[headerView leadingButton]
-                       withImageName:@"arrowshape.turn.up.backward"
-                           imageSize:kKayokoFavoritesButtonImageSize
+                       withImageName:@"arrowshape.turn.up.backward.circle"
+                           imageSize:kKayokoBackButtonImageSize
                            tintColor:[UIColor labelColor]];
     [headerView updateStyleForButton:[headerView trailingButton]
-                       withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")imageSize
-                                    :kKayokoBackButtonImageSize
+                       withImageName:@"doc.circle"
+                           imageSize:kKayokoBackButtonImageSize
                            tintColor:[UIColor labelColor]];
     [[headerView alternateTrailingButton] setHidden:NO];
     [[headerView alternateTrailingButton] setEnabled:YES];
