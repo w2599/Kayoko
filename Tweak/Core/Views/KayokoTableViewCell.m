@@ -36,6 +36,12 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
 @interface KayokoTableViewCell ()
 @property(nonatomic, copy, nullable) NSString *representedImageName;
+@property(nonatomic, strong, nullable) NSLayoutConstraint *iconHeightConstraint;
+@property(nonatomic, strong, nullable) NSLayoutConstraint *contentImageHeightConstraint;
+@property(nonatomic, strong, nullable) NSLayoutConstraint *noteHeightConstraint;
+@property(nonatomic, strong, nullable) NSLayoutConstraint *contentLabelHeightConstraint;
+@property(nonatomic, assign) CGFloat preferredContentImageHeight;
+@property(nonatomic, assign) CGFloat preferredContentLabelHeight;
 @end
 
 @implementation KayokoTableViewCell
@@ -75,6 +81,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         BOOL showsDetail = [content showsDetail];
         BOOL hasNote = [[content noteText] length] > 0;
         [self setBackgroundColor:[UIColor clearColor]];
+        [self setClipsToBounds:YES];
         UIView *selectedBackgroundView = [[UIView alloc] init];
         UIColor *selectedBackgroundColor =
             [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
@@ -94,9 +101,10 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         [self addSubview:[self iconImageView]];
 
         [[self iconImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [self setIconHeightConstraint:[[[self iconImageView] heightAnchor] constraintEqualToConstant:40]];
         [NSLayoutConstraint activateConstraints:@[
             [[[self iconImageView] widthAnchor] constraintEqualToConstant:40],
-            [[[self iconImageView] heightAnchor] constraintEqualToConstant:40],
+            [self iconHeightConstraint],
             [[[self iconImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
             [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:24]
         ]];
@@ -118,6 +126,9 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [self addSubview:[self contentImageView]];
 
             [[self contentImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+            [self setContentImageHeightConstraint:[[[self contentImageView] heightAnchor]
+                                                      constraintEqualToConstant:contentImageViewSize.height]];
+            [self setPreferredContentImageHeight:contentImageViewSize.height];
                 contentImageTrailingConstraint = [[[self contentImageView] trailingAnchor]
                      constraintEqualToAnchor:[self trailingAnchor]
                                          constant:hasNote
@@ -125,7 +136,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
                                                           kKayokoTableViewCellContentColumnSpacing + 24)
                                                       : -24];
             [NSLayoutConstraint activateConstraints:@[
-                [[[self contentImageView] heightAnchor] constraintEqualToConstant:contentImageViewSize.height],
+                [self contentImageHeightConstraint],
                 [[[self contentImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
                 [[[self contentImageView] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor]
                                                                           constant:16],
@@ -151,9 +162,11 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [[self noteLabel] setClipsToBounds:YES];
             [self addSubview:[self noteLabel]];
             [[self noteLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
+            [self setNoteHeightConstraint:[[[self noteLabel] heightAnchor]
+                                              constraintEqualToConstant:kKayokoTableViewCellNoteHeight]];
             [NSLayoutConstraint activateConstraints:@[
                 [[[self noteLabel] widthAnchor] constraintEqualToConstant:kKayokoTableViewCellColumnWidth],
-                [[[self noteLabel] heightAnchor] constraintEqualToConstant:kKayokoTableViewCellNoteHeight],
+                [self noteHeightConstraint],
                 [[[self noteLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
                 [[[self noteLabel] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-24]
             ]];
@@ -224,11 +237,14 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [self addSubview:[self contentLabel]];
             [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
             CGFloat previewLabelHeight = ceil([[[self contentLabel] font] lineHeight] * lineCount);
+            [self setContentLabelHeightConstraint:[[[self contentLabel] heightAnchor]
+                                                      constraintEqualToConstant:previewLabelHeight]];
+            [self setPreferredContentLabelHeight:previewLabelHeight];
             [NSLayoutConstraint activateConstraints:@[
                 [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
                 [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor
                                                                      constant:textTrailingConstant],
-                [[[self contentLabel] heightAnchor] constraintEqualToConstant:previewLabelHeight]
+                [self contentLabelHeightConstraint]
             ]];
         }
 
@@ -278,6 +294,22 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
     }
 
     return self;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+
+    CGFloat availableHeight = MAX(CGRectGetHeight([self bounds]) - 16, 1);
+    CGFloat iconHeight = MIN(40, availableHeight);
+    [[self iconHeightConstraint] setConstant:iconHeight];
+    [[self contentImageHeightConstraint] setConstant:MIN([self preferredContentImageHeight], availableHeight)];
+    [[self noteHeightConstraint] setConstant:MIN(kKayokoTableViewCellNoteHeight, availableHeight)];
+
+    if ([self contentLabelHeightConstraint]) {
+        CGFloat detailHeight = [self detailLabel] ? ceil([[[self detailLabel] font] lineHeight]) + 2 : 0;
+        CGFloat maximumPreviewHeight = MAX(CGRectGetHeight([self bounds]) - 16 - detailHeight, 1);
+        [[self contentLabelHeightConstraint] setConstant:MIN([self preferredContentLabelHeight], maximumPreviewHeight)];
+    }
 }
 
 - (void)prepareForReuse {

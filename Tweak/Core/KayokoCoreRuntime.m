@@ -204,6 +204,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) KayokoItemDetailsMode itemDetailsMode;
 @property(nonatomic, assign) CGFloat heightInPoints;
+@property(nonatomic, assign) CGFloat listHeightInPoints;
 
 #pragma mark - Feedback
 
@@ -247,6 +248,7 @@ NS_ASSUME_NONNULL_END
         _previewLineCount = 2;
         _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
         _heightInPoints = 420;
+        _listHeightInPoints = kKayokoPreferenceKeyListHeightInPointsDefaultValue;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
         _pasteSuppressionState = [[KayokoPasteSuppressionState alloc] init];
     }
@@ -565,6 +567,9 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController itemDetailsMode] != self.itemDetailsMode) {
         [self.mainViewController setItemDetailsMode:self.itemDetailsMode];
     }
+    if ([self.mainViewController listHeightInPoints] != self.listHeightInPoints) {
+        [self.mainViewController setListHeightInPoints:self.listHeightInPoints];
+    }
     if ([self.mainViewController initialViewMode] != self.initialViewMode) {
         [self.mainViewController setInitialViewMode:self.initialViewMode];
     }
@@ -629,6 +634,7 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
         kKayokoPreferenceKeyItemDetailsMode : @(kKayokoPreferenceKeyItemDetailsModeDefaultValue),
         kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
+        kKayokoPreferenceKeyListHeightInPoints : @(kKayokoPreferenceKeyListHeightInPointsDefaultValue),
     }];
 
     [self readPasteTipPreferencesFromPreferences:self.preferences];
@@ -687,6 +693,7 @@ NS_ASSUME_NONNULL_END
         self.itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
     }
     self.heightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
+    self.listHeightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyListHeightInPoints] doubleValue];
 
     KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
     if ([pasteboardManager maximumHistoryAmount] != self.maximumHistoryAmount) {
@@ -721,8 +728,11 @@ NS_ASSUME_NONNULL_END
     NSUserDefaults *heightPreferences = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
     [heightPreferences registerDefaults:@{
         kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
+        kKayokoPreferenceKeyListHeightInPoints : @(kKayokoPreferenceKeyListHeightInPointsDefaultValue),
     }];
     self.heightInPoints = [[heightPreferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
+    self.listHeightInPoints =
+        [[heightPreferences objectForKey:kKayokoPreferenceKeyListHeightInPoints] doubleValue];
     if (self.pendingHeightPreferenceApply) {
         return;
     }
@@ -730,6 +740,9 @@ NS_ASSUME_NONNULL_END
     self.pendingHeightPreferenceApply = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
       self.pendingHeightPreferenceApply = NO;
+        if ([self.mainViewController listHeightInPoints] != self.listHeightInPoints) {
+            [self.mainViewController setListHeightInPoints:self.listHeightInPoints];
+        }
       [self applyHeightPreferenceToViewApplyingWhenHidden:NO];
     });
 }

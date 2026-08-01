@@ -322,6 +322,12 @@ NS_ASSUME_NONNULL_END
     [[self favoritesListViewController] setItemDetailsMode:itemDetailsMode];
 }
 
+- (void)setListHeightInPoints:(CGFloat)listHeightInPoints {
+    _listHeightInPoints = MAX(listHeightInPoints, 0);
+    [[self historyListViewController] setItemHeightInPoints:_listHeightInPoints];
+    [[self favoritesListViewController] setItemHeightInPoints:_listHeightInPoints];
+}
+
 - (void)setClearButtonMode:(KayokoClearButtonMode)clearButtonMode {
     if (clearButtonMode != kKayokoClearButtonModeOff && clearButtonMode != kKayokoClearButtonModeHistoryOnly &&
         clearButtonMode != kKayokoClearButtonModeAlways) {

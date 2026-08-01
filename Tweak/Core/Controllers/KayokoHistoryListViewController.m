@@ -109,6 +109,11 @@ NS_ASSUME_NONNULL_END
     [[self tableView] setItemDetailsMode:itemDetailsMode];
 }
 
+- (void)setItemHeightInPoints:(CGFloat)itemHeightInPoints {
+    _itemHeightInPoints = itemHeightInPoints;
+    [[self tableView] setItemHeightInPoints:itemHeightInPoints];
+}
+
 - (KayokoItemDetailsMode)itemDetailsMode {
     return [[self tableView] itemDetailsMode];
 }

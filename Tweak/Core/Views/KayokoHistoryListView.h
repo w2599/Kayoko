@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) KayokoItemDetailsMode itemDetailsMode;
+@property(nonatomic, assign) CGFloat itemHeightInPoints;
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 @property(nonatomic, assign) CGFloat searchBarSnapHeight;
 

@@ -288,6 +288,36 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>List Item Height (Points)</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>KayokoSliderCell</string>
+			<key>default</key>
+			<real>83</real>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>ListHeightInPoints</string>
+			<key>min</key>
+			<real>40</real>
+			<key>max</key>
+			<real>120</real>
+			<key>showValue</key>
+			<true/>
+			<key>isContinuous</key>
+			<true/>
+			<key>isSegmented</key>
+			<false/>
+			<key>valueLabelWidth</key>
+			<integer>44</integer>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.height.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
 			<string>Show Kayoko</string>
