@@ -84,6 +84,8 @@
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>History</string>
+			<key>footerText</key>
+			<string>Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -166,20 +168,15 @@
 			<key>label</key>
 			<string>Favorites Sorting</string>
 		</dict>
-
 		<dict>
 			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Default View</string>
-			<key>footerText</key>
-			<string>Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSegmentCell</string>
+			<string>PSLinkListCell</string>
 			<key>default</key>
 			<integer>2</integer>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>label</key>
+			<string>Default View</string>
 			<key>defaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
@@ -485,7 +482,7 @@ Made with ♥ by OwnGoal Studio</string>
 			<key>hideFooterTextAfterPreferenceKey</key>
 			<string>DidOpenHavocLink</string>
 		</dict>
-		<dict>
+		<!-- <dict>
 			<key>cellClass</key>
 			<string>KayokoLinkCell</string>
 			<key>label</key>
@@ -500,7 +497,7 @@ Made with ♥ by OwnGoal Studio</string>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>markOpenedKey</key>
 			<string>DidOpenHavocLink</string>
-		</dict>
+		</dict> -->
 
 	</array>
 	<key>title</key>
