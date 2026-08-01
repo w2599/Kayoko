@@ -9,12 +9,16 @@
 #import "KayokoHeaderButtonStyle.h"
 #import "KayokoPasteboardManager.h"
 
-static CGFloat const kKayokoHeaderHeight = 60;
-static CGFloat const kKayokoTitleTapControlHeight = 44;
-static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
-static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
-static CGFloat const kKayokoGrabberTopSpacing = 5;
-static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
+static CGFloat const kKayokoHeaderHeight = 48; // 标题视图的高度。
+static CGFloat const kKayokoTitleTapControlHeight = 44; // 标题标签的点击区域高度。
+static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8; // 标题标签点击区域与历史分段控件之间的间距。
+static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44; // 右侧按钮之间的间距。
+static CGFloat const kKayokoGrabberTopSpacing = -1; // 抓取条与标题视图顶部之间的间距。
+static CGFloat const kKayokoHeaderButtonTouchSize = 44; // 标题视图中按钮的触控区域大小。
+static CGFloat const kKayokoHeaderControlsVerticalOffset = 2; // 控件相对 Header 几何中心的视觉补偿。
+static CGFloat const kKayokoTableViewCellIconLeadingInset = 24;
+static CGFloat const kKayokoTableViewCellVerticalContentInset = 8;
+static CGFloat const kKayokoTableViewCellDefaultRowHeight = 65;
 
 @interface KayokoHeaderView ()
 
@@ -24,6 +28,8 @@ static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
 @property(nonatomic, strong, readwrite) UIButton *leadingButton;
 @property(nonatomic, strong, readwrite) UIButton *trailingButton;
 @property(nonatomic, strong, readwrite) UIButton *alternateTrailingButton;
+@property(nonatomic, strong) NSLayoutConstraint *leadingButtonCenterXConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *trailingButtonCenterXConstraint;
 
 @end
 
@@ -66,7 +72,7 @@ static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
         [_historySegmentedControl setApportionsSegmentWidthsByContent:NO];
         [_historySegmentedControl setSelectedSegmentTintColor:[UIColor tertiarySystemFillColor]];
         [_historySegmentedControl setTitleTextAttributes:@{
-            NSFontAttributeName : [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold],
+            NSFontAttributeName : [UIFont systemFontOfSize:15 weight:UIFontWeightRegular],
             NSForegroundColorAttributeName : [UIColor labelColor]
         } forState:UIControlStateNormal];
         [self addSubview:_historySegmentedControl];
@@ -87,24 +93,37 @@ static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
         [self addSubview:_titleTapControl];
         [_titleTapControl setTranslatesAutoresizingMaskIntoConstraints:NO];
 
+        _leadingButtonCenterXConstraint = [[_leadingButton centerXAnchor]
+            constraintEqualToAnchor:[self leadingAnchor]
+                           constant:kKayokoTableViewCellIconLeadingInset +
+                                    (kKayokoTableViewCellDefaultRowHeight - kKayokoTableViewCellVerticalContentInset) / 2.0];
+        _trailingButtonCenterXConstraint = [[_trailingButton centerXAnchor]
+            constraintEqualToAnchor:[self trailingAnchor]
+                           constant:-(kKayokoTableViewCellIconLeadingInset +
+                                      (kKayokoTableViewCellDefaultRowHeight - kKayokoTableViewCellVerticalContentInset) / 2.0)];
+
         [NSLayoutConstraint activateConstraints:@[
             [[_grabber topAnchor] constraintEqualToAnchor:[self topAnchor] constant:kKayokoGrabberTopSpacing],
             [[_grabber centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [[_leadingButton bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]
-                                                            constant:-kKayokoHeaderControlsBottomSpacing],
-            [[_leadingButton centerXAnchor] constraintEqualToAnchor:[self leadingAnchor]
-                                                           constant:kKayokoLeadingHeaderButtonCenterXInset],
+            [[_leadingButton widthAnchor] constraintEqualToConstant:kKayokoHeaderButtonTouchSize],
+            [[_leadingButton heightAnchor] constraintEqualToConstant:kKayokoHeaderButtonTouchSize],
+            [[_leadingButton centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]
+                                                            constant:kKayokoHeaderControlsVerticalOffset],
+            [self leadingButtonCenterXConstraint],
             [[_titleLabel centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
             [[_titleLabel leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]
                                                         constant:kKayokoTitleLabelLeadingInset],
             [[_historySegmentedControl centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
             [[_historySegmentedControl centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
-            [[_historySegmentedControl widthAnchor] constraintEqualToConstant:196],
+            [[_historySegmentedControl widthAnchor] constraintEqualToConstant:180],
             [[_historySegmentedControl heightAnchor] constraintEqualToConstant:32],
             [[_trailingButton centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
-            [[_trailingButton centerXAnchor] constraintEqualToAnchor:[self trailingAnchor]
-                                                            constant:-kKayokoTrailingHeaderButtonCenterXInset],
+            [[_trailingButton widthAnchor] constraintEqualToConstant:kKayokoHeaderButtonTouchSize],
+            [[_trailingButton heightAnchor] constraintEqualToConstant:kKayokoHeaderButtonTouchSize],
+            [self trailingButtonCenterXConstraint],
             [[_alternateTrailingButton centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
+            [[_alternateTrailingButton widthAnchor] constraintEqualToConstant:kKayokoHeaderButtonTouchSize],
+            [[_alternateTrailingButton heightAnchor] constraintEqualToConstant:kKayokoHeaderButtonTouchSize],
             [[_alternateTrailingButton centerXAnchor]
                 constraintEqualToAnchor:[_trailingButton centerXAnchor]
                                constant:-kKayokoTrailingHeaderButtonCenterSpacing],
@@ -119,14 +138,23 @@ static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
 
         [self updateStyleForButton:_leadingButton
                      withImageName:@"trash.circle"
-                         imageSize:kKayokoFavoritesButtonImageSize
+                         imageSize:kKayokoClearButtonImageSize
                          tintColor:[UIColor labelColor]];
         [self updateStyleForButton:_trailingButton
                      withImageName:@"xmark.circle"
                          imageSize:kKayokoClearButtonImageSize
                          tintColor:[UIColor labelColor]];
     }
+
     return self;
+}
+
+- (void)setListRowHeight:(CGFloat)rowHeight {
+    rowHeight = rowHeight > 0 ? rowHeight : kKayokoTableViewCellDefaultRowHeight;
+    CGFloat iconSize = MAX(rowHeight - kKayokoTableViewCellVerticalContentInset, 1);
+    CGFloat iconCenterX = kKayokoTableViewCellIconLeadingInset + iconSize / 2.0;
+    [[self leadingButtonCenterXConstraint] setConstant:iconCenterX];
+    [[self trailingButtonCenterXConstraint] setConstant:-iconCenterX];
 }
 
 - (void)setTitleText:(NSString *)title {
@@ -152,7 +180,7 @@ static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
                    imageSize:(NSUInteger)imageSize
                    tintColor:(UIColor *)color {
     UIImageSymbolConfiguration *configuration =
-        [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
+        [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightRegular];
     UIImage *image = [UIImage systemImageNamed:imageName] ?: [UIImage systemImageNamed:@"doc.on.doc"];
     [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
     [button setTintColor:color];

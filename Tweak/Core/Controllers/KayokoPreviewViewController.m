@@ -79,12 +79,12 @@ NS_ASSUME_NONNULL_END
 
     KayokoHeaderView *headerView = [[self previewView] headerView];
     [headerView setHidden:NO];
-    [[headerView titleLabel] setHidden:NO];
+    [[headerView titleLabel] setText:@""];
+    [[headerView titleLabel] setHidden:YES];
     [[headerView historySegmentedControl] setHidden:YES];
-    [headerView setTitleText:[[self previewView] name]];
     [headerView updateStyleForButton:[headerView leadingButton]
-                       withImageName:@"arrowshape.turn.up.backward"
-                           imageSize:kKayokoFavoritesButtonImageSize
+                       withImageName:@"arrowshape.turn.up.backward.circle"
+                           imageSize:kKayokoBackButtonImageSize
                            tintColor:[UIColor labelColor]];
     [headerView updateStyleForButton:[headerView trailingButton]
                        withImageName:[self actionImageNameForItem:item]
@@ -154,12 +154,12 @@ NS_ASSUME_NONNULL_END
 
 - (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item {
     if ([[item imageName] length] > 0) {
-        return @"square.and.arrow.down.fill";
+        return @"arrow.down.to.line.circle";
     }
     if ([item hasLink]) {
-        return @"arrow.up";
+        return @"arrow.up.right.circle";
     }
-    return @"doc.on.doc.fill";
+    return @"doc.circle";
 }
 
 - (NSString *)actionAccessibilityLabelKeyForItem:(KayokoPasteboardItem *)item {

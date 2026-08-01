@@ -22,7 +22,7 @@
         [[self lineLayer] setFillColor:nil];
         [[self lineLayer] setLineCap:kCALineCapRound];
         [[self lineLayer] setLineJoin:kCALineJoinRound];
-        [[self lineLayer] setLineWidth:5];
+        [[self lineLayer] setLineWidth:3];
         [[self layer] addSublayer:[self lineLayer]];
         [self setFoldProgress:0];
     }
@@ -58,8 +58,8 @@
     [self updateLineColor];
 
     CGRect bounds = [self bounds];
-    CGFloat minX = 2.5;
-    CGFloat maxX = CGRectGetWidth(bounds) - 2.5;
+    CGFloat minX = 1.5;
+    CGFloat maxX = CGRectGetWidth(bounds) - 1.5;
     CGFloat midX = CGRectGetMidX(bounds);
     CGFloat midY = CGRectGetMidY(bounds);
     CGFloat foldedMidY = midY + 4 * [self foldProgress];

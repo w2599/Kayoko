@@ -309,6 +309,9 @@ NS_ASSUME_NONNULL_END
     _listHeightInPoints = MAX(listHeightInPoints, 0);
     [[self historyListViewController] setItemHeightInPoints:_listHeightInPoints];
     [[self favoritesListViewController] setItemHeightInPoints:_listHeightInPoints];
+    [[[self mainView] headerView] setListRowHeight:_listHeightInPoints];
+    [[[[self previewViewController] previewView] headerView] setListRowHeight:_listHeightInPoints];
+    [[[[self wordSelectionViewController] wordSelectionView] headerView] setListRowHeight:_listHeightInPoints];
 }
 
 - (void)setClearButtonMode:(KayokoClearButtonMode)clearButtonMode {
@@ -920,8 +923,8 @@ NS_ASSUME_NONNULL_END
     if (isFavorites) {
         [[[[self mainView] headerView] leadingButton] setHidden:[self isAuthorizationRequired]];
         [[[self mainView] headerView] updateStyleForButton:leadingButton
-                                              withImageName:@"gearshape"
-                                                  imageSize:kKayokoFavoritesButtonImageSize
+                                              withImageName:@"equal.circle"
+                                                  imageSize:kKayokoClearButtonImageSize
                                                   tintColor:[UIColor labelColor]];
         [leadingButton addTarget:self
                            action:@selector(handleFavoritesSettingsButtonPressed)
@@ -936,8 +939,8 @@ NS_ASSUME_NONNULL_END
         [self isAuthorizationRequired] || [self isShowingClearConfirmation] || !modeAllowsClearButton;
     [[[[self mainView] headerView] leadingButton] setHidden:hidesClearButton];
     [[[self mainView] headerView] updateStyleForButton:leadingButton
-                                          withImageName:@"trash"
-                                              imageSize:kKayokoFavoritesButtonImageSize
+                                              withImageName:@"trash.circle"
+                                              imageSize:kKayokoClearButtonImageSize
                                               tintColor:[UIColor labelColor]];
     [leadingButton addTarget:self action:@selector(handleClearButtonPressed) forControlEvents:UIControlEventTouchUpInside];
     NSUInteger itemCount =

@@ -141,7 +141,7 @@ static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
 
         if (hasNote) {
             [self setNoteLabel:[[UILabel alloc] init]];
-            [[self noteLabel] setFont:[UIFont systemFontOfSize:14 weight:UIFontWeightMedium]];
+            [[self noteLabel] setFont:[UIFont systemFontOfSize:12 weight:UIFontWeightRegular]];
             [[self noteLabel] setTextColor:[UIColor labelColor]];
             [[self noteLabel] setTextAlignment:NSTextAlignmentCenter];
             [[self noteLabel] setNumberOfLines:2];

@@ -28,6 +28,7 @@ static CGFloat const kKayokoHeaderContentSpacing = 8;
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
 - (void)setTitleText:(NSString *)title;
 - (void)setSelectedHistorySegmentIndex:(NSInteger)index;
+- (void)setListRowHeight:(CGFloat)rowHeight;
 - (void)updateStyleForButton:(UIButton *)button
                withImageName:(NSString *)imageName
                    imageSize:(NSUInteger)imageSize

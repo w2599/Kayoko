@@ -12,7 +12,7 @@
 #import "KayokoPasteboardManager.h"
 
 static NSTimeInterval const kKayokoContentTransitionDuration = 0.2;
-static CGFloat const kKayokoMainViewTopCornerRadius = 16;
+static CGFloat const kKayokoMainViewTopCornerRadius = 26;
 
 @interface KayokoMainView ()
 
@@ -103,15 +103,15 @@ static CGFloat const kKayokoMainViewTopCornerRadius = 16;
         ]];
 
         [[self headerView] updateStyleForButton:[[self headerView] leadingButton]
-                                  withImageName:@"trash"
-                                      imageSize:kKayokoFavoritesButtonImageSize
+                                  withImageName:@"trash.circle"
+                                      imageSize:kKayokoClearButtonImageSize
                                       tintColor:[UIColor labelColor]];
         [[self headerView] updateStyleForButton:[[self headerView] trailingButton]
-                                  withImageName:@"xmark"
+                                  withImageName:@"chevron.down.circle"
                                       imageSize:kKayokoClearButtonImageSize
                                       tintColor:[UIColor labelColor]];
         [[self headerView] updateStyleForButton:[[self headerView] alternateTrailingButton]
-                                  withImageName:@"arrowshape.turn.up.backward"
+                                  withImageName:@"arrowshape.turn.up.backward.circle"
                                       imageSize:kKayokoBackButtonImageSize
                                       tintColor:[UIColor labelColor]];
 
