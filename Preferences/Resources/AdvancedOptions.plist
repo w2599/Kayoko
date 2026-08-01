@@ -194,7 +194,7 @@
 			<key>isDestructive</key>
 			<true/>
 		</dict>
-		<dict>
+		<!-- <dict>
 			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
@@ -203,7 +203,7 @@
 			<string>deactivateAuthorizationPrompt</string>
 			<key>isDestructive</key>
 			<true/>
-		</dict>
+		</dict> -->
 
 		<dict>
 			<key>cell</key>
@@ -242,6 +242,14 @@
 			<string>Import from CopyVault</string>
 			<key>action</key>
 			<string>importCopyVaultPrompt</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Import Legacy Favorites</string>
+			<key>action</key>
+			<string>importLegacyFavoritesPrompt</string>
 		</dict>
 
 	</array>

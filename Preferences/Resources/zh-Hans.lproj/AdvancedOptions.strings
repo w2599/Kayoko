@@ -29,6 +29,8 @@
 "Import Complete" = "导入完成";
 "Import from CopyLog" = "从 CopyLog 导入";
 "Import from CopyVault" = "从 CopyVault 导入";
+"Import Legacy Favorites" = "从旧版 Hello Kayoko 导入收藏";
+"Import favorites from the legacy Kayoko database. Existing favorites will be kept." = "从旧版 Kayoko 数据库导入收藏。现有收藏内容会保留。";
 "Importing from CopyLog…" = "正在从 CopyLog 导入…";
 "Importing from CopyVault…" = "正在从 CopyVault 导入…";
 "Kayoko will merge CopyLog snippets and favorite items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko 会将 CopyLog 的片段和收藏内容合并到现有数据中，并保留已有的 Kayoko 条目。导入完成后需要注销。";

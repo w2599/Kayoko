@@ -252,6 +252,37 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
                                            command:@"import-copyvault"];
 }
 
+- (void)importLegacyFavoritesPrompt {
+        NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+        UIAlertController *alert = [UIAlertController
+                alertControllerWithTitle:[bundle localizedStringForKey:@"Import Legacy Favorites"
+                                                                                                                                    value:nil
+                                                                                                                                    table:@"AdvancedOptions"]
+                                                 message:[bundle localizedStringForKey:
+                                                                                         @"Import favorites from the legacy Kayoko database. Existing favorites will be kept."
+                                                                                                                 value:nil
+                                                                                                                 table:@"AdvancedOptions"]
+                                    preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *importAction = [UIAlertAction
+                actionWithTitle:[bundle localizedStringForKey:@"Import" value:nil table:@"AdvancedOptions"]
+                                    style:UIAlertActionStyleDefault
+                                handler:^(UIAlertAction *action) {
+                                    (void)action;
+                                    CFNotificationCenterPostNotification(
+                                            CFNotificationCenterGetDarwinNotifyCenter(),
+                                            (__bridge CFStringRef)kKayokoNotificationKeyCoreImportLegacyFavorites,
+                                            NULL, NULL, YES);
+                                }];
+        UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                                                                                                                 value:nil
+                                                                                                                                                                                 table:@"AdvancedOptions"]
+                                                                                                                     style:UIAlertActionStyleCancel
+                                                                                                                 handler:nil];
+        [alert addAction:importAction];
+        [alert addAction:cancelAction];
+        [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)presentExternalImportPromptForSourceName:(NSString *)sourceName
                                dataDirectoryPath:(NSString *)dataDirectoryPath
                                         titleKey:(NSString *)titleKey

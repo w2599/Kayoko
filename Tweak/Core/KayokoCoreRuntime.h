@@ -42,6 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)resetThumbnailMemoryCache;
 - (void)clearFavorites;
 - (void)clearHistory;
+- (void)importLegacyFavorites;
 - (void)handleFavoritesEditorRequest;
 - (void)capturePasteboardChange;
 - (void)markPasteWillStart;

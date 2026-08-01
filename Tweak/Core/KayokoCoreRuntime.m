@@ -9,7 +9,9 @@
 #import "KayokoNotificationKeys.h"
 #import "KayokoPanelPresentationMode.h"
 #import "KayokoPasteboardManager.h"
+#import "Manager/KayokoLegacyFavoritesImporter.h"
 #import "KayokoPasteboardItem.h"
+#import "KayokoLegacyFavoritesImporter.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoPurchaseAuthorization.h"
 
@@ -1157,6 +1159,20 @@ NS_ASSUME_NONNULL_END
     [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyHistory
                                                                       shouldRemoveImages:YES
                                                                               completion:nil];
+}
+
+- (void)importLegacyFavorites {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
+    KayokoPasteboardManager *manager = [KayokoPasteboardManager sharedInstance];
+    [KayokoLegacyFavoritesImporter importWithPasteboardManager:manager
+                                                    completion:^(BOOL success, NSUInteger importedCount) {
+                                                      if (success && importedCount > 0) {
+                                                          [self reloadHistory];
+                                                      }
+                                                    }];
 }
 
 - (void)handleFavoritesEditorRequest {

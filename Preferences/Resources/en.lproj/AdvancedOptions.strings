@@ -29,6 +29,8 @@
 "Import Complete" = "Import Complete";
 "Import from CopyLog" = "Import from CopyLog";
 "Import from CopyVault" = "Import from CopyVault";
+"Import Legacy Favorites" = "Import Legacy Favorites";
+"Import favorites from the legacy Kayoko database. Existing favorites will be kept." = "Import favorites from the legacy Kayoko database. Existing favorites will be kept.";
 "Importing from CopyLog…" = "Importing from CopyLog…";
 "Importing from CopyVault…" = "Importing from CopyVault…";
 "Kayoko will merge CopyLog snippets and favorite items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko will merge CopyLog snippets and favorite items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes.";

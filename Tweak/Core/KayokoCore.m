@@ -7,6 +7,7 @@
 
 #import "KayokoCore.h"
 #import "KayokoCoreRuntime.h"
+#import "Manager/KayokoLegacyFavoritesImporter.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoSpringBoardHooks.h"
 
@@ -140,6 +141,17 @@ static void kayokoCoreFavoritesEditorRequestCallback(CFNotificationCenterRef cen
     (void)object;
     (void)userInfo;
     [[KayokoCoreRuntime sharedRuntime] handleFavoritesEditorRequest];
+}
+
+static void kayokoCoreImportLegacyFavoritesCallback(CFNotificationCenterRef center, void *observer,
+                                                    CFStringRef name, const void *object,
+                                                    CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] importLegacyFavorites];
 }
 
 static void kayokoCoreCheckpointHistoryCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
@@ -279,6 +291,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
                           callback:kayokoCoreClearFavoritesCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreClearHistory
                           callback:kayokoCoreClearHistoryCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreImportLegacyFavorites
+                          callback:kayokoCoreImportLegacyFavoritesCallback];
     if (![runtime isEnabled]) {
         return;
     }
