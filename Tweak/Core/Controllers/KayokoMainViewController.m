@@ -926,9 +926,12 @@ NS_ASSUME_NONNULL_END
                                               withImageName:@"equal.circle"
                                                   imageSize:kKayokoClearButtonImageSize
                                                   tintColor:[UIColor labelColor]];
+        [leadingButton setEnabled:YES];
+        [leadingButton setUserInteractionEnabled:YES];
+        [leadingButton setAlpha:1.0];
         [leadingButton addTarget:self
-                           action:@selector(handleFavoritesSettingsButtonPressed)
-                 forControlEvents:UIControlEventTouchUpInside];
+                   action:@selector(handleFavoritesSettingsButtonPressed)
+             forControlEvents:UIControlEventTouchUpInside];
         return;
     }
 
