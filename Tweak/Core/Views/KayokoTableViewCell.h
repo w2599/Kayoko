@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoTableViewCell : UITableViewCell
 
++ (void)setMaximumPreviewLineCountForRowHeight:(CGFloat)rowHeight;
+
 @property(nonatomic, strong) UIImageView *iconImageView;
 @property(nonatomic, strong) UILabel *headerLabel;
 @property(nonatomic, strong, nullable) UIView *tagDotView;
@@ -24,7 +26,6 @@ NS_ASSUME_NONNULL_BEGIN
                       content:(KayokoTableViewCellContent *)content
               reuseIdentifier:(NSString *)reuseIdentifier;
 + (NSString *)reuseIdentifierForContent:(KayokoTableViewCellContent *)content;
-+ (CGSize)contentImageViewSizeForPreviewLineCount:(NSUInteger)previewLineCount;
 + (CGSize)contentImageThumbnailSize;
 - (void)applyContent:(KayokoTableViewCellContent *)content;
 - (void)setContentImage:(nullable UIImage *)image forImageName:(NSString *)imageName;

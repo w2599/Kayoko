@@ -24,7 +24,6 @@
 "Default View" = "默认界面";
 "Dictation Key" = "听写键";
 "Disable Paste Tips" = "禁用粘贴提示";
-"Double Line" = "双行";
 "Edit Menu" = "编辑菜单";
 "Enable Kayoko" = "启用 Kayoko";
 "Favorites" = "收藏";
@@ -62,7 +61,6 @@
 "Please check the following: open Zebra → select the Sources tab → tap Havoc → tap My Account in the top-right corner → make sure Kayoko is in your purchases" = "请按如下步骤检查：打开 Zebra → 选择 “软件源” 标签页 → 点选 “Havoc” → 点选界面右上角 “我的帐户” → 检查已购列表中是否有 Kayoko";
 "Prediction Bar" = "预测栏";
 "Preview" = "预览";
-"Preview Lines" = "预览行数";
 "Previous" = "先前的选择";
 "Purchase Kayoko" = "购买 Kayoko";
 "Purchase Kayoko on Havoc Marketplace and support future maintenance." = "在浩劫商店购买 Kayoko，支持后续维护。";
@@ -82,7 +80,6 @@
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "此选项需要重新启动 SpringBoard 才能生效。你现在要重新启动吗？";
 "Tools" = "工具";
 "Touch Outside to Dismiss" = "触摸外部收起";
-"Triple Line" = "三行";
 "Try out your changes by typing, copying and pasting text." = "尝试输入、拷贝和粘贴文本以查看效果。";
 "When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection." = "开启后，长按历史记录或收藏中的文本条目即可进入滑动选词模式。轻点词语可选中，然后在词语间滑动来扩展或缩小选区。";
 "Wishing on a star…" = "在星星上许个愿…";

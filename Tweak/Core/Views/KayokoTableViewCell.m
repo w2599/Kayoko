@@ -11,8 +11,6 @@
 
 static CGFloat const kKayokoTableViewCellTagDotSize = 7;
 static CGFloat const kKayokoTableViewCellContentImageWidth = 70;
-static CGFloat const kKayokoTableViewCellContentImageSingleLineHeight = 48;
-static CGFloat const kKayokoTableViewCellContentImageAdditionalLineHeight = 16;
 static CGFloat const kKayokoTableViewCellColumnWidth = 70;
 static CGFloat const kKayokoTableViewCellNoteWidth = kKayokoTableViewCellColumnWidth;
 static CGFloat const kKayokoTableViewCellNoteHeight = 40;
@@ -20,7 +18,7 @@ static CGFloat const kKayokoTableViewCellNoteCornerRadius = 8;
 static CGFloat const kKayokoTableViewCellContentImageCornerRadius = 8;
 static CGFloat const kKayokoTableViewCellContentColumnSpacing = 16;
 static CGFloat const kKayokoTableViewCellVerticalContentInset = 8;
-static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
+static NSUInteger kKayokoTableViewCellMaximumPreviewLineCount = 1;
 
 @interface KayokoTableViewCellPreviewLabel : UILabel
 @end
@@ -44,32 +42,29 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *contentImageHeightConstraint;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *noteHeightConstraint;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *contentLabelHeightConstraint;
-@property(nonatomic, assign) CGFloat preferredContentLabelHeight;
 @end
 
 @implementation KayokoTableViewCell
 
++ (void)setMaximumPreviewLineCountForRowHeight:(CGFloat)rowHeight {
+    UIFont *font = [UIFont systemFontOfSize:14];
+    CGFloat availableHeight = MAX(rowHeight - kKayokoTableViewCellVerticalContentInset, 1);
+    CGFloat fontLineHeight = MAX(ceil([font lineHeight]), 1);
+    kKayokoTableViewCellMaximumPreviewLineCount =
+        MAX((NSUInteger)1, (NSUInteger)floor(availableHeight / fontLineHeight));
+}
+
 + (NSString *)reuseIdentifierForContent:(KayokoTableViewCellContent *)content {
-    NSUInteger lineCount = MIN(MAX([content previewLineCount], 2), kKayokoTableViewCellMaximumPreviewLineCount);
     BOOL hasContentImageSlot = [content contentImage] || [[content thumbnailImageName] length] > 0;
     BOOL hasTagDot = [[content tagHexColor] length] > 0;
     BOOL hasContentText = [[content contentText] length] > 0;
     BOOL hasNote = [[content noteText] length] > 0;
-    return [NSString stringWithFormat:@"KayokoTableViewCell-%lu-%d-%d-%d-%d", (unsigned long)lineCount,
+    return [NSString stringWithFormat:@"KayokoTableViewCell-%d-%d-%d-%d",
                                       hasContentImageSlot, hasTagDot, hasContentText, hasNote];
 }
 
-+ (CGSize)contentImageViewSizeForPreviewLineCount:(NSUInteger)previewLineCount {
-    NSUInteger lineCount = MIN(MAX(previewLineCount, 2), kKayokoTableViewCellMaximumPreviewLineCount);
-    CGFloat height = kKayokoTableViewCellContentImageSingleLineHeight +
-                     (lineCount - 1) * kKayokoTableViewCellContentImageAdditionalLineHeight;
-    return CGSizeMake(kKayokoTableViewCellContentImageWidth, height);
-}
-
 + (CGSize)contentImageThumbnailSize {
-    CGSize maximumViewSize = [self contentImageViewSizeForPreviewLineCount:kKayokoTableViewCellMaximumPreviewLineCount];
-    CGFloat sideLength = MAX(maximumViewSize.width, maximumViewSize.height);
-    return CGSizeMake(sideLength, sideLength);
+    return CGSizeMake(kKayokoTableViewCellContentImageWidth, 80);
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
@@ -78,8 +73,6 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
-        NSUInteger lineCount = MIN(MAX([content previewLineCount], 2), kKayokoTableViewCellMaximumPreviewLineCount);
-        CGSize contentImageViewSize = [[self class] contentImageViewSizeForPreviewLineCount:lineCount];
         BOOL hasContentText = [[content contentText] length] > 0;
         BOOL hasNote = [[content noteText] length] > 0;
         [self setBackgroundColor:[UIColor clearColor]];
@@ -130,7 +123,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
             [[self contentImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
             [self setContentImageHeightConstraint:[[[self contentImageView] heightAnchor]
-                                                      constraintEqualToConstant:contentImageViewSize.height]];
+                                                      constraintEqualToConstant:1]];
                 contentImageTrailingConstraint = [[[self contentImageView] trailingAnchor]
                      constraintEqualToAnchor:[self trailingAnchor]
                                          constant:hasNote
@@ -235,13 +228,13 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
             [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
             [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
-            [[self contentLabel] setNumberOfLines:lineCount];
+            [[self contentLabel] setNumberOfLines:kKayokoTableViewCellMaximumPreviewLineCount];
             [self addSubview:[self contentLabel]];
             [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
-            CGFloat previewLabelHeight = ceil([[[self contentLabel] font] lineHeight] * lineCount);
+            CGFloat previewLabelHeight = ceil([[[self contentLabel] font] lineHeight]) *
+                                         kKayokoTableViewCellMaximumPreviewLineCount;
             [self setContentLabelHeightConstraint:[[[self contentLabel] heightAnchor]
                                                       constraintEqualToConstant:previewLabelHeight]];
-            [self setPreferredContentLabelHeight:previewLabelHeight];
             [NSLayoutConstraint activateConstraints:@[
                 [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
                 [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor
@@ -279,10 +272,6 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
     [[[self contentImageView] layer] setCornerRadius:adaptiveCornerRadius];
     [[[self noteLabel] layer] setCornerRadius:adaptiveCornerRadius];
 
-    if ([self contentLabelHeightConstraint]) {
-        CGFloat maximumPreviewHeight = MAX(CGRectGetHeight([self bounds]) - kKayokoTableViewCellVerticalContentInset, 1);
-        [[self contentLabelHeightConstraint] setConstant:MIN([self preferredContentLabelHeight], maximumPreviewHeight)];
-    }
 }
 
 - (void)prepareForReuse {
@@ -324,8 +313,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         [[self tagDotView] setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[content tagHexColor]]];
     }
 
-    NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), kKayokoTableViewCellMaximumPreviewLineCount);
-    [[self contentLabel] setNumberOfLines:lineCount];
+    [[self contentLabel] setNumberOfLines:kKayokoTableViewCellMaximumPreviewLineCount];
     if ([content attributedContentText]) {
         NSMutableAttributedString *attributedText = [[content attributedContentText] mutableCopy];
         NSRange fullRange = NSMakeRange(0, [attributedText length]);

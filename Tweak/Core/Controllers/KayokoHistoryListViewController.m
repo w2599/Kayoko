@@ -103,17 +103,12 @@ NS_ASSUME_NONNULL_END
     return [[self dataStore] hasActiveSearch];
 }
 
-- (void)setPreviewLineCount:(NSUInteger)previewLineCount {
-    [[self tableView] setPreviewLineCount:previewLineCount];
-}
-
-- (NSUInteger)previewLineCount {
-    return [[self tableView] previewLineCount];
-}
-
 - (void)setItemHeightInPoints:(CGFloat)itemHeightInPoints {
     _itemHeightInPoints = itemHeightInPoints;
+    CGFloat effectiveRowHeight = itemHeightInPoints > 0 ? itemHeightInPoints : 65;
+    [KayokoTableViewCell setMaximumPreviewLineCountForRowHeight:effectiveRowHeight];
     [[self tableView] setItemHeightInPoints:itemHeightInPoints];
+    [[self tableView] reloadData];
 }
 
 - (void)refreshSearchPlaceholder {
@@ -605,7 +600,6 @@ NS_ASSUME_NONNULL_END
 
 - (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture {
     KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
-                                                                        previewLineCount:[self previewLineCount]
                                                                             searchText:[self searchText]];
 
     KayokoTableViewCell *cell =
@@ -641,7 +635,6 @@ NS_ASSUME_NONNULL_END
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
     KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
-                                                                        previewLineCount:[self previewLineCount]
                                                                             searchText:[self searchText]];
     NSString *reuseIdentifier = [KayokoTableViewCell reuseIdentifierForContent:content];
     KayokoTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuseIdentifier];

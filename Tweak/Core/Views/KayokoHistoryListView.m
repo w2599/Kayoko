@@ -10,8 +10,6 @@
 #import "KayokoPasteboardManager.h"
 
 static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
-static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
-static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 static CGFloat const kKayokoHistoryListViewVerticalFadeHeight = 20;
 static CGFloat const kKayokoNoSearchResultsPlaceholderMinimumHeight = 96;
@@ -373,7 +371,6 @@ NS_ASSUME_NONNULL_END
         [self setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
         [self setEdgeFadeWidth:kKayokoHistoryListViewVerticalFadeHeight];
         [self setEdgeFadeEnabled:YES];
-        [self setPreviewLineCount:2];
     }
 
     return self;
@@ -381,22 +378,14 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Configuration
 
-- (void)setPreviewLineCount:(NSUInteger)previewLineCount {
-    NSUInteger lineCount = MIN(MAX(previewLineCount, 2), kKayokoHistoryListViewMaximumPreviewLineCount);
-    _previewLineCount = lineCount;
-    [self updateRowHeightForCurrentDisplayOptions];
-    [self reloadData];
-}
-
 - (void)setItemHeightInPoints:(CGFloat)itemHeightInPoints {
     _itemHeightInPoints = MAX(itemHeightInPoints, 0);
     [self updateRowHeightForCurrentDisplayOptions];
 }
 
 - (void)updateRowHeightForCurrentDisplayOptions {
-    CGFloat naturalHeight = kKayokoHistoryListViewBaseRowHeight +
-                            ([self previewLineCount] - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight;
-    [self setRowHeight:[self itemHeightInPoints] > 0 ? [self itemHeightInPoints] : naturalHeight];
+    [self setRowHeight:[self itemHeightInPoints] > 0 ? [self itemHeightInPoints]
+                                                       : kKayokoHistoryListViewBaseRowHeight];
 }
 
 @end

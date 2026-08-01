@@ -66,7 +66,6 @@ static NSString *const kKayokoPreferenceKeyIgnoreRemoteReplication = @"IgnoreRem
 static NSString *const kKayokoPreferenceKeyApplicationBlacklist = @"ApplicationBlacklist";
 static NSString *const kKayokoPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
 static NSString *const kKayokoPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
-static NSString *const kKayokoPreferenceKeyPreviewLineCount = @"PreviewLineCount";
 static NSString *const kKayokoPreferenceKeyHeightInPoints = @"HeightInPoints";
 static NSString *const kKayokoPreferenceKeyListHeightInPoints = @"ListHeightInPoints";
 
@@ -93,6 +92,5 @@ static BOOL const kKayokoPreferenceKeyDisablePasteTipsDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyPlaySoundEffectsDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
-static NSUInteger const kKayokoPreferenceKeyPreviewLineCountDefaultValue = 2;
 static CGFloat const kKayokoPreferenceKeyHeightInPointsDefaultValue = 420;
 static CGFloat const kKayokoPreferenceKeyListHeightInPointsDefaultValue = 83;

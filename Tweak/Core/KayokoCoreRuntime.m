@@ -202,7 +202,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
-@property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) CGFloat heightInPoints;
 @property(nonatomic, assign) CGFloat listHeightInPoints;
 
@@ -245,7 +244,6 @@ NS_ASSUME_NONNULL_END
 - (instancetype)initPrivate {
     self = [super init];
     if (self) {
-        _previewLineCount = 2;
         _heightInPoints = 420;
         _listHeightInPoints = kKayokoPreferenceKeyListHeightInPointsDefaultValue;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
@@ -560,9 +558,6 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController swipeToSelectWords] != self.swipeToSelectWords) {
         [self.mainViewController setSwipeToSelectWords:self.swipeToSelectWords];
     }
-    if ([self.mainViewController previewLineCount] != self.previewLineCount) {
-        [self.mainViewController setPreviewLineCount:self.previewLineCount];
-    }
     if ([self.mainViewController listHeightInPoints] != self.listHeightInPoints) {
         [self.mainViewController setListHeightInPoints:self.listHeightInPoints];
     }
@@ -627,7 +622,6 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyApplicationBlacklist : @[],
         kKayokoPreferenceKeyPlaySoundEffects : @(kKayokoPreferenceKeyPlaySoundEffectsDefaultValue),
         kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue),
-        kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
         kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
         kKayokoPreferenceKeyListHeightInPoints : @(kKayokoPreferenceKeyListHeightInPointsDefaultValue),
     }];
@@ -681,7 +675,6 @@ NS_ASSUME_NONNULL_END
         [NSSet setWithArray:[self.preferences arrayForKey:kKayokoPreferenceKeyApplicationBlacklist] ?: @[]];
     self.playSoundEffects = [[self.preferences objectForKey:kKayokoPreferenceKeyPlaySoundEffects] boolValue];
     self.playHapticFeedback = [[self.preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
-    self.previewLineCount = [[self.preferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     self.heightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
     self.listHeightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyListHeightInPoints] doubleValue];
 

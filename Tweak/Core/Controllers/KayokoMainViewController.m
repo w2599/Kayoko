@@ -305,12 +305,6 @@ NS_ASSUME_NONNULL_END
     [[self panelPresentationController] setDismissOnOutsideTouch:dismissOnOutsideTouch];
 }
 
-- (void)setPreviewLineCount:(NSUInteger)previewLineCount {
-    _previewLineCount = previewLineCount;
-    [[self historyListViewController] setPreviewLineCount:previewLineCount];
-    [[self favoritesListViewController] setPreviewLineCount:previewLineCount];
-}
-
 - (void)setListHeightInPoints:(CGFloat)listHeightInPoints {
     _listHeightInPoints = MAX(listHeightInPoints, 0);
     [[self historyListViewController] setItemHeightInPoints:_listHeightInPoints];

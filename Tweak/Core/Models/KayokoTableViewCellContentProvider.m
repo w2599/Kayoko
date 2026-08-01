@@ -60,14 +60,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
-                            previewLineCount:(NSUInteger)previewLineCount {
-    return [self cellContentForItem:item
-                   previewLineCount:previewLineCount
-                         searchText:nil];
+{
+    return [self cellContentForItem:item searchText:nil];
 }
 
 - (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
-                                  previewLineCount:(NSUInteger)previewLineCount
                                         searchText:(nullable NSString *)searchText {
     KayokoTableViewCellContent *content = [[KayokoTableViewCellContent alloc] init];
     NSString *bundleIdentifier = [item bundleIdentifier];
@@ -86,7 +83,6 @@ NS_ASSUME_NONNULL_END
     [content setContentText:contentText];
     [content setAttributedContentText:[self attributedTextForText:contentText searchText:searchText]];
     [content setThumbnailImageName:[item imageName]];
-    [content setPreviewLineCount:previewLineCount];
     return content;
 }
 

@@ -13,7 +13,6 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoHistoryListView : KayokoEdgeFadingTableView
 
 @property(nonatomic, copy) NSString *name;
-@property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) CGFloat itemHeightInPoints;
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 @property(nonatomic, assign) CGFloat searchBarSnapHeight;
