@@ -121,9 +121,21 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
         [self configureConditionalFootersInSpecifiers:_specifiers];
         [self configureTagManagementSpecifierInSpecifiers:_specifiers];
+        [self configureFavoritesSortingSpecifierInSpecifiers:_specifiers];
     }
 
     return _specifiers;
+}
+
+- (void)configureFavoritesSortingSpecifierInSpecifiers:(NSArray<PSSpecifier *> *)specifiers {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *localizedTitle = [bundle localizedStringForKey:@"Favorites Sort Order" value:nil table:@"Root"];
+    for (PSSpecifier *specifier in specifiers) {
+        if ([[specifier propertyForKey:@"detail"] isEqualToString:@"KayokoFavoritesSortListController"]) {
+            [specifier setProperty:localizedTitle forKey:@"label"];
+            break;
+        }
+    }
 }
 
 - (void)configureTagManagementSpecifierInSpecifiers:(NSArray<PSSpecifier *> *)specifiers {

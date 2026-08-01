@@ -849,6 +849,32 @@ NS_ASSUME_NONNULL_END
     [_historyRepository setNote:note forItemDictionary:dictionary inHistoryKey:historyKey completion:completion];
 }
 
+- (void)setContent:(NSString *)content
+ forPasteboardItem:(KayokoPasteboardItem *)item
+  inHistoryWithKey:(NSString *)historyKey
+        completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode || !item || [historyKey length] == 0) {
+        if (completion) completion(NO);
+        return;
+    }
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    [_historyRepository setContent:content
+                forItemDictionary:dictionary
+                     inHistoryKey:historyKey
+                      completion:completion];
+}
+
+- (void)setFavoriteOrder:(NSArray<NSDictionary<NSString *, id> *> *)items
+              completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode) {
+        if (completion) completion(NO);
+        return;
+    }
+    [_historyRepository setOrderForItemDictionaries:items
+                                      inHistoryKey:kKayokoHistoryKeyFavorites
+                                         completion:completion];
+}
+
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                            postsChangeNotification:(BOOL)postsChangeNotification

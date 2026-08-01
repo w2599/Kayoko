@@ -131,6 +131,17 @@ static void kayokoCoreReloadCallback(CFNotificationCenterRef center, void *obser
     [[KayokoCoreRuntime sharedRuntime] reloadHistory];
 }
 
+static void kayokoCoreFavoritesEditorRequestCallback(CFNotificationCenterRef center, void *observer,
+                                                     CFStringRef name, const void *object,
+                                                     CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] handleFavoritesEditorRequest];
+}
+
 static void kayokoCoreCheckpointHistoryCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                                 const void *object, CFDictionaryRef userInfo) {
     (void)center;
@@ -292,6 +303,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
                           callback:kayokoCoreHideCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreReload
                           callback:kayokoCoreReloadCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyFavoritesEditorRequest
+                          callback:kayokoCoreFavoritesEditorRequestCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPreferencesReload
                           callback:kayokoCorePreferencesReloadCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPreferencesHeightReload

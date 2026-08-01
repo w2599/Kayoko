@@ -917,15 +917,54 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Content State
 
 - (void)updateClearButtonState {
+    UIButton *leadingButton = [[[self mainView] headerView] leadingButton];
+    [leadingButton removeTarget:self action:@selector(handleClearButtonPressed) forControlEvents:UIControlEventTouchUpInside];
+    [leadingButton removeTarget:self action:@selector(handleFavoritesSettingsButtonPressed)
+                forControlEvents:UIControlEventTouchUpInside];
+
+    BOOL isFavorites = [[self effectiveActiveHistoryKey] isEqualToString:kKayokoHistoryKeyFavorites];
+    if (isFavorites) {
+        [[[[self mainView] headerView] leadingButton] setHidden:[self isAuthorizationRequired]];
+        [[[self mainView] headerView] updateStyleForButton:leadingButton
+                                              withImageName:@"gearshape"
+                                                  imageSize:kKayokoFavoritesButtonImageSize
+                                                  tintColor:[UIColor labelColor]];
+        [leadingButton addTarget:self
+                           action:@selector(handleFavoritesSettingsButtonPressed)
+                 forControlEvents:UIControlEventTouchUpInside];
+        return;
+    }
+
     BOOL modeAllowsClearButton = [self clearButtonMode] == kKayokoClearButtonModeAlways ||
                                  ([self clearButtonMode] == kKayokoClearButtonModeHistoryOnly &&
                                   [[self effectiveActiveHistoryKey] isEqualToString:kKayokoHistoryKeyHistory]);
     BOOL hidesClearButton =
         [self isAuthorizationRequired] || [self isShowingClearConfirmation] || !modeAllowsClearButton;
     [[[[self mainView] headerView] leadingButton] setHidden:hidesClearButton];
+    [[[self mainView] headerView] updateStyleForButton:leadingButton
+                                          withImageName:@"trash"
+                                              imageSize:kKayokoFavoritesButtonImageSize
+                                              tintColor:[UIColor labelColor]];
+    [leadingButton addTarget:self action:@selector(handleClearButtonPressed) forControlEvents:UIControlEventTouchUpInside];
     NSUInteger itemCount =
         hidesClearButton || [self storageError] ? 0 : [[[self activeListViewController] items] count];
     [[self mainView] setClearButtonEnabledForItemCount:itemCount];
+}
+- (void)handleFavoritesSettingsButtonPressed {
+
+    NSString *openUrl = [NSString stringWithFormat:@"prefs:root=Kayoko&path=FavoritesSorting"];
+    openUrl = [openUrl stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+    NSURL *url = [NSURL URLWithString:openUrl];
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    [[UIApplication sharedApplication] openURL:url];
+#pragma clang diagnostic pop
+
+
+    [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+    [self hide];
+
 }
 
 - (void)showStorageError:(NSError *)error {

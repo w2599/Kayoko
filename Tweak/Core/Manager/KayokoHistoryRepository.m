@@ -286,6 +286,40 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }];
 }
 
+- (void)setContent:(NSString *)content
+        forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+                 inHistoryKey:(NSString *)historyKey
+                    completion:(void (^)(BOOL success))completion {
+        [self performAsync:^{
+            NSError *error = nil;
+            KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+            BOOL success = historyStore && [historyStore setContent:content
+                                                                                        forItemDictionary:dictionary
+                                                                                                 inHistoryKey:historyKey
+                                                                                                                error:&error];
+            if (!success) {
+                    HBLogDebug(@"Kayoko: Failed to set history item content: %@", error);
+            }
+            [self dispatchCompletion:completion success:success];
+        }];
+}
+
+- (void)setOrderForItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
+                                            inHistoryKey:(NSString *)historyKey
+                                                 completion:(void (^)(BOOL success))completion {
+        [self performAsync:^{
+            NSError *error = nil;
+            KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+            BOOL success = historyStore && [historyStore setOrderForItemDictionaries:items
+                                                                                                                                    inHistoryKey:historyKey
+                                                                                                                                                    error:&error];
+            if (!success) {
+                    HBLogDebug(@"Kayoko: Failed to set history item order: %@", error);
+            }
+            [self dispatchCompletion:completion success:success];
+        }];
+}
+
 #pragma mark - Bulk Removal
 
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey

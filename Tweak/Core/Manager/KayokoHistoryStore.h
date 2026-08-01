@@ -66,6 +66,13 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
     forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
          inHistoryKey:(NSString *)historyKey
                 error:(NSError *_Nullable *_Nullable)error;
+- (BOOL)setContent:(NSString *)content
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+                error:(NSError *_Nullable *_Nullable)error;
+        - (BOOL)setOrderForItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
+                      inHistoryKey:(NSString *)historyKey
+                          error:(NSError *_Nullable *_Nullable)error;
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                             error:(NSError *_Nullable *_Nullable)error;

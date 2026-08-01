@@ -563,16 +563,20 @@ NS_ASSUME_NONNULL_END
     forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
          inHistoryKey:(NSString *)historyKey
                 error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
-    if ([content length] == 0 || [historyKey length] == 0) {
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:@""];
+    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
+    if (([content length] == 0 && [imageName length] == 0) || [historyKey length] == 0) {
         return YES;
     }
 
     NSString *normalizedNote = [note length] > 0 ? note : nil;
+    NSString *whereColumn = [content length] > 0 ? @"content" : @"image_name";
+    NSString *statement = [NSString stringWithFormat:@"UPDATE history_items SET note = ? WHERE history_key = ? AND %@ = ?", whereColumn];
+    NSString *whereValue = [content length] > 0 ? content : imageName;
     NSArray<id> *bindings =
-        normalizedNote ? @[ normalizedNote, historyKey, content ] : @[ [NSNull null], historyKey, content ];
+        normalizedNote ? @[ normalizedNote, historyKey, whereValue ] : @[ [NSNull null], historyKey, whereValue ];
     NSInteger changedCount = 0;
-    BOOL success = [self executeStatement:@"UPDATE history_items SET note = ? WHERE history_key = ? AND content = ?"
+    BOOL success = [self executeStatement:statement
                                  bindings:bindings
                                   changes:&changedCount
                                     error:error];
@@ -583,6 +587,99 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
     return success;
+}
+
+- (BOOL)setContent:(NSString *)content
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+                error:(NSError **)error {
+    NSString *oldContent = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
+    if ([oldContent length] == 0 || [content length] == 0 || [historyKey length] == 0) {
+        return YES;
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    sqlite3_stmt *statement = NULL;
+    const char *selectSQL = "SELECT id, bundle_identifier, image_name, tag_uuid FROM history_items "
+                            "WHERE history_key = ? AND content = ? LIMIT 1";
+    if (![self prepareStatement:selectSQL statement:&statement error:error]) {
+        [self rollbackTransaction];
+        return NO;
+    }
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(statement, 2, [oldContent UTF8String], -1, SQLITE_TRANSIENT);
+    int stepResult = sqlite3_step(statement);
+    if (stepResult != SQLITE_ROW) {
+        sqlite3_finalize(statement);
+        [self populateError:error
+                       code:(stepResult == SQLITE_DONE ? SQLITE_NOTFOUND : stepResult)
+                    message:KayokoHistoryStoreLocalizedString(@"History item not found")];
+        [self rollbackTransaction];
+        return NO;
+    }
+    sqlite3_int64 itemID = sqlite3_column_int64(statement, 0);
+    NSString *bundleIdentifier = [self stringFromColumn:statement index:1] ?: @"com.apple.springboard";
+    NSString *imageName = [self stringFromColumn:statement index:2] ?: @"";
+    NSString *tagUUID = [self stringFromColumn:statement index:3];
+    sqlite3_finalize(statement);
+
+    NSInteger changedCount = 0;
+    BOOL success = [self executeStatement:@"UPDATE history_items SET content = ? WHERE history_key = ? AND content = ?"
+                                  bindings:@[ content, historyKey, oldContent ]
+                                   changes:&changedCount
+                                      error:error];
+    if (success && changedCount == 0) {
+        [self populateError:error code:SQLITE_NOTFOUND message:KayokoHistoryStoreLocalizedString(@"History item not found")];
+        success = NO;
+    }
+    if (success) {
+        success = [self rebuildSearchIndexForItemID:itemID
+                                         historyKey:historyKey
+                                   bundleIdentifier:bundleIdentifier
+                                            content:content
+                                          imageName:imageName
+                                            tagUUID:tagUUID
+                                              error:error];
+    }
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+    [self rollbackTransaction];
+    return NO;
+}
+
+- (BOOL)setOrderForItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
+                      inHistoryKey:(NSString *)historyKey
+                              error:(NSError **)error {
+    if ([historyKey length] == 0 || ![self beginTransactionWithError:error]) {
+        return [historyKey length] == 0;
+    }
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "UPDATE history_items SET sequence = ? WHERE history_key = ? AND "
+                      "((content <> '' AND content = ?) OR (image_name <> '' AND image_name = ?))";
+    BOOL success = [self prepareStatement:sql statement:&statement error:error];
+    NSUInteger count = [items count];
+    for (NSUInteger index = 0; success && index < count; index++) {
+        NSDictionary *item = items[index];
+        NSString *content = [self stringValueFromDictionary:item key:kKayokoItemKeyContent fallback:@""];
+        NSString *imageName = [self stringValueFromDictionary:item key:kKayokoItemKeyImageName fallback:@""];
+        sqlite3_bind_int64(statement, 1, (sqlite3_int64)(count - index));
+        sqlite3_bind_text(statement, 2, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 3, [content UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 4, [imageName UTF8String], -1, SQLITE_TRANSIENT);
+        success = sqlite3_step(statement) == SQLITE_DONE;
+        sqlite3_reset(statement);
+        sqlite3_clear_bindings(statement);
+    }
+    sqlite3_finalize(statement);
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+    [self rollbackTransaction];
+    return NO;
 }
 
 #pragma mark - Bulk Removal

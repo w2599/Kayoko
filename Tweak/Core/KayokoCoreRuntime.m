@@ -9,6 +9,7 @@
 #import "KayokoNotificationKeys.h"
 #import "KayokoPanelPresentationMode.h"
 #import "KayokoPasteboardManager.h"
+#import "KayokoPasteboardItem.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoPurchaseAuthorization.h"
 
@@ -1163,6 +1164,73 @@ NS_ASSUME_NONNULL_END
     [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyHistory
                                                                       shouldRemoveImages:YES
                                                                               completion:nil];
+}
+
+- (void)handleFavoritesEditorRequest {
+    NSString *requestPath = jbroot(kKayokoFavoritesEditorRequestPath);
+    NSDictionary *request = [NSDictionary dictionaryWithContentsOfFile:requestPath];
+    NSString *requestID = request[@"request_id"];
+    NSString *operation = request[@"operation"];
+    if ([requestID length] == 0 || [operation length] == 0) {
+        return;
+    }
+
+    void (^respond)(BOOL, NSArray *) = ^(BOOL success, NSArray *items) {
+        NSMutableDictionary *response = [@{ @"request_id" : requestID, @"success" : @(success) } mutableCopy];
+        if (items) {
+            response[@"items"] = items;
+        }
+        [response writeToFile:jbroot(kKayokoFavoritesEditorResponsePath) atomically:YES];
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                              (__bridge CFStringRef)kKayokoNotificationKeyFavoritesEditorResponse,
+                                              NULL, NULL, YES);
+        if (success && !items) {
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                  (__bridge CFStringRef)kKayokoNotificationKeyCoreReload,
+                                                  NULL, NULL, YES);
+        }
+    };
+
+    KayokoPasteboardManager *manager = [KayokoPasteboardManager sharedInstance];
+    if ([operation isEqualToString:@"read"]) {
+        respond(YES, [manager getItemsFromHistoryWithKey:kKayokoHistoryKeyFavorites]);
+        return;
+    }
+
+    if ([operation isEqualToString:@"order"]) {
+        [manager setFavoriteOrder:request[@"items"] completion:^(BOOL success) {
+          respond(success, nil);
+        }];
+        return;
+    }
+
+    if ([operation isEqualToString:@"update"]) {
+        NSDictionary *dictionary = request[@"item"];
+        KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
+        NSString *content = request[@"content"] ?: @"";
+        NSString *note = request[@"note"] ?: @"";
+        if (!item) {
+            respond(NO, nil);
+            return;
+        }
+        __weak KayokoPasteboardManager *weakManager = manager;
+        [manager setNote:note
+             forPasteboardItem:item
+              inHistoryWithKey:kKayokoHistoryKeyFavorites
+                    completion:^(BOOL noteSuccess) {
+                      if (!noteSuccess || [[item imageName] length] > 0) {
+                          respond(noteSuccess, nil);
+                          return;
+                      }
+                      KayokoPasteboardManager *strongManager = weakManager;
+                      [strongManager setContent:content
+                           forPasteboardItem:item
+                            inHistoryWithKey:kKayokoHistoryKeyFavorites
+                                  completion:^(BOOL contentSuccess) {
+                                    respond(contentSuccess, nil);
+                                  }];
+                    }];
+    }
 }
 
 @end
