@@ -29,13 +29,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>Enabled</string>
 			<key>label</key>
 			<string>Enable Kayoko</string>
             <key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -54,7 +54,7 @@
 			<key>detail</key>
 			<string>KayokoListItemsController</string>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>label</key>
 			<string>ACTIVATION_METHODS</string>
 			<key>key</key>
@@ -99,7 +99,7 @@
 			<key>default</key>
 			<integer>200</integer>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>MaximumHistoryAmount</string>
 			<key>stepValues</key>
@@ -120,7 +120,7 @@
 			<key>valueLabelWidth</key>
 			<integer>44</integer>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -128,13 +128,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>SaveText</string>
 			<key>label</key>
 			<string>Save Text</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -142,13 +142,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>SaveImages</string>
 			<key>label</key>
 			<string>Save Images</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -178,7 +178,7 @@
 			<key>label</key>
 			<string>Default View</string>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>InitialViewMode</string>
 			<key>validValues</key>
@@ -194,7 +194,7 @@
 				<string>Previous</string>
 			</array>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -220,15 +220,15 @@
 			<key>cellClass</key>
 			<string>KayokoSliderCell</string>
 			<key>default</key>
-			<real>420</real>
+			<real>500</real>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>HeightInPoints</string>
 			<key>min</key>
 			<real>200</real>
 			<key>max</key>
-			<real>600</real>
+			<real>660</real>
 			<key>showValue</key>
 			<true/>
 			<key>isContinuous</key>
@@ -238,7 +238,7 @@
 			<key>valueLabelWidth</key>
 			<integer>44</integer>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.height.reload</string>
+			<string>com.zqbb.kayoko.preferences.height.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -250,9 +250,9 @@
 			<key>cellClass</key>
 			<string>KayokoSliderCell</string>
 			<key>default</key>
-			<real>83</real>
+			<real>52</real>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>ListHeightInPoints</string>
 			<key>min</key>
@@ -268,7 +268,7 @@
 			<key>valueLabelWidth</key>
 			<integer>44</integer>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.height.reload</string>
+			<string>com.zqbb.kayoko.preferences.height.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -282,13 +282,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>AutomaticallyPaste</string>
 			<key>label</key>
 			<string>Automatically Paste</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -296,13 +296,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>DismissOnOutsideTouch</string>
 			<key>label</key>
 			<string>Touch Outside to Dismiss</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -310,13 +310,13 @@
 			<key>default</key>
 			<false/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>DisablePasteTips</string>
 			<key>label</key>
 			<string>Disable Paste Tips</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -331,13 +331,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>SwipeToSelectWords</string>
 			<key>label</key>
 			<string>Swipe to Select Words</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -354,11 +354,11 @@
 			<key>default</key>
 			<integer>1</integer>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>AutomaticPromotionMode</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 			<key>validTitles</key>
 			<array>
 				<string>Off</string>
@@ -385,13 +385,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>PlaySoundEffects</string>
 			<key>label</key>
 			<string>Play Sound Effects</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -399,13 +399,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>PlayHapticFeedback</string>
 			<key>label</key>
 			<string>Play Haptic Feedback</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -428,7 +428,7 @@
 			<key>default</key>
 			<array/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>detail</key>
 			<string>ATLApplicationListMultiSelectionController</string>
 			<key>key</key>
@@ -455,7 +455,7 @@
 			<key>includeIdentifiersInSearch</key>
 			<true/>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -466,7 +466,7 @@
 			<string>KayokoCreditsListController</string>
 		</dict>
 
-		<dict>
+		<!-- <dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
@@ -474,15 +474,15 @@
 			<key>footerText</key>
 			<string>Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.
 
-Made with ♥ by OwnGoal Studio</string>
+Made with ♥ by zqbb</string>
 			<key>condensedFooterText</key>
-			<string>Made with ♥ by OwnGoal Studio</string>
+			<string>Made with ♥ by zqbb</string>
 			<key>hideFooterTextAfterPreferenceDefaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>hideFooterTextAfterPreferenceKey</key>
 			<string>DidOpenHavocLink</string>
 		</dict>
-		<!-- <dict>
+		<dict>
 			<key>cellClass</key>
 			<string>KayokoLinkCell</string>
 			<key>label</key>
@@ -494,7 +494,7 @@ Made with ♥ by OwnGoal Studio</string>
 			<key>height</key>
 			<integer>54</integer>
 			<key>markOpenedDefaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>markOpenedKey</key>
 			<string>DidOpenHavocLink</string>
 		</dict> -->

@@ -5,7 +5,7 @@
 
 #import "KayokoImportFileStager.h"
 
-static NSString *const kKayokoImportFileStagerErrorDomain = @"com.82flex.kayoko.import-file-stager";
+static NSString *const kKayokoImportFileStagerErrorDomain = @"com.zqbb.kayoko.import-file-stager";
 
 @interface KayokoImportStagedFile : NSObject
 @property(nonatomic, copy) NSString *stagedPath;

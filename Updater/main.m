@@ -20,7 +20,7 @@ static BOOL syncCredentialWithSource(NSString **source, NSError **error) {
 }
 
 static NSString *externalImportErrorDescription(NSError *error, NSString *fallback) {
-    if ([[error domain] isEqualToString:@"com.82flex.kayoko.history-store"] &&
+    if ([[error domain] isEqualToString:@"com.zqbb.kayoko.history-store"] &&
         [[error localizedFailureReason] length] > 0) {
         return [error localizedFailureReason];
     }

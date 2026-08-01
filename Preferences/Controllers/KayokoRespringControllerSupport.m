@@ -36,7 +36,7 @@ static BOOL kayokoSendRelaunchActionWithOptions(SBSRelaunchActionOptions options
     }
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-      NSURL *kayokoURL = [NSURL URLWithString:@"prefs:root=Kayoko"];
+      NSURL *kayokoURL = [NSURL URLWithString:@"prefs:root=Hello Kayoko"];
       SBSRelaunchAction *action = [(id)actionClass actionWithReason:@"Kayoko" options:options targetURL:kayokoURL];
       FBSSystemService *service = [(id)serviceClass sharedService];
       if (!action || ![service respondsToSelector:@selector(sendActions:withResult:)]) {

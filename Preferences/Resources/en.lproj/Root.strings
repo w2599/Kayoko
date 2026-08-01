@@ -43,10 +43,9 @@
 "Images Only" = "Images Only";
 "Input Switcher" = "Input Switcher";
 "Invalid Response" = "Invalid Response";
-"Kayoko" = "Kayoko";
+"Kayoko" = "Hello Kayoko";
 "Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko." = "Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko.";
-"Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio";
-"Made with ♥ by OwnGoal Studio" = "Made with ♥ by OwnGoal Studio";
+"Made with ♥ by zqbb" = "Made with ♥ by zqbb";
 "Maximum Amount" = "Maximum Amount";
 "More" = "More";
 "Network Request Failed" = "Network Request Failed";

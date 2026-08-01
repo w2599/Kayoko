@@ -952,7 +952,7 @@ NS_ASSUME_NONNULL_END
 }
 - (void)handleFavoritesSettingsButtonPressed {
 
-    NSString *openUrl = [NSString stringWithFormat:@"prefs:root=Kayoko&path=FavoritesSorting"];
+    NSString *openUrl = [NSString stringWithFormat:@"prefs:root=Hello Kayoko&path=FavoritesSorting"];
     openUrl = [openUrl stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
     NSURL *url = [NSURL URLWithString:openUrl];
 
@@ -2021,7 +2021,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)openAuthorizationSettings {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-      NSURL *URL = [NSURL URLWithString:@"prefs:root=Kayoko"];
+      NSURL *URL = [NSURL URLWithString:@"prefs:root=Hello Kayoko"];
       Class workspaceClass = NSClassFromString(@"LSApplicationWorkspace");
       if (!URL || ![workspaceClass respondsToSelector:@selector(defaultWorkspace)]) {
           NSLog(@"Kayoko: LSApplicationWorkspace is unavailable for opening Settings");

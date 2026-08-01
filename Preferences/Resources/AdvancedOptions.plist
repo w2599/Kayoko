@@ -19,13 +19,13 @@
 			<key>default</key>
 			<false/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>IgnoreRemoteReplication</string>
 			<key>label</key>
 			<string>Ignore Universal Clipboard</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -42,13 +42,13 @@
 			<key>default</key>
 			<false/>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>AlwaysScrollToTop</string>
 			<key>label</key>
 			<string>Always Scroll to Top</string>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -65,7 +65,7 @@
 			<key>default</key>
 			<integer>1</integer>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>ClearButtonMode</string>
 			<key>validValues</key>
@@ -81,7 +81,7 @@
 				<string>Always</string>
 			</array>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -98,7 +98,7 @@
 			<key>default</key>
 			<integer>0</integer>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>AutomaticPasteMode</string>
 			<key>validValues</key>
@@ -114,7 +114,7 @@
 				<string>Simulated</string>
 			</array>
 			<key>PostNotification</key>
-			<string>com.82flex.kayoko.preferences.reload</string>
+			<string>com.zqbb.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -131,7 +131,7 @@
 			<key>default</key>
 			<integer>0</integer>
 			<key>defaults</key>
-			<string>com.82flex.kayoko.preferences</string>
+			<string>com.zqbb.kayoko.preferences</string>
 			<key>key</key>
 			<string>GestureRecognizerMode</string>
 			<key>label</key>

@@ -35,7 +35,7 @@
 "Imported file %@ already contains different data." = "Imported file %@ already contains different data.";
 "Imported file data is invalid." = "Imported file data is invalid.";
 "Just Now" = "Just now";
-"Kayoko" = "Kayoko";
+"Kayoko" = "Hello Kayoko";
 "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes." = "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes.";
 "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue." = "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue.";
 "Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue." = "Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue.";

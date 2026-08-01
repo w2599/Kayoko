@@ -13,7 +13,6 @@
 
 static NSString *const kKayokoLegacyDatabasePath = @"/var/mobile/Library/codes.aurora.kayoko/kayoko.sqlite3";
 static NSString *const kKayokoLegacyImagesPath = @"/var/mobile/Library/codes.aurora.kayoko/images";
-static NSString *const kKayokoLegacyImportMarkerPath = @"/var/mobile/Library/codes.aurora.kayoko/.kayoko-v4-favorites-imported";
 
 @implementation KayokoLegacyFavoritesImporter
 
@@ -25,23 +24,20 @@ static NSString *const kKayokoLegacyImportMarkerPath = @"/var/mobile/Library/cod
     }
 
     NSString *databasePath = jbroot(kKayokoLegacyDatabasePath);
-    NSString *markerPath = jbroot(kKayokoLegacyImportMarkerPath);
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    if ([fileManager fileExistsAtPath:markerPath] || ![fileManager isReadableFileAtPath:databasePath]) {
+    if (![fileManager isReadableFileAtPath:databasePath]) {
         if (completion) completion(NO, 0);
         return;
     }
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
       [self importFromDatabasePath:databasePath
-                        markerPath:markerPath
                pasteboardManager:pasteboardManager
                    completion:completion];
     });
 }
 
 + (void)importFromDatabasePath:(NSString *)databasePath
-                    markerPath:(NSString *)markerPath
            pasteboardManager:(KayokoPasteboardManager *)pasteboardManager
                completion:(void (^)(BOOL success, NSUInteger importedCount))completion {
     sqlite3 *database = NULL;
@@ -111,8 +107,6 @@ static NSString *const kKayokoLegacyImportMarkerPath = @"/var/mobile/Library/cod
         }
     }
 
-    [@{ @"imported_at" : @([[NSDate date] timeIntervalSince1970]) }
-        writeToFile:markerPath atomically:YES];
     if (completion) {
         dispatch_async(dispatch_get_main_queue(), ^{ completion(YES, importedCount); });
     }

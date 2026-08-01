@@ -73,7 +73,7 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList(void) {
         TIZephyrCandidate *candidate = [[objc_getClass("TIZephyrCandidate") alloc] init];
         [candidate setLabel:KayokoHelperLocalizedString(label)];
         [candidate setCandidate:[NSString stringWithFormat:@"{kayoko-%@}", label]];
-        [candidate setFromBundleId:@"com.82flex.kayoko"];
+        [candidate setFromBundleId:@"com.zqbb.kayoko"];
         [candidates addObject:candidate];
     }
 
@@ -101,7 +101,7 @@ CHOptimizedMethod1(self, void, UIKeyboardAutocorrectionController, setAutocorrec
 CHOptimizedMethod2(self, void, UIPredictionViewController, predictionView, TUIPredictionView *, predictionView,
                    didSelectCandidate, TIZephyrCandidate *, candidate) {
     if ([candidate respondsToSelector:@selector(fromBundleId)] &&
-        [[candidate fromBundleId] isEqualToString:@"com.82flex.kayoko"]) {
+        [[candidate fromBundleId] isEqualToString:@"com.zqbb.kayoko"]) {
         if ([[candidate candidate] isEqualToString:@"{kayoko-History}"]) {
             [[KayokoHelperRuntime sharedRuntime] activateKayoko];
         } else if ([[candidate candidate] isEqualToString:@"{kayoko-Copy}"]) {

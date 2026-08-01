@@ -247,7 +247,7 @@ NS_ASSUME_NONNULL_END
 - (instancetype)initPrivate {
     self = [super init];
     if (self) {
-        _heightInPoints = 420;
+        _heightInPoints = 500;
         _listHeightInPoints = kKayokoPreferenceKeyListHeightInPointsDefaultValue;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
         _pasteSuppressionState = [[KayokoPasteSuppressionState alloc] init];

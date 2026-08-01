@@ -16,7 +16,7 @@
 #import <math.h>
 #import <sys/stat.h>
 
-static NSString *const kKayokoCopyVaultImporterErrorDomain = @"com.82flex.kayoko.copyvault-importer";
+static NSString *const kKayokoCopyVaultImporterErrorDomain = @"com.zqbb.kayoko.copyvault-importer";
 static NSString *const kKayokoCopyVaultHistorySection = @"History";
 static NSString *const kKayokoCopyVaultArchiveSection = @"Archive";
 static NSString *const kKayokoCopyVaultHistoryKey = @"history";

@@ -25,7 +25,7 @@
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
 static NSTimeInterval const kKayokoSimulatedAutomaticPasteDelay = 0.2;
 static NSString *const kKayokoRemoteClipboardPasteboardType = @"com.apple.is-remote-clipboard";
-static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.82flex.kayoko.pasteboard-manager";
+static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.zqbb.kayoko.pasteboard-manager";
 
 @interface SBApplication : NSObject
 @property(nonatomic, copy, readonly) NSString *bundleIdentifier;
@@ -159,7 +159,7 @@ NS_ASSUME_NONNULL_END
     static NSString *kayokoHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kayokoHistoryPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/history.json");
+    kayokoHistoryPath = jbroot(@"/var/mobile/Library/com.zqbb.kayoko/history.json");
     });
     return kayokoHistoryPath;
 }
@@ -168,7 +168,7 @@ NS_ASSUME_NONNULL_END
     static NSString *kayokoHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kayokoHistoryImagesPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/");
+    kayokoHistoryImagesPath = jbroot(@"/var/mobile/Library/com.zqbb.kayoko/images/");
     });
     return kayokoHistoryImagesPath;
 }
@@ -220,7 +220,7 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _fileManager = [NSFileManager defaultManager];
         if (@available(iOS 16, *)) {
-            _pasteboardQueue = dispatch_queue_create("com.82flex.kayoko.queue.pasteboard",
+            _pasteboardQueue = dispatch_queue_create("com.zqbb.kayoko.queue.pasteboard",
                                                      DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         }
         _thumbnailCache = [[KayokoThumbnailCache alloc] init];

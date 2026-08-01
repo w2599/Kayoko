@@ -39,7 +39,7 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
         _databasePath = [databasePath copy];
         _imagesPath = [imagesPath copy];
         _limitProvider = [limitProvider copy];
-        _historyQueue = dispatch_queue_create("com.82flex.kayoko.queue.history", DISPATCH_QUEUE_SERIAL);
+        _historyQueue = dispatch_queue_create("com.zqbb.kayoko.queue.history", DISPATCH_QUEUE_SERIAL);
         dispatch_queue_set_specific(_historyQueue, kayokoHistoryQueueSpecificKey, kayokoHistoryQueueSpecificKey, NULL);
     }
     return self;

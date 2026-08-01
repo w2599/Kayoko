@@ -45,7 +45,7 @@ typedef NS_ENUM(NSUInteger, KayokoClearButtonMode) {
     kKayokoClearButtonModeAlways = 2
 };
 
-static NSString *const kKayokoPreferencesIdentifier = @"com.82flex.kayoko.preferences";
+static NSString *const kKayokoPreferencesIdentifier = @"com.zqbb.kayoko.preferences";
 
 static NSString *const kKayokoPreferenceKeyEnabled = @"Enabled";
 static NSString *const kKayokoPreferenceKeyMaximumHistoryAmount = @"MaximumHistoryAmount";
@@ -92,5 +92,5 @@ static BOOL const kKayokoPreferenceKeyDisablePasteTipsDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyPlaySoundEffectsDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
-static CGFloat const kKayokoPreferenceKeyHeightInPointsDefaultValue = 420;
-static CGFloat const kKayokoPreferenceKeyListHeightInPointsDefaultValue = 83;
+static CGFloat const kKayokoPreferenceKeyHeightInPointsDefaultValue = 500;
+static CGFloat const kKayokoPreferenceKeyListHeightInPointsDefaultValue = 52;

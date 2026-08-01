@@ -10,9 +10,9 @@
 #import <dlfcn.h>
 #import <sys/sysctl.h>
 
-NSString *const kKayokoPurchaseAuthorizationProductIdentifier = @"com.82flex.kayoko";
+NSString *const kKayokoPurchaseAuthorizationProductIdentifier = @"com.zqbb.kayoko";
 
-static NSString *const kKayokoPurchaseAuthorizationErrorDomain = @"com.82flex.kayoko.purchase-authorization";
+static NSString *const kKayokoPurchaseAuthorizationErrorDomain = @"com.zqbb.kayoko.purchase-authorization";
 static NSString *const kKayokoSileoAccessGroup = @"org.coolstar.Sileo";
 static NSString *const kKayokoZebraCurrentAccessGroup = @"com.apple.mobilesafari";
 static NSString *const kKayokoZebraLegacyAccessGroup = @"xyz.willy.Zebra";
@@ -20,10 +20,10 @@ static NSString *const kKayokoAppleAccessGroup = @"apple";
 static NSString *const kKayokoSileoPaymentTokenService = @"SileoPaymentToken";
 static NSString *const kKayokoZebraCurrentPaymentTokenService = @"com.getzbra.zebra2";
 static NSString *const kKayokoZebraLegacyPaymentTokenService = @"xyz.willy.Zebra";
-static NSString *const kKayokoCredentialMirrorService = @"com.82flex.kayoko.havoc-credential";
+static NSString *const kKayokoCredentialMirrorService = @"com.zqbb.kayoko.havoc-credential";
 static NSString *const kKayokoCredentialMirrorAccount = @"sileo-havoc";
-static NSString *const kKayokoAuthorizationFlagService = @"com.82flex.kayoko.authorization";
-static NSString *const kKayokoAuthorizationFlagAccount = @"com.82flex.kayoko";
+static NSString *const kKayokoAuthorizationFlagService = @"com.zqbb.kayoko.authorization";
+static NSString *const kKayokoAuthorizationFlagAccount = @"com.zqbb.kayoko";
 static NSString *const kKayokoHavocRepositoryURLString = @"https://havoc.app/";
 
 static NSInteger const kKayokoPurchaseAuthorizationErrorKeychain = 1;

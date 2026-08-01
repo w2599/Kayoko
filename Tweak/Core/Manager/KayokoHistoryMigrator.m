@@ -11,7 +11,7 @@
 
 static NSString *const kKayokoMigratorHistoryKey = @"history";
 static NSString *const kKayokoMigratorFavoritesKey = @"favorites";
-static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.history-migrator";
+static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.zqbb.kayoko.history-migrator";
 
 static NSString *KayokoHistoryMigratorLocalizedString(NSString *key) {
     static NSBundle *localizationBundle = nil;
@@ -75,9 +75,9 @@ NS_ASSUME_NONNULL_END
             sourceWithIdentifier:@"codes.aurora.kayoko"
                      historyPath:jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.json")
                       imagesPath:jbroot(@"/var/mobile/Library/codes.aurora.kayoko/images/")],
-        [KayokoHistoryMigrationSource sourceWithIdentifier:@"com.82flex.kayoko"
-                                               historyPath:jbroot(@"/var/mobile/Library/com.82flex.kayoko/history.json")
-                                                imagesPath:jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/")]
+        [KayokoHistoryMigrationSource sourceWithIdentifier:@"com.zqbb.kayoko"
+                                               historyPath:jbroot(@"/var/mobile/Library/com.zqbb.kayoko/history.json")
+                                                imagesPath:jbroot(@"/var/mobile/Library/com.zqbb.kayoko/images/")]
     ];
 }
 

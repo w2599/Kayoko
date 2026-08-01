@@ -44,7 +44,7 @@ static useconds_t const kKayokoKeyboardShortcutKeyPressDelay = 50000;
 - (instancetype)initPrivate {
     self = [super init];
     if (self) {
-        _eventQueue = dispatch_queue_create("com.82flex.kayoko.queue.keyboard-shortcut",
+        _eventQueue = dispatch_queue_create("com.zqbb.kayoko.queue.keyboard-shortcut",
                                             DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         _eventSystemClient = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
     }

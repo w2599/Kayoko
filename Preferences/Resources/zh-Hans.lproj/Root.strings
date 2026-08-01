@@ -25,7 +25,7 @@
 "Dictation Key" = "听写键";
 "Disable Paste Tips" = "禁用粘贴提示";
 "Edit Menu" = "编辑菜单";
-"Enable Kayoko" = "启用 Kayoko";
+"Enable Kayoko" = "启用 Hello Kayoko";
 "Favorites" = "收藏";
 "Favorites Sorting" = "收藏排序";
 "Favorites Sort Order" = "收藏排序";
@@ -43,10 +43,9 @@
 "Images Only" = "仅图片";
 "Input Switcher" = "输入法菜单";
 "Invalid Response" = "无效响应";
-"Kayoko" = "Kayoko";
+"Kayoko" = "Hello Kayoko";
 "Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko." = "导入失败前 Kayoko 已进入维护模式。你需要立即重启 SpringBoard，才能继续使用 Kayoko。";
-"Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko 的持续维护，来自每一位用户的购买支持。原版 GPLv3 许可允许有偿发布，本版本也延续同一份开源承诺，不加防盗版限制（DRM）。若 Kayoko 让你的日常输入更顺手，欢迎通过 Havoc 支持后续维护。\n\n「乌龙工作室」倾情献制";
-"Made with ♥ by OwnGoal Studio" = "「乌龙工作室」倾情献制";
+"Made with ♥ by zqbb" = "「zqbb」倾情献制";
 "Maximum Amount" = "最大数量";
 "More" = "更多";
 "Network Request Failed" = "网络请求失败";
@@ -72,7 +71,7 @@
 "Save Images" = "保存图像";
 "Save Text" = "保存文本";
 "Server returned an invalid response. Tap the screen to retry: %@" = "服务器返回了无效的响应，轻点屏幕以重试：%@";
-"Show Kayoko" = "显示 Kayoko";
+"Show Kayoko" = "显示 Hello Kayoko";
 "Swipe to Select Words" = "滑动选词";
 "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "数据已成功导入。你需要立即重启 SpringBoard，才能完成导入并继续使用 Kayoko。";
 "The network request failed." = "网络请求失败。";

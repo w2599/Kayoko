@@ -35,7 +35,7 @@
 "Imported file %@ already contains different data." = "导入文件 %@ 已存在，但内容不同。";
 "Imported file data is invalid." = "导入文件的数据无效。";
 "Just Now" = "刚刚";
-"Kayoko" = "Kayoko";
+"Kayoko" = "Hello Kayoko";
 "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes." = "Kayoko 正在进行安装维护，暂时无法使用历史记录。请在安装完成后重试。";
 "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue." = "Kayoko 的历史搜索索引仍有未处理项目。重新安装 Kayoko 或许可以解决此问题。";
 "Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue." = "Kayoko 的历史搜索索引尚未准备好。重新安装 Kayoko 或许可以解决此问题。";

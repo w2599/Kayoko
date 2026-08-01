@@ -10,7 +10,7 @@
 			<key>label</key>
 			<string>Project Origin</string>
 			<key>footerText</key>
-			<string>Kayoko was originally created by Alexandra Aurora Göttlicher. This maintained fork is not affiliated with or endorsed by the original author.</string>
+			<string>This maintained fork is developed and distributed by OwnGoal Studio under GPLv3.</string>
 		</dict>
 		<dict>
 			<key>cellClass</key>
@@ -18,9 +18,9 @@
 			<key>label</key>
 			<string>Original Source</string>
 			<key>subtitle</key>
-			<string>Open the archived upstream project.</string>
+			<string>Open upstream source project.</string>
 			<key>url</key>
-			<string>https://github.com/AlexandraAurora/Kayoko</string>
+			<string>https://github.com/OwnGoalStudio/Kayoko</string>
 			<key>localizationTable</key>
 			<string>Credits</string>
 			<key>height</key>
@@ -32,7 +32,7 @@
 			<key>label</key>
 			<string>Current Maintainer</string>
 			<key>footerText</key>
-			<string>This maintained fork is developed and distributed by OwnGoal Studio under GPLv3.</string>
+			<string>This maintained fork is developed and distributed by zqbb under GPLv3.</string>
 		</dict>
 		<dict>
 			<key>cellClass</key>
@@ -42,7 +42,7 @@
 			<key>subtitle</key>
 			<string>Open the maintained source repository.</string>
 			<key>url</key>
-			<string>https://github.com/OwnGoalStudio/Kayoko</string>
+			<string>https://github.com/w2599/Kayoko/tree/v4.3_forMe</string>
 			<key>localizationTable</key>
 			<string>Credits</string>
 			<key>height</key>
