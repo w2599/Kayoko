@@ -244,7 +244,7 @@ NS_ASSUME_NONNULL_END
 - (instancetype)initPrivate {
     self = [super init];
     if (self) {
-        _previewLineCount = 1;
+        _previewLineCount = 2;
         _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
         _heightInPoints = 420;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
@@ -1028,6 +1028,10 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Visibility
 
 - (void)show {
+    [self showWithInitialViewMode:self.initialViewMode];
+}
+
+- (void)showWithInitialViewMode:(KayokoInitialViewMode)initialViewMode {
     if ([self isPackageMaintenanceMode]) {
         return;
     }
@@ -1048,6 +1052,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self.mainViewController setInitialViewMode:initialViewMode];
     [self.mainViewController setAuthorizationPassed:[self authorizationPassedForPanelShow]];
 
     [self applyHeightPreferenceToViewApplyingWhenHidden:YES];

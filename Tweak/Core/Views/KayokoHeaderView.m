@@ -7,11 +7,14 @@
 
 #import "KayokoGrabberView.h"
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoPasteboardManager.h"
 
 static CGFloat const kKayokoHeaderHeight = 60;
 static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
+static CGFloat const kKayokoGrabberTopSpacing = 5;
+static CGFloat const kKayokoHeaderControlsBottomSpacing = 9;
 
 @interface KayokoHeaderView ()
 
@@ -46,8 +49,28 @@ static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
         _titleLabel = [[UILabel alloc] init];
         [_titleLabel setFont:[UIFont systemFontOfSize:26 weight:UIFontWeightSemibold]];
         [_titleLabel setTextColor:[UIColor labelColor]];
+        [_titleLabel setHidden:YES];
         [self addSubview:_titleLabel];
         [_titleLabel setTranslatesAutoresizingMaskIntoConstraints:NO];
+
+        NSBundle *localizationBundle = [KayokoPasteboardManager localizationBundle];
+        NSString *historySegmentTitle = [localizationBundle localizedStringForKey:@"History"
+                                                                              value:@"History"
+                                                                              table:@"Tweak"];
+        NSString *favoritesSegmentTitle = [localizationBundle localizedStringForKey:@"Favorites"
+                                                                                 value:@"Favorites"
+                                                                                 table:@"Tweak"];
+        _historySegmentedControl = [[UISegmentedControl alloc]
+            initWithItems:@[ historySegmentTitle, favoritesSegmentTitle ]];
+        [_historySegmentedControl setSelectedSegmentIndex:0];
+        [_historySegmentedControl setApportionsSegmentWidthsByContent:NO];
+        [_historySegmentedControl setSelectedSegmentTintColor:[UIColor tertiarySystemFillColor]];
+        [_historySegmentedControl setTitleTextAttributes:@{
+            NSFontAttributeName : [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold],
+            NSForegroundColorAttributeName : [UIColor labelColor]
+        } forState:UIControlStateNormal];
+        [self addSubview:_historySegmentedControl];
+        [_historySegmentedControl setTranslatesAutoresizingMaskIntoConstraints:NO];
 
         _trailingButton = [[UIButton alloc] init];
         [self addSubview:_trailingButton];
@@ -65,14 +88,19 @@ static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
         [_titleTapControl setTranslatesAutoresizingMaskIntoConstraints:NO];
 
         [NSLayoutConstraint activateConstraints:@[
-            [[_grabber topAnchor] constraintEqualToAnchor:[self topAnchor] constant:12],
+            [[_grabber topAnchor] constraintEqualToAnchor:[self topAnchor] constant:kKayokoGrabberTopSpacing],
             [[_grabber centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [[_leadingButton bottomAnchor] constraintEqualToAnchor:[self bottomAnchor] constant:-2],
+            [[_leadingButton bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]
+                                                            constant:-kKayokoHeaderControlsBottomSpacing],
             [[_leadingButton centerXAnchor] constraintEqualToAnchor:[self leadingAnchor]
                                                            constant:kKayokoLeadingHeaderButtonCenterXInset],
             [[_titleLabel centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
             [[_titleLabel leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]
                                                         constant:kKayokoTitleLabelLeadingInset],
+            [[_historySegmentedControl centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
+            [[_historySegmentedControl centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
+            [[_historySegmentedControl widthAnchor] constraintEqualToConstant:196],
+            [[_historySegmentedControl heightAnchor] constraintEqualToConstant:32],
             [[_trailingButton centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
             [[_trailingButton centerXAnchor] constraintEqualToAnchor:[self trailingAnchor]
                                                             constant:-kKayokoTrailingHeaderButtonCenterXInset],
@@ -81,13 +109,22 @@ static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
                 constraintEqualToAnchor:[_trailingButton centerXAnchor]
                                constant:-kKayokoTrailingHeaderButtonCenterSpacing],
             [[_titleTapControl leadingAnchor] constraintEqualToAnchor:[_titleLabel leadingAnchor]],
-            [[_titleTapControl trailingAnchor] constraintEqualToAnchor:[_alternateTrailingButton leadingAnchor]
+            [[_titleTapControl trailingAnchor] constraintEqualToAnchor:[_historySegmentedControl leadingAnchor]
                                                               constant:-kKayokoTitleTapControlTrailingSpacing],
             [[_titleTapControl centerYAnchor] constraintEqualToAnchor:[_titleLabel centerYAnchor]],
             [[_titleTapControl heightAnchor] constraintEqualToConstant:kKayokoTitleTapControlHeight]
         ]];
 
         [self setTitleText:title];
+
+        [self updateStyleForButton:_leadingButton
+                     withImageName:@"trash.circle"
+                         imageSize:kKayokoFavoritesButtonImageSize
+                         tintColor:[UIColor labelColor]];
+        [self updateStyleForButton:_trailingButton
+                     withImageName:@"xmark.circle"
+                         imageSize:kKayokoClearButtonImageSize
+                         tintColor:[UIColor labelColor]];
     }
     return self;
 }
@@ -99,6 +136,10 @@ static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
 
     [[self titleLabel] setText:title];
     [[self titleTapControl] setAccessibilityLabel:title];
+}
+
+- (void)setSelectedHistorySegmentIndex:(NSInteger)index {
+    [[self historySegmentedControl] setSelectedSegmentIndex:index];
 }
 
 - (void)setGrabberFoldProgress:(CGFloat)progress {

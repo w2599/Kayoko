@@ -18,7 +18,7 @@
 "Cancel" = "取消";
 "Check Product Authorization" = "检查产品授权";
 "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once." = "选择列表中每个剪贴板条目显示多少文字。行数越多越容易辨认内容，但同屏可见的条目会更少。";
-"Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "选择点选条目后何时将它移到顶部。“仅历史记录” 会保留收藏夹的现有顺序，同时让最近使用的历史记录浮到前面。";
+"Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "选择点选条目后何时将它移到顶部。“仅历史” 会保留收藏的现有顺序，同时让最近使用的历史记录浮到前面。";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "选择唤醒 Kayoko 时打开哪个列表。“先前的选择” 会保留上次使用的列表。";
 "Credits" = "致谢";
 "Default View" = "默认界面";
@@ -27,11 +27,11 @@
 "Double Line" = "双行";
 "Edit Menu" = "编辑菜单";
 "Enable Kayoko" = "启用 Kayoko";
-"Favorites" = "收藏夹";
+"Favorites" = "收藏";
 "Feature-rich clipboard manager for iOS." = "功能丰富的 iOS 剪贴板管理器。";
 "Feedbacks" = "反馈";
 "Height (Points)" = "高度";
-"History" = "历史记录";
+"History" = "历史";
 "History Only" = "仅历史记录";
 "Images Only" = "仅图片";
 "Input Switcher" = "输入法菜单";
@@ -69,7 +69,6 @@
 "Save Text" = "保存文本";
 "Server returned an invalid response. Tap the screen to retry: %@" = "服务器返回了无效的响应，轻点屏幕以重试：%@";
 "Show Kayoko" = "显示 Kayoko";
-"Single Line" = "单行";
 "Swipe to Select Words" = "滑动选词";
 "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "数据已成功导入。你需要立即重启 SpringBoard，才能完成导入并继续使用 Kayoko。";
 "The network request failed." = "网络请求失败。";

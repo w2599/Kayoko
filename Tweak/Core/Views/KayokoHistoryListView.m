@@ -375,7 +375,7 @@ NS_ASSUME_NONNULL_END
         [self setEdgeFadeWidth:kKayokoHistoryListViewVerticalFadeHeight];
         [self setEdgeFadeEnabled:YES];
         _itemDetailsMode = kKayokoItemDetailsModeImagesOnly;
-        [self setPreviewLineCount:1];
+        [self setPreviewLineCount:2];
     }
 
     return self;
@@ -384,7 +384,7 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Configuration
 
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
-    NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoHistoryListViewMaximumPreviewLineCount);
+    NSUInteger lineCount = MIN(MAX(previewLineCount, 2), kKayokoHistoryListViewMaximumPreviewLineCount);
     _previewLineCount = lineCount;
     [self updateRowHeightForCurrentDisplayOptions];
     [self reloadData];

@@ -11,8 +11,12 @@
 
 static CGFloat const kKayokoTableViewCellTagDotSize = 7;
 static CGFloat const kKayokoTableViewCellContentImageWidth = 70;
-static CGFloat const kKayokoTableViewCellContentImageSingleLineHeight = 40;
-static CGFloat const kKayokoTableViewCellContentImageAdditionalLineHeight = 15;
+static CGFloat const kKayokoTableViewCellContentImageSingleLineHeight = 48;
+static CGFloat const kKayokoTableViewCellContentImageAdditionalLineHeight = 16;
+static CGFloat const kKayokoTableViewCellColumnWidth = 70;
+static CGFloat const kKayokoTableViewCellNoteWidth = kKayokoTableViewCellColumnWidth;
+static CGFloat const kKayokoTableViewCellNoteHeight = 40;
+static CGFloat const kKayokoTableViewCellContentColumnSpacing = 16;
 static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
 @interface KayokoTableViewCellPreviewLabel : UILabel
@@ -22,8 +26,9 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
 - (void)drawTextInRect:(CGRect)rect {
     CGRect textRect = [self textRectForBounds:rect limitedToNumberOfLines:[self numberOfLines]];
-    textRect.origin = rect.origin;
     textRect.size.width = rect.size.width;
+    textRect.origin.x = rect.origin.x;
+    textRect.origin.y = rect.origin.y + (rect.size.height - textRect.size.height) / 2.0;
     [super drawTextInRect:textRect];
 }
 
@@ -36,16 +41,17 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 @implementation KayokoTableViewCell
 
 + (NSString *)reuseIdentifierForContent:(KayokoTableViewCellContent *)content {
-    NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), kKayokoTableViewCellMaximumPreviewLineCount);
+    NSUInteger lineCount = MIN(MAX([content previewLineCount], 2), kKayokoTableViewCellMaximumPreviewLineCount);
     BOOL hasContentImageSlot = [content contentImage] || [[content thumbnailImageName] length] > 0;
     BOOL hasTagDot = [[content tagHexColor] length] > 0;
     BOOL hasContentText = [[content contentText] length] > 0;
+    BOOL hasNote = [[content noteText] length] > 0;
     return [NSString stringWithFormat:@"KayokoTableViewCell-%lu-%d-%d-%d-%d", (unsigned long)lineCount,
-                                      hasContentImageSlot, hasTagDot, hasContentText, [content showsDetail]];
+                                      hasContentImageSlot, hasTagDot, hasContentText, [content showsDetail] || hasNote];
 }
 
 + (CGSize)contentImageViewSizeForPreviewLineCount:(NSUInteger)previewLineCount {
-    NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoTableViewCellMaximumPreviewLineCount);
+    NSUInteger lineCount = MIN(MAX(previewLineCount, 2), kKayokoTableViewCellMaximumPreviewLineCount);
     CGFloat height = kKayokoTableViewCellContentImageSingleLineHeight +
                      (lineCount - 1) * kKayokoTableViewCellContentImageAdditionalLineHeight;
     return CGSizeMake(kKayokoTableViewCellContentImageWidth, height);
@@ -63,10 +69,11 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
-        NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), kKayokoTableViewCellMaximumPreviewLineCount);
+        NSUInteger lineCount = MIN(MAX([content previewLineCount], 2), kKayokoTableViewCellMaximumPreviewLineCount);
         CGSize contentImageViewSize = [[self class] contentImageViewSizeForPreviewLineCount:lineCount];
         BOOL hasContentText = [[content contentText] length] > 0;
         BOOL showsDetail = [content showsDetail];
+        BOOL hasNote = [[content noteText] length] > 0;
         [self setBackgroundColor:[UIColor clearColor]];
         UIView *selectedBackgroundView = [[UIView alloc] init];
         UIColor *selectedBackgroundColor =
@@ -97,6 +104,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         UIImage *contentImage = [content contentImage];
         NSString *thumbnailImageName = [content thumbnailImageName];
         BOOL hasContentImageSlot = contentImage || [thumbnailImageName length] > 0;
+        NSLayoutConstraint *contentImageTrailingConstraint = nil;
         [self setRepresentedImageName:thumbnailImageName];
         if (hasContentImageSlot) {
             [self setContentImageView:[[UIImageView alloc] init]];
@@ -110,17 +118,59 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [self addSubview:[self contentImageView]];
 
             [[self contentImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+                contentImageTrailingConstraint = [[[self contentImageView] trailingAnchor]
+                     constraintEqualToAnchor:[self trailingAnchor]
+                                         constant:hasNote
+                                                      ? -(kKayokoTableViewCellNoteWidth +
+                                                          kKayokoTableViewCellContentColumnSpacing + 24)
+                                                      : -24];
             [NSLayoutConstraint activateConstraints:@[
-                [[[self contentImageView] widthAnchor] constraintEqualToConstant:contentImageViewSize.width],
                 [[[self contentImageView] heightAnchor] constraintEqualToConstant:contentImageViewSize.height],
                 [[[self contentImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
-                [[[self contentImageView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-24]
+                [[[self contentImageView] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor]
+                                                                          constant:16],
+                contentImageTrailingConstraint
             ]];
+        }
+
+        if (hasNote) {
+            [self setNoteLabel:[[UILabel alloc] init]];
+            [[self noteLabel] setFont:[UIFont systemFontOfSize:14 weight:UIFontWeightMedium]];
+            [[self noteLabel] setTextColor:[UIColor labelColor]];
+            [[self noteLabel] setTextAlignment:NSTextAlignmentCenter];
+            [[self noteLabel] setNumberOfLines:2];
+            [[self noteLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
+            [[self noteLabel] setBackgroundColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+                if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                    return [UIColor colorWithWhite:1 alpha:0.10];
+                }
+                return [UIColor colorWithWhite:0 alpha:0.055];
+            }]];
+            [[[self noteLabel] layer] setCornerRadius:14];
+            [[[self noteLabel] layer] setCornerCurve:kCACornerCurveContinuous];
+            [[self noteLabel] setClipsToBounds:YES];
+            [self addSubview:[self noteLabel]];
+            [[self noteLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
+            [NSLayoutConstraint activateConstraints:@[
+                [[[self noteLabel] widthAnchor] constraintEqualToConstant:kKayokoTableViewCellColumnWidth],
+                [[[self noteLabel] heightAnchor] constraintEqualToConstant:kKayokoTableViewCellNoteHeight],
+                [[[self noteLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
+                [[[self noteLabel] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-24]
+            ]];
+
+            if (contentImageTrailingConstraint) {
+                [contentImageTrailingConstraint setActive:NO];
+                contentImageTrailingConstraint = [[[self contentImageView] trailingAnchor]
+                    constraintEqualToAnchor:[[self noteLabel] leadingAnchor]
+                                   constant:-kKayokoTableViewCellContentColumnSpacing];
+                [contentImageTrailingConstraint setActive:YES];
+            }
         }
 
         [self setHeaderLabel:[[UILabel alloc] init]];
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];
+        [[self headerLabel] setHidden:hasContentImageSlot || hasContentText];
         [[self headerLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
         [[self headerLabel] setContentHuggingPriority:UILayoutPriorityDefaultHigh
                                               forAxis:UILayoutConstraintAxisHorizontal];
@@ -129,13 +179,21 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         [self addSubview:[self headerLabel]];
 
         [[self headerLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        NSLayoutXAxisAnchor *headerLeadingAnchor = [self contentImageView]
+                                ? [[self contentImageView] trailingAnchor]
+                                : [[self iconImageView] trailingAnchor];
+        CGFloat headerLeadingConstant = [self contentImageView] ? 24 : 16;
         [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] leadingAnchor]
-                                                    constraintEqualToAnchor:[[self iconImageView] trailingAnchor]
-                                                                   constant:16] ]];
+                                constraintEqualToAnchor:headerLeadingAnchor
+                                       constant:headerLeadingConstant] ]];
+        if (hasNote && !hasContentImageSlot) {
+            [NSLayoutConstraint activateConstraints:@[
+                [[[self headerLabel] widthAnchor] constraintEqualToConstant:kKayokoTableViewCellColumnWidth]
+            ]];
+        }
 
-        NSLayoutXAxisAnchor *textTrailingAnchor =
-            [self contentImageView] ? [[self contentImageView] leadingAnchor] : [self trailingAnchor];
-        CGFloat textTrailingConstant = [self contentImageView] ? -16 : -24;
+        NSLayoutXAxisAnchor *textTrailingAnchor = [self noteLabel] ? [[self noteLabel] leadingAnchor] : [self trailingAnchor];
+        CGFloat textTrailingConstant = [self noteLabel] ? -kKayokoTableViewCellContentColumnSpacing : -24;
 
         if ([[content tagHexColor] length] > 0) {
             [self setTagDotView:[[UIView alloc] init]];
@@ -167,7 +225,6 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
             CGFloat previewLabelHeight = ceil([[[self contentLabel] font] lineHeight] * lineCount);
             [NSLayoutConstraint activateConstraints:@[
-                [[[self contentLabel] topAnchor] constraintEqualToAnchor:[[self headerLabel] bottomAnchor] constant:2],
                 [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
                 [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor
                                                                      constant:textTrailingConstant],
@@ -190,20 +247,20 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         }
 
         if (hasContentText) {
-            [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] topAnchor]
-                                                        constraintEqualToAnchor:[self topAnchor]
-                                                                       constant:showsDetail ? 13 : 12] ]];
             if (showsDetail) {
+                CGFloat detailLineHeight = ceil([[[self detailLabel] font] lineHeight]);
                 [NSLayoutConstraint activateConstraints:@[
+                    [[[self contentLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]
+                                                                         constant:-(detailLineHeight + 2) / 2.0],
                     [[[self detailLabel] topAnchor] constraintEqualToAnchor:[[self contentLabel] bottomAnchor]
                                                                    constant:2],
                     [[[self detailLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[self bottomAnchor]
                                                                                 constant:-8]
                 ]];
             } else {
-                [NSLayoutConstraint activateConstraints:@[ [[[self contentLabel] bottomAnchor]
-                                                            constraintLessThanOrEqualToAnchor:[self bottomAnchor]
-                                                                                     constant:-10] ]];
+                [NSLayoutConstraint activateConstraints:@[
+                    [[[self contentLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]
+                ]];
             }
         } else if (showsDetail) {
             [NSLayoutConstraint activateConstraints:@[
@@ -235,6 +292,8 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
     [[self contentLabel] setText:nil];
     [[self detailLabel] setAttributedText:nil];
     [[self detailLabel] setText:nil];
+    [[self noteLabel] setText:nil];
+    [[self noteLabel] setHidden:YES];
     [[self contentImageView] setImage:nil];
     [[self contentImageView] setBackgroundColor:[UIColor tertiarySystemFillColor]];
 }
@@ -269,6 +328,9 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         [[self headerLabel] setAttributedText:nil];
         [[self headerLabel] setText:[content displayName]];
     }
+
+    [[self noteLabel] setText:[content noteText]];
+    [[self noteLabel] setHidden:[[content noteText] length] == 0];
 
     if ([self tagDotView]) {
         [[self tagDotView] setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[content tagHexColor]]];

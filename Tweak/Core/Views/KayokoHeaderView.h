@@ -15,6 +15,7 @@ static CGFloat const kKayokoHeaderContentSpacing = 8;
 
 @property(nonatomic, strong, readonly) KayokoGrabberView *grabber;
 @property(nonatomic, strong, readonly) UILabel *titleLabel;
+@property(nonatomic, strong, readonly) UISegmentedControl *historySegmentedControl;
 @property(nonatomic, strong, readonly) UIControl *titleTapControl;
 @property(nonatomic, strong, readonly) UIButton *leadingButton;
 @property(nonatomic, strong, readonly) UIButton *trailingButton;
@@ -26,6 +27,7 @@ static CGFloat const kKayokoHeaderContentSpacing = 8;
 - (instancetype)initWithFrame:(CGRect)frame NS_UNAVAILABLE;
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
 - (void)setTitleText:(NSString *)title;
+- (void)setSelectedHistorySegmentIndex:(NSInteger)index;
 - (void)updateStyleForButton:(UIButton *)button
                withImageName:(NSString *)imageName
                    imageSize:(NSUInteger)imageSize

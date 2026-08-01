@@ -99,6 +99,6 @@ static BOOL const kKayokoPreferenceKeyDisablePasteTipsDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyPlaySoundEffectsDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
-static NSUInteger const kKayokoPreferenceKeyPreviewLineCountDefaultValue = 1;
+static NSUInteger const kKayokoPreferenceKeyPreviewLineCountDefaultValue = 2;
 static KayokoItemDetailsMode const kKayokoPreferenceKeyItemDetailsModeDefaultValue = kKayokoItemDetailsModeImagesOnly;
 static CGFloat const kKayokoPreferenceKeyHeightInPointsDefaultValue = 420;

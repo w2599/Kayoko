@@ -27,9 +27,9 @@
 "CopyVault data directory was not found." = "找不到 CopyVault 数据目录。";
 "CopyVault data is invalid: %@" = "CopyVault 数据无效：%@";
 "Dates" = "日期";
-"Favorites" = "收藏夹";
+"Favorites" = "收藏";
 "Flights" = "航班";
-"History" = "历史记录";
+"History" = "历史";
 "History item not found" = "未找到这条历史记录";
 "Images" = "图片";
 "Imported file %@ already contains different data." = "导入文件 %@ 已存在，但内容不同。";

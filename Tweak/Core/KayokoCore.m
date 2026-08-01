@@ -91,6 +91,26 @@ static void kayokoCoreShowCallback(CFNotificationCenterRef center, void *observe
     [[KayokoCoreRuntime sharedRuntime] show];
 }
 
+static void kayokoCoreCopyVaultHistoryShowCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                   const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] showWithInitialViewMode:kKayokoInitialViewModeHistory];
+}
+
+static void kayokoCoreCopyVaultFavouriteShowCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                     const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] showWithInitialViewMode:kKayokoInitialViewModeFavorites];
+}
+
 static void kayokoCoreHideCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object,
                                    CFDictionaryRef userInfo) {
     (void)center;
@@ -260,6 +280,10 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
                           callback:kayokoCorePasteboardChangedCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreShow
                           callback:kayokoCoreShowCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCopyVaultHistoryShow
+                          callback:kayokoCoreCopyVaultHistoryShowCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCopyVaultFavouriteShow
+                          callback:kayokoCoreCopyVaultFavouriteShowCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoLegacyNotificationKeyCoreShow
                           callback:kayokoCoreShowCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreHide

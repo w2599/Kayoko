@@ -111,6 +111,8 @@ NS_ASSUME_NONNULL_END
 
     KayokoHeaderView *headerView = [[self wordSelectionView] headerView];
     [headerView setHidden:NO];
+    [[headerView titleLabel] setHidden:NO];
+    [[headerView historySegmentedControl] setHidden:YES];
     [headerView setTitleText:[self name]];
     [headerView updateStyleForButton:[headerView leadingButton]
                        withImageName:@"arrowshape.turn.up.backward"

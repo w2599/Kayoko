@@ -40,7 +40,7 @@ static NSData *KayokoCopyKeychainData(NSString *service, NSString *account, NSSt
 static BOOL KayokoDeleteKeychainItems(NSString *service, NSString *account, NSString *accessGroup, NSError **error);
 static BOOL KayokoSaveKeychainData(NSData *data, NSString *service, NSString *account, NSString *accessGroup,
                                    NSError **error);
-static KayokoHavocCredential *KayokoCopyMirroredCredential(NSError **error);
+static KayokoHavocCredential *KayokoCopyMirroredCredential(NSError **error) __attribute__((unused));
 static KayokoHavocCredential *KayokoCreateHavocCredential(NSString *token, NSString *providerBaseURL,
                                                           BOOL providerEndpointNeedsResolution, NSString *source,
                                                           NSError **error);
@@ -50,7 +50,8 @@ static BOOL KayokoSaveMirroredCredential(KayokoHavocCredential *credential, NSEr
 static NSError *KayokoCombinedCredentialError(NSError *sileoError, NSError *zebraError);
 static NSString *KayokoCredentialErrorMessage(NSError *error, NSString *fallback);
 static void KayokoCheckPurchaseWithCredential(KayokoHavocCredential *credential,
-                                              void (^completion)(KayokoPurchaseAuthorizationResult *result));
+                                              void (^completion)(KayokoPurchaseAuthorizationResult *result))
+    __attribute__((unused));
 static void KayokoCheckPurchaseWithProviderBaseURL(KayokoHavocCredential *credential, NSString *providerBaseURL,
                                                    void (^completion)(KayokoPurchaseAuthorizationResult *result));
 static void KayokoFetchPaymentEndpointForRepositoryURL(NSString *repositoryURLString,
@@ -152,14 +153,8 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 #pragma mark - Authorization State
 
 + (BOOL)hasAuthorizationPassFlagWithError:(NSError **)error {
-#if DEBUG
-    HBLogDebug(@"Kayoko: Havoc authorization check for pass flag (DEBUG mode)");
+    HBLogDebug(@"Kayoko: Havoc authorization check bypassed");
     return YES;
-#else
-    NSData *flagData = KayokoCopyKeychainData(kKayokoAuthorizationFlagService, kKayokoAuthorizationFlagAccount,
-                                              kKayokoAppleAccessGroup, error);
-    return [flagData length] > 0;
-#endif
 }
 
 + (BOOL)setAuthorizationPassFlagWithError:(NSError **)error {
@@ -179,26 +174,13 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 #pragma mark - Purchase Check
 
 + (void)checkMirroredPurchaseWithCompletion:(void (^)(KayokoPurchaseAuthorizationResult *result))completion {
-    HBLogDebug(@"Kayoko: Havoc authorization check started");
-
-    NSError *credentialError = nil;
-    KayokoHavocCredential *credential = KayokoCopyMirroredCredential(&credentialError);
-    if (!credential) {
-        HBLogDebug(@"Kayoko: Havoc authorization check missing mirrored credential error=%@", credentialError);
-        KayokoPurchaseAuthorizationResult *result =
-            [[KayokoPurchaseAuthorizationResult alloc] initWithState:KayokoPurchaseAuthorizationStateMissingCredential
-                                                               error:credentialError
-                                                          statusCode:0
-                                                       statusMessage:nil];
-        completion(result);
-        return;
-    }
-
-    HBLogDebug(@"Kayoko: Havoc authorization using mirrored credential source=%@ providerBaseURL=%@ "
-               @"needsEndpointResolution=%@",
-               credential.source ?: @"unknown", credential.providerBaseURL,
-               credential.providerEndpointNeedsResolution ? @"YES" : @"NO");
-    KayokoCheckPurchaseWithCredential(credential, completion);
+    HBLogDebug(@"Kayoko: Havoc authorization check bypassed");
+    KayokoPurchaseAuthorizationResult *result =
+        [[KayokoPurchaseAuthorizationResult alloc] initWithState:KayokoPurchaseAuthorizationStatePurchased
+                                                           error:nil
+                                                      statusCode:200
+                                                   statusMessage:@"OK"];
+    completion(result);
 }
 
 @end

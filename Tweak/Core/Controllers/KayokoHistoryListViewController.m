@@ -744,7 +744,9 @@ NS_ASSUME_NONNULL_END
         [actions addObject:moveAction];
     }
 
-    UIContextualAction *noteAction = [self noteActionForItem:item indexPath:indexPath];
+    UIContextualAction *noteAction = [[self historyKey] isEqualToString:kKayokoHistoryKeyFavorites]
+                                          ? [self noteActionForItem:item indexPath:indexPath]
+                                          : nil;
     if (noteAction) {
         [actions addObject:noteAction];
     }

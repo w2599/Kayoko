@@ -2,7 +2,7 @@ export PACKAGE_VERSION := 4.3
 export ARCHS := arm64 arm64e
 export TARGET := iphone:clang:16.5:14.0
 
-INSTALL_TARGET_PROCESSES := backboardd druid pasted
+INSTALL_TARGET_PROCESSES := SpringBoard Spotlight druid pasted
 
 SUBPROJECTS += Tweak/Core
 SUBPROJECTS += Tweak/Helper

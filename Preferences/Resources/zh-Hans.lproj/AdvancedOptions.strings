@@ -13,10 +13,10 @@
 "Automatic Paste Mode" = "自动粘贴模式";
 "Cancel" = "取消";
 "Check Data Directory" = "检查数据目录";
-"Choose where the Clear button appears. “History Only” shows it only in History, while “Always” also shows it in Favorites." = "选择在哪些列表中显示「清空」按钮。「仅历史记录」只在「历史记录」中显示，「总是」还会在「收藏夹」中显示。";
+"Choose where the Clear button appears. “History Only” shows it only in History, while “Always” also shows it in Favorites." = "选择在哪些列表中显示「清空」按钮。「仅历史」只在「历史」中显示，「总是」还会在「收藏」中显示。";
 "Classic" = "经典";
-"Clear Favorites" = "清空收藏夹";
-"Clear History" = "清空历史记录";
+"Clear Favorites" = "清空收藏";
+"Clear History" = "清空历史";
 "Copy Path" = "拷贝路径";
 "Dangerous Zone" = "危险区域";
 "Data Unavailable" = "数据不可用";
@@ -53,6 +53,6 @@
 "Unable to Import" = "导入失败";
 "Unable to Open Filza" = "无法打开 Filza";
 "Unable to Restore Tags" = "还原标签失败";
-"When off, History and Favorites usually keep your last browsing position. When on, both lists return to the first item the next time they appear after Kayoko is closed. If new content is added or an item moves to the top while a list is not shown, that list also starts from the first item the next time it appears." = "关闭时，「历史记录」和「收藏夹」通常会保留上次浏览的位置。开启后，每次关闭 Kayoko，两个列表都会在下次显示时回到第一条。如果列表未显示时有新内容加入或条目被移到顶部，该列表也会在下次显示时从第一条开始。";
+"When off, History and Favorites usually keep your last browsing position. When on, both lists return to the first item the next time they appear after Kayoko is closed. If new content is added or an item moves to the top while a list is not shown, that list also starts from the first item the next time it appears." = "关闭时，「历史」和「收藏」通常会保留上次浏览的位置。开启后，每次关闭 Kayoko，两个列表都会在下次显示时回到第一条。如果列表未显示时有新内容加入或条目被移到顶部，该列表也会在下次显示时从第一条开始。";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“经典” 使用原有的 App 内键盘手势识别。“系统” 会改由 SpringBoard 侧监听，因此在 App 侧注入不可用时仍可使用单指上划。";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“模拟” 模式会通过硬件组合键模拟粘贴快捷键。“自动” 模式会在当前 App 可配合时使用 “经典”，需要时再退回 “模拟”。";

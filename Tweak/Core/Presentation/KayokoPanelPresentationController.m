@@ -366,7 +366,7 @@ NS_ASSUME_NONNULL_END
 - (CGRect)grabberTapTargetFrameInHeaderView:(KayokoHeaderView *)headerView {
     UIView *grabberView = (UIView *)[headerView grabber];
     CGRect grabberFrame = [grabberView convertRect:[grabberView bounds] toView:headerView];
-    return CGRectInset(grabberFrame, -44, -16);
+    return CGRectInset(grabberFrame, -44, 0);
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {

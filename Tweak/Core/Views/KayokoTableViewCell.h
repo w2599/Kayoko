@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) UIView *tagDotView;
 @property(nonatomic, strong, nullable) UILabel *contentLabel;
 @property(nonatomic, strong, nullable) UILabel *detailLabel;
+@property(nonatomic, strong, nullable) UILabel *noteLabel;
 @property(nonatomic, strong, nullable) UIImageView *contentImageView;
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style

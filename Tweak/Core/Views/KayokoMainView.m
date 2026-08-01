@@ -11,6 +11,8 @@
 #import "KayokoHeaderView.h"
 #import "KayokoPasteboardManager.h"
 
+static NSTimeInterval const kKayokoContentTransitionDuration = 0.2;
+
 @interface KayokoMainView ()
 
 #pragma mark - Header Constraints
@@ -55,7 +57,7 @@
         [[self layer] setShadowRadius:18];
         [[self layer] setShadowOpacity:0.18];
 
-        [self setBlurEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular]];
+        [self setBlurEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
         [self setBlurEffectView:[[UIVisualEffectView alloc] initWithEffect:[self blurEffect]]];
         [self addSubview:[self blurEffectView]];
 
@@ -95,11 +97,11 @@
         ]];
 
         [[self headerView] updateStyleForButton:[[self headerView] leadingButton]
-                                  withImageName:@"heart"
+                                  withImageName:@"trash"
                                       imageSize:kKayokoFavoritesButtonImageSize
                                       tintColor:[UIColor labelColor]];
         [[self headerView] updateStyleForButton:[[self headerView] trailingButton]
-                                  withImageName:@"trash"
+                                  withImageName:@"xmark"
                                       imageSize:kKayokoClearButtonImageSize
                                       tintColor:[UIColor labelColor]];
         [[self headerView] updateStyleForButton:[[self headerView] alternateTrailingButton]
@@ -347,8 +349,8 @@
 
 - (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount {
     BOOL enabled = itemCount > 0;
-    [[[self headerView] trailingButton] setEnabled:enabled];
-    [[[self headerView] trailingButton] setAlpha:enabled ? 1.0 : 0.35];
+    [[[self headerView] leadingButton] setEnabled:enabled];
+    [[[self headerView] leadingButton] setAlpha:enabled ? 1.0 : 0.35];
 }
 
 #pragma mark - Content Transitions
@@ -436,11 +438,10 @@
     [viewToShow setHidden:NO];
     [self setAnimating:YES];
 
-    [UIView animateWithDuration:0.3
+    [UIView animateWithDuration:kKayokoContentTransitionDuration
         delay:0
-        usingSpringWithDamping:1
-        initialSpringVelocity:0
-        options:UIViewAnimationOptionCurveEaseOut
+        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState |
+                UIViewAnimationOptionAllowUserInteraction
         animations:^{
           if (alongsideAnimations) {
               alongsideAnimations();
@@ -472,12 +473,7 @@
         *viewToHideTransform = CGAffineTransformMakeTranslation(0, -10);
         break;
     case KayokoContentTransitionDirectionSiblingForward:
-        *viewToShowTransform = CGAffineTransformMakeTranslation(10, 0);
-        *viewToHideTransform = CGAffineTransformMakeTranslation(-10, 0);
-        break;
     case KayokoContentTransitionDirectionSiblingBackward:
-        *viewToShowTransform = CGAffineTransformMakeTranslation(-10, 0);
-        *viewToHideTransform = CGAffineTransformMakeTranslation(10, 0);
         break;
     }
 }

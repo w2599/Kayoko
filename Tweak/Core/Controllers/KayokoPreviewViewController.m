@@ -79,6 +79,8 @@ NS_ASSUME_NONNULL_END
 
     KayokoHeaderView *headerView = [[self previewView] headerView];
     [headerView setHidden:NO];
+    [[headerView titleLabel] setHidden:NO];
+    [[headerView historySegmentedControl] setHidden:YES];
     [headerView setTitleText:[[self previewView] name]];
     [headerView updateStyleForButton:[headerView leadingButton]
                        withImageName:@"arrowshape.turn.up.backward"
@@ -197,12 +199,14 @@ NS_ASSUME_NONNULL_END
     [self setPreviewItem:nil];
 
     [[self previewView] reset];
+    [[[[self previewView] headerView] historySegmentedControl] setHidden:NO];
     [self setSourceHistoryKey:nil];
 }
 
 - (void)resetPreviewState {
     [[self previewView] reset];
     [[self previewView] setHidden:YES];
+    [[[[self previewView] headerView] historySegmentedControl] setHidden:NO];
     [self setPreviewItem:nil];
     [self setSourceHistoryKey:nil];
 }

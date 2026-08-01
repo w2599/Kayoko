@@ -121,18 +121,17 @@ NS_ASSUME_NONNULL_END
     NSString *contentText =
         isImage ? @"" : [([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     NSString *sourceDisplayName = [[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier];
-    NSString *displayName = [[item note] length] > 0 ? [item note] : sourceDisplayName;
+    NSString *noteText = [item note];
+    NSString *displayName = isImage ? sourceDisplayName : @"";
     [content setIcon:[[self metadataProvider] iconForBundleIdentifier:bundleIdentifier]];
     [content setDisplayName:displayName];
-    [content setAttributedDisplayName:[[item note] length] > 0 ? [self attributedTextForText:displayName
-                                                                                  searchText:searchText]
-                                                               : nil];
+    [content setNoteText:noteText];
+    [content setAttributedDisplayName:nil];
     KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[item tagUUID]];
     [content setTagHexColor:[tag hexColor]];
     [content setContentText:contentText];
     [content setAttributedContentText:[self attributedTextForText:contentText searchText:searchText]];
-    BOOL showsDetail =
-        isImage ? itemDetailsMode != kKayokoItemDetailsModeOff : itemDetailsMode == kKayokoItemDetailsModeAll;
+    BOOL showsDetail = !isImage && itemDetailsMode == kKayokoItemDetailsModeAll;
     [content setShowsDetail:showsDetail];
     if (showsDetail) {
         NSMutableArray<NSString *> *detailComponents = [[NSMutableArray alloc] initWithCapacity:3];

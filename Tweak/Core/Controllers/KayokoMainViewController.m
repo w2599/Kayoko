@@ -74,6 +74,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) NSError *storageError;
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
+@property(nonatomic, assign) NSUInteger historySwitchRequestIdentifier;
+@property(nonatomic, copy, nullable) NSString *pendingHistorySwitchKey;
 @property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
 @property(nonatomic, strong) KayokoExternalHideCoordinator *externalHideCoordinator;
 
@@ -147,10 +149,13 @@ NS_ASSUME_NONNULL_END
 
         __weak typeof(self) weakSelf = self;
         [[[_mainView headerView] leadingButton] addTarget:self
-                                                   action:@selector(handleFavoritesButtonPressed)
+                                                   action:@selector(handleClearButtonPressed)
                                          forControlEvents:UIControlEventTouchUpInside];
+        [[[_mainView headerView] historySegmentedControl] addTarget:self
+                                      action:@selector(handleFavoritesButtonPressed)
+                                forControlEvents:UIControlEventValueChanged];
         [[[_mainView headerView] trailingButton] addTarget:self
-                                                    action:@selector(handleClearButtonPressed)
+                                                    action:@selector(handleCloseButtonPressed)
                                           forControlEvents:UIControlEventTouchUpInside];
         [[[_mainView headerView] titleTapControl] addTarget:self
                                                      action:@selector(handleTitleTapControlPressed)
@@ -852,7 +857,7 @@ NS_ASSUME_NONNULL_END
     [[self clearConfirmationViewController] beginWithHistoryKey:historyKey];
     [[[self clearConfirmationViewController] confirmationView]
         setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
-    [[[[self mainView] headerView] trailingButton] setHidden:YES];
+    [[[[self mainView] headerView] leadingButton] setHidden:YES];
 
     [[self mainView]
         showContentView:[[self clearConfirmationViewController] confirmationView]
@@ -922,7 +927,7 @@ NS_ASSUME_NONNULL_END
                                   [[self effectiveActiveHistoryKey] isEqualToString:kKayokoHistoryKeyHistory]);
     BOOL hidesClearButton =
         [self isAuthorizationRequired] || [self isShowingClearConfirmation] || !modeAllowsClearButton;
-    [[[[self mainView] headerView] trailingButton] setHidden:hidesClearButton];
+    [[[[self mainView] headerView] leadingButton] setHidden:hidesClearButton];
     NSUInteger itemCount =
         hidesClearButton || [self storageError] ? 0 : [[[self activeListViewController] items] count];
     [[self mainView] setClearButtonEnabledForItemCount:itemCount];
@@ -1205,13 +1210,8 @@ NS_ASSUME_NONNULL_END
 
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
     BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
-    NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
-    UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
     KayokoHeaderView *headerView = [[self mainView] headerView];
-    [headerView updateStyleForButton:[headerView leadingButton]
-                       withImageName:imageName
-                           imageSize:kKayokoFavoritesButtonImageSize
-                           tintColor:tintColor];
+    [headerView setSelectedHistorySegmentIndex:showingFavorites ? 1 : 0];
 }
 
 - (nullable UIImage *)authorizationHeaderIconImage {
@@ -1328,7 +1328,9 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Actions
 
 - (void)handleFavoritesButtonPressed {
+    KayokoHeaderView *headerView = [[self mainView] headerView];
     if ([[self panelPresentationController] isAnimating]) {
+        [self updateFavoritesButtonForHistoryKey:[self effectiveActiveHistoryKey]];
         return;
     }
 
@@ -1342,73 +1344,71 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    NSString *targetKey = [[headerView historySegmentedControl] selectedSegmentIndex] == 1
+                              ? kKayokoHistoryKeyFavorites
+                              : kKayokoHistoryKeyHistory;
+    if ([[self mainView] isAnimating]) {
+        if ([targetKey isEqualToString:[self effectiveActiveHistoryKey]]) {
+            [self setPendingHistorySwitchKey:nil];
+        } else {
+            [self setPendingHistorySwitchKey:targetKey];
+        }
+        return;
+    }
+
+    if ([targetKey isEqualToString:[self effectiveActiveHistoryKey]]) {
+        return;
+    }
+
+    [self performHistorySwitchToKey:targetKey];
+}
+
+- (void)performHistorySwitchToKey:(NSString *)targetKey {
     NSString *historyKey = [self effectiveActiveHistoryKey];
-    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
-    NSString *targetKey = showingFavorites ? kKayokoHistoryKeyHistory : kKayokoHistoryKeyFavorites;
+    if ([targetKey isEqualToString:historyKey]) {
+        return;
+    }
+
+    NSUInteger requestIdentifier = [self historySwitchRequestIdentifier] + 1;
+    [self setHistorySwitchRequestIdentifier:requestIdentifier];
     UIView *viewToHide = [self activeHistoryContentView];
+    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
     KayokoContentTransitionDirection direction = showingFavorites ? KayokoContentTransitionDirectionSiblingBackward
                                                                   : KayokoContentTransitionDirectionSiblingForward;
+    UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
 
-    [self reloadTableViewForHistoryKey:targetKey
-                            completion:^(KayokoHistoryListView *targetTableView) {
-                              if (![[self effectiveActiveHistoryKey] isEqualToString:historyKey] ||
-                                  [[self panelPresentationController] isAnimating]) {
-                                  return;
-                              }
+    [[self historyController] setActiveHistoryKey:targetKey];
+    [[self searchController]
+        attachToListViewController:[self listViewControllerForHistoryKey:targetKey]
+                    hidesSearchBar:![[self searchController] isSearchActive]];
+    [[self searchController] refreshForListViewController:[self activeListViewController]];
+    [self prepareHistoryListForDisplayIfNeededForHistoryKey:targetKey contentView:viewToShow];
+    [self updateClearButtonState];
+    [self updateFavoritesButtonForHistoryKey:targetKey];
 
-                              if ([[[self listViewControllerForHistoryKey:targetKey] items] count] == 0 &&
-                                  [[self searchController] isSearchActive]) {
-                                  UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
-                                  [[self mainView] setClearButtonEnabledForItemCount:0];
-                                  [[self mainView] prepareContentTransitionToView:viewToShow
-                                                                  hideContentView:viewToHide
-                                                                            title:[self titleForContentView:viewToShow]
-                                                                        direction:direction];
-                                  [[self searchController]
-                                      cancelSearchWithAnimations:^{
-                                        [[self historyController] setActiveHistoryKey:targetKey];
-                                        [[self searchController]
-                                            attachToListViewController:[self listViewControllerForHistoryKey:targetKey]
-                                                        hidesSearchBar:YES];
-                                        [[self searchController]
-                                            refreshForListViewController:[self activeListViewController]];
-                                        [self updateClearButtonState];
-                                        [[self mainView] applyPreparedContentTransitionToView:viewToShow
-                                                                              hideContentView:viewToHide
-                                                                                    direction:direction];
-                                      }
-                                      completion:^{
-                                        [[self mainView] completePreparedContentTransitionHidingView:viewToHide
-                                                                                          completion:nil];
-                                      }];
-                                  [self updateFavoritesButtonForHistoryKey:targetKey];
-                                  [[self panelPresentationController]
-                                      triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
-                                  return;
-                              }
+    [self reloadTableViewForHistoryKey:targetKey completion:nil];
 
-                              [[self historyController] setActiveHistoryKey:targetKey];
-                              [[self searchController]
-                                  attachToListViewController:[self listViewControllerForHistoryKey:targetKey]
-                                              hidesSearchBar:![[self searchController] isSearchActive]];
-                              [[self searchController] refreshForListViewController:[self activeListViewController]];
-                              [self updateClearButtonState];
+    if (viewToShow != viewToHide) {
+        [[self mainView] showContentView:viewToShow
+                         hideContentView:viewToHide
+                                   title:[self titleForContentView:viewToShow]
+                               direction:direction
+                              completion:^{
+                                if ([self historySwitchRequestIdentifier] != requestIdentifier) {
+                                    return;
+                                }
 
-                              UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
-                              [self prepareHistoryListForDisplayIfNeededForHistoryKey:targetKey contentView:viewToShow];
-                              if (viewToShow != viewToHide) {
-                                  [[self mainView] showContentView:viewToShow
-                                                   hideContentView:viewToHide
-                                                             title:[self titleForContentView:viewToShow]
-                                                         direction:direction];
-                              } else {
-                                  [[self mainView] setTitleText:[self titleForContentView:viewToShow]];
-                              }
+                                NSString *pendingKey = [self pendingHistorySwitchKey];
+                                [self setPendingHistorySwitchKey:nil];
+                                if (pendingKey && ![pendingKey isEqualToString:[self effectiveActiveHistoryKey]]) {
+                                    [self performHistorySwitchToKey:pendingKey];
+                                }
+                              }];
+    } else {
+        [[self mainView] setTitleText:[self titleForContentView:viewToShow]];
+    }
 
-                              [self updateFavoritesButtonForHistoryKey:targetKey];
-                              [[self panelPresentationController]
-                                  triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
-                            }];
+    [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
 }
 
 - (void)handleTransientBackButtonPressed {
@@ -1454,6 +1454,15 @@ NS_ASSUME_NONNULL_END
 
     [self showClearConfirmationForHistoryKey:[self effectiveActiveHistoryKey]];
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+}
+
+- (void)handleCloseButtonPressed {
+    if ([[self panelPresentationController] isAnimating] || [self isNoteEditing]) {
+        return;
+    }
+
+    [[self panelPresentationController] prepareStandardDismissAnimation];
+    [self hideRestoringFocus];
 }
 
 - (void)handleTitleTapControlPressed {
