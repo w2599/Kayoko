@@ -254,8 +254,9 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 
 - (ActivationMethod)currentActivationMethod {
     NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
-    ActivationMethod activationMethod = [userDefaults integerForKey:kKayokoPreferenceKeyActivationMethod];
-    return activationMethod == 0 ? kKayokoPreferenceKeyActivationMethodDefaultValue : activationMethod;
+    NSNumber *activationMethod = [userDefaults objectForKey:kKayokoPreferenceKeyActivationMethod];
+    return activationMethod ? [activationMethod unsignedIntegerValue]
+                            : kKayokoPreferenceKeyActivationMethodDefaultValue;
 }
 
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {

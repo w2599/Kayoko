@@ -24,9 +24,6 @@
     // Read current configuration value
     id value = [self readPreferenceValue:self.specifier];
     _currentOptions = [value integerValue];
-    if (_currentOptions == 0) {
-        _currentOptions = kKayokoPreferenceKeyActivationMethodDefaultValue;
-    }
 
     // Initialize selected indices
     [_selectedIndices removeAllObjects];
@@ -47,14 +44,7 @@
     // Check if this option is already selected
     NSNumber *indexNumber = @(selectedIndex);
     if ([_selectedIndices containsObject:indexNumber]) {
-        // If this is the last selected item, don't allow deselection
-        if (_selectedIndices.count > 1) {
-            [_selectedIndices removeObject:indexNumber];
-        } else {
-            // If only one option is selected, keep it selected
-            [tableView reloadData];
-            return;
-        }
+        [_selectedIndices removeObject:indexNumber];
     } else {
         [_selectedIndices addObject:indexNumber];
     }
