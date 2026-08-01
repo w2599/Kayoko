@@ -12,6 +12,7 @@
 #import "KayokoPasteboardManager.h"
 
 static NSTimeInterval const kKayokoContentTransitionDuration = 0.2;
+static CGFloat const kKayokoMainViewTopCornerRadius = 16;
 
 @interface KayokoMainView ()
 
@@ -56,9 +57,14 @@ static NSTimeInterval const kKayokoContentTransitionDuration = 0.2;
         [[self layer] setShadowOffset:CGSizeMake(0, -4)];
         [[self layer] setShadowRadius:18];
         [[self layer] setShadowOpacity:0.18];
+        [[self layer] setCornerRadius:kKayokoMainViewTopCornerRadius];
+        [[self layer] setMaskedCorners:kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner];
 
         [self setBlurEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
         [self setBlurEffectView:[[UIVisualEffectView alloc] initWithEffect:[self blurEffect]]];
+        [[self blurEffectView] setClipsToBounds:YES];
+        [[[self blurEffectView] layer] setCornerRadius:kKayokoMainViewTopCornerRadius];
+        [[[self blurEffectView] layer] setMaskedCorners:kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner];
         [self addSubview:[self blurEffectView]];
 
         [[self blurEffectView] setTranslatesAutoresizingMaskIntoConstraints:NO];

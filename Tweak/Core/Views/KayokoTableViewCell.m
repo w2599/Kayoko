@@ -16,6 +16,8 @@ static CGFloat const kKayokoTableViewCellContentImageAdditionalLineHeight = 16;
 static CGFloat const kKayokoTableViewCellColumnWidth = 70;
 static CGFloat const kKayokoTableViewCellNoteWidth = kKayokoTableViewCellColumnWidth;
 static CGFloat const kKayokoTableViewCellNoteHeight = 40;
+static CGFloat const kKayokoTableViewCellNoteCornerRadius = 8;
+static CGFloat const kKayokoTableViewCellContentImageCornerRadius = 8;
 static CGFloat const kKayokoTableViewCellContentColumnSpacing = 16;
 static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
@@ -121,7 +123,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
             [[self contentImageView] setClipsToBounds:YES];
             [[self contentImageView]
                 setBackgroundColor:contentImage ? [UIColor clearColor] : [UIColor tertiarySystemFillColor]];
-            [[[self contentImageView] layer] setCornerRadius:4];
+            [[[self contentImageView] layer] setCornerRadius:kKayokoTableViewCellContentImageCornerRadius];
             [self addSubview:[self contentImageView]];
 
             [[self contentImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -156,7 +158,7 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
                 }
                 return [UIColor colorWithWhite:0 alpha:0.055];
             }]];
-            [[[self noteLabel] layer] setCornerRadius:14];
+            [[[self noteLabel] layer] setCornerRadius:kKayokoTableViewCellNoteCornerRadius];
             [[[self noteLabel] layer] setCornerCurve:kCACornerCurveContinuous];
             [[self noteLabel] setClipsToBounds:YES];
             [self addSubview:[self noteLabel]];
