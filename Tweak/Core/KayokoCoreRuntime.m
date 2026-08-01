@@ -25,6 +25,7 @@
 
 static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
 static NSTimeInterval const kKayokoPasteSuppressionExpirationDelay = 1.0;
+static NSUInteger const kKayokoRandomImageCopyCount = 200;
 
 @interface UIApplication (KayokoPrivate)
 - (UIInterfaceOrientation)_frontMostAppOrientation;
@@ -1159,6 +1160,109 @@ NS_ASSUME_NONNULL_END
     [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyHistory
                                                                       shouldRemoveImages:YES
                                                                               completion:nil];
+}
+
+- (void)addRandomImageItems {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      KayokoPasteboardManager *manager = [KayokoPasteboardManager sharedInstance];
+      NSArray<NSDictionary<NSString *, id> *> *historyItems =
+          [manager getItemsFromHistoryWithKey:kKayokoHistoryKeyHistory];
+      NSArray<NSDictionary<NSString *, id> *> *favoriteItems =
+          [manager getItemsFromHistoryWithKey:kKayokoHistoryKeyFavorites];
+      NSMutableArray<NSDictionary<NSString *, id> *> *imageItems = [NSMutableArray array];
+      for (NSDictionary<NSString *, id> *dictionary in [historyItems arrayByAddingObjectsFromArray:favoriteItems]) {
+          if ([dictionary[kKayokoItemKeyImageName] length] > 0) {
+              [imageItems addObject:dictionary];
+          }
+      }
+      if ([imageItems count] == 0) {
+          return;
+      }
+
+      NSString *imagesPath = [KayokoPasteboardManager historyImagesPath];
+      NSDictionary<NSString *, id> *sourceDictionary = nil;
+      unsigned long long largestImageSize = 0;
+      for (NSDictionary<NSString *, id> *dictionary in imageItems) {
+          NSString *imagePath = [imagesPath stringByAppendingPathComponent:dictionary[kKayokoItemKeyImageName]];
+          NSNumber *fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:imagePath error:nil]
+              objectForKey:NSFileSize];
+          if (!fileSize) {
+              continue;
+          }
+          if (!sourceDictionary || [fileSize unsignedLongLongValue] > largestImageSize) {
+              sourceDictionary = dictionary;
+              largestImageSize = [fileSize unsignedLongLongValue];
+          }
+      }
+      if (!sourceDictionary) {
+          return;
+      }
+      NSString *sourceImageName = sourceDictionary[kKayokoItemKeyImageName];
+      NSString *sourceImagePath = [imagesPath stringByAppendingPathComponent:sourceImageName];
+      if (![[NSFileManager defaultManager] fileExistsAtPath:sourceImagePath]) {
+          return;
+      }
+
+      NSMutableArray<KayokoPasteboardItem *> *items =
+          [NSMutableArray arrayWithCapacity:kKayokoRandomImageCopyCount];
+      NSFileManager *fileManager = [NSFileManager defaultManager];
+      UIImage *sourceImage = [UIImage imageWithContentsOfFile:sourceImagePath];
+      if (!sourceImage) {
+          return;
+      }
+      NSString *sourceExtension = [[sourceImageName pathExtension] lowercaseString];
+      BOOL writesPNG = [sourceExtension isEqualToString:@"png"];
+      NSString *extension = writesPNG ? @"png" : @"jpg";
+      for (NSUInteger index = 0; index < kKayokoRandomImageCopyCount; index++) {
+          CGFloat change = ((CGFloat)arc4random_uniform(50) + 1.0) / 100.0;
+          CGFloat scale = arc4random_uniform(2) == 0 ? 1.0 - change : 1.0 + change;
+          CGSize targetSize = CGSizeMake(MAX(1.0, sourceImage.size.width * scale),
+                                         MAX(1.0, sourceImage.size.height * scale));
+          UIGraphicsBeginImageContextWithOptions(targetSize, NO, sourceImage.scale);
+          [sourceImage drawInRect:(CGRect){ CGPointZero, targetSize }];
+          UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+          UIGraphicsEndImageContext();
+          NSData *imageData = writesPNG ? UIImagePNGRepresentation(scaledImage)
+                                        : UIImageJPEGRepresentation(scaledImage, 0.9);
+          if (!imageData) {
+              continue;
+          }
+
+          NSString *copiedImageName = [NSString stringWithFormat:
+              @"kayoko-test-image-%03lu-%@.%@", (unsigned long)index,
+              [[NSUUID UUID] UUIDString], extension];
+          NSString *copiedImagePath = [[KayokoPasteboardManager historyImagesPath]
+              stringByAppendingPathComponent:copiedImageName];
+          if (![imageData writeToFile:copiedImagePath atomically:YES]) {
+              continue;
+          }
+
+          KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:sourceDictionary];
+          [item setImagePixelWidth:(NSUInteger)llround(targetSize.width * sourceImage.scale)];
+          [item setImagePixelHeight:(NSUInteger)llround(targetSize.height * sourceImage.scale)];
+          [item setImageByteCount:[imageData length]];
+          if (!item) {
+              [fileManager removeItemAtPath:copiedImagePath error:nil];
+              continue;
+          }
+          [item setImageName:copiedImageName];
+          [item setContent:[NSString stringWithFormat:@"kayoko-image-copy-%03lu-%@", (unsigned long)index,
+                                                      [[NSUUID UUID] UUIDString]]];
+          [items addObject:item];
+      }
+
+      NSUInteger originalLimit = [manager maximumHistoryAmount];
+      [manager setMaximumHistoryAmount:MAX(originalLimit, kKayokoRandomImageCopyCount)];
+      [manager savePasteboardItems:items
+                   toHistoryWithKey:kKayokoHistoryKeyHistory
+                          completion:^(__unused BOOL didSaveAnyItem) {
+                            [manager setMaximumHistoryAmount:originalLimit];
+                          }];
+    });
 }
 
 - (void)importLegacyFavorites {

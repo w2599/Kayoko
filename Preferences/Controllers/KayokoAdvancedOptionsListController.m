@@ -135,6 +135,37 @@ static NSString *const kKayokoCopyVaultDataDirectoryPath = @"/var/mobile/Documen
                                 notificationName:kKayokoNotificationKeyCoreClearHistory];
 }
 
+- (void)addRandomImageItemsPrompt {
+        NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+        UIAlertController *alert = [UIAlertController
+                alertControllerWithTitle:[bundle localizedStringForKey:@"Add Random Image Copies"
+                                                                                                                    value:nil
+                                                                                                                    table:@"AdvancedOptions"]
+                                                 message:[bundle localizedStringForKey:
+                                                                                         @"Choose an existing image at random and add 200 copies to history?"
+                                                                                                                 value:nil
+                                                                                                                 table:@"AdvancedOptions"]
+                                    preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *addAction = [UIAlertAction
+                actionWithTitle:[bundle localizedStringForKey:@"Add"
+                                                                                                                    value:nil
+                                                                                                                    table:@"AdvancedOptions"]
+                                    style:UIAlertActionStyleDestructive
+                                handler:^(__unused UIAlertAction *action) {
+                                    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                                                                               (CFStringRef)kKayokoNotificationKeyCoreAddRandomImageItems,
+                                                                                                             nil, nil, YES);
+                                }];
+        UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                                                                                                                 value:nil
+                                                                                                                                                                                 table:@"AdvancedOptions"]
+                                                                                                                     style:UIAlertActionStyleCancel
+                                                                                                                 handler:nil];
+        [alert addAction:addAction];
+        [alert addAction:cancelAction];
+        [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)deactivateAuthorizationPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 

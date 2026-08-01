@@ -194,6 +194,16 @@
 			<key>isDestructive</key>
 			<true/>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Add 200 Copies of a Random Image</string>
+			<key>action</key>
+			<string>addRandomImageItemsPrompt</string>
+			<key>isDestructive</key>
+			<true/>
+		</dict>
 		<!-- <dict>
 			<key>cell</key>
 			<string>PSButtonCell</string>

@@ -205,6 +205,16 @@ static void kayokoCoreClearHistoryCallback(CFNotificationCenterRef center, void 
     [[KayokoCoreRuntime sharedRuntime] clearHistory];
 }
 
+static void kayokoCoreAddRandomImageItemsCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                 const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] addRandomImageItems];
+}
+
 static void kayokoCorePreferencesReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                                 const void *object, CFDictionaryRef userInfo) {
     (void)center;
@@ -291,6 +301,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
                           callback:kayokoCoreClearFavoritesCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreClearHistory
                           callback:kayokoCoreClearHistoryCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreAddRandomImageItems
+                          callback:kayokoCoreAddRandomImageItemsCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreImportLegacyFavorites
                           callback:kayokoCoreImportLegacyFavoritesCallback];
     if (![runtime isEnabled]) {

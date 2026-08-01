@@ -1,3 +1,7 @@
+"Add" = "新增";
+"Add 200 Copies of a Random Image" = "新增 200 份图片历史记录";
+"Add Random Image Copies" = "新增随机图片副本";
+"Choose an existing image at random and add 200 copies to history?" = "确定新增 200 份大小不等的图片到历史记录吗？";
 "%lu unsupported item was not imported." = "未导入 %lu 个不受支持的条目。";
 "%lu unsupported items were not imported." = "未导入 %lu 个不受支持的条目。";
 "Advanced Options" = "高级选项";

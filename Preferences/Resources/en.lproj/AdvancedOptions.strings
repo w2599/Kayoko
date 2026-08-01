@@ -1,3 +1,7 @@
+"Add" = "Add";
+"Add 200 Copies of a Random Image" = "Add 200 Copies of a Random Image";
+"Add Random Image Copies" = "Add Random Image Copies";
+"Choose an existing image at random and add 200 copies to history?" = "Choose an existing image at random and add 200 copies to history?";
 "%lu unsupported item was not imported." = "%lu unsupported item was not imported.";
 "%lu unsupported items were not imported." = "%lu unsupported items were not imported.";
 "Advanced Options" = "Advanced Options";

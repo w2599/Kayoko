@@ -22,6 +22,8 @@ static NSString *const kKayokoNotificationKeyCoreResetThumbnailMemoryCache =
     @"com.82flex.kayoko.core.reset-thumbnail-memory-cache";
 static NSString *const kKayokoNotificationKeyCoreClearFavorites = @"com.82flex.kayoko.core.clear-favorites";
 static NSString *const kKayokoNotificationKeyCoreClearHistory = @"com.82flex.kayoko.core.clear-history";
+static NSString *const kKayokoNotificationKeyCoreAddRandomImageItems =
+    @"com.82flex.kayoko.core.add-random-image-items";
 static NSString *const kKayokoNotificationKeyCoreImportLegacyFavorites =
     @"com.82flex.kayoko.core.import-legacy-favorites";
 static NSString *const kKayokoNotificationKeyCopyVaultHistoryShow = @"com.squidforce.copyvault/history/show";
