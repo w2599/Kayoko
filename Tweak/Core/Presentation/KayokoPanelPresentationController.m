@@ -9,6 +9,7 @@
 #import "KayokoMainView.h"
 
 static CGFloat const kKayokoPanelPanScrollViewTopTolerance = 0.5;
+static CGFloat const kKayokoPanelAnimationDuration = 0.08;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -419,7 +420,7 @@ NS_ASSUME_NONNULL_END
     [self prepareOutsideDismissOverlayForShow];
 
     [self setAnimating:YES];
-    [UIView animateWithDuration:0.33
+    [UIView animateWithDuration:kKayokoPanelAnimationDuration
         delay:0
         usingSpringWithDamping:1
         initialSpringVelocity:0
@@ -460,13 +461,13 @@ NS_ASSUME_NONNULL_END
     }
 
     [self setAnimating:YES];
-    CGFloat animationDuration = 0.33;
+    CGFloat animationDuration = kKayokoPanelAnimationDuration;
     CGFloat initialSpringVelocity = 0;
     if (dismissTranslationY > 0 && dismissVelocityY > 0) {
         CGFloat currentTranslationY = MAX([[self panelView] transform].ty, 0);
         CGFloat remainingDistance = MAX(dismissTranslationY - currentTranslationY, 1);
         CGFloat effectiveVelocityY = MAX(dismissVelocityY, 900);
-        animationDuration = MIN(MAX(remainingDistance / effectiveVelocityY, 0.12), 0.33);
+        animationDuration = MIN(MAX(remainingDistance / effectiveVelocityY, 0.1), kKayokoPanelAnimationDuration);
         initialSpringVelocity = effectiveVelocityY / remainingDistance;
     }
 
