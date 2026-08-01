@@ -355,7 +355,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateEdgeFadeMask {
-    [self setEdgeFadeLeadingScrollOffset:[self hiddenHeaderOffsetY]];
+    CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
+    CGFloat leadingFadeScrollOffset = hiddenHeaderOffsetY > 0
+                                          ? hiddenHeaderOffsetY
+                                          : CGFLOAT_MAX;
+    [self setEdgeFadeLeadingScrollOffset:leadingFadeScrollOffset];
     [super updateEdgeFadeMask];
 }
 

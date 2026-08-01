@@ -139,8 +139,7 @@ static CGFloat const kKayokoMainViewTopCornerRadius = 26;
         [[self contentBottomConstraints] addObject:bottomConstraint];
         [[self contentSafeAreaBottomConstraints] addObject:safeAreaBottomConstraint];
         [self setContentTopConstraint:[[[self contentContainerView] topAnchor]
-                                          constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                         constant:kKayokoHeaderContentSpacing]];
+                                          constraintEqualToAnchor:[[self headerView] bottomAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
             [self contentTopConstraint], [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
             [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint, bottomConstraint
