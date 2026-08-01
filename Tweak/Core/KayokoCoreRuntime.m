@@ -292,7 +292,7 @@ NS_ASSUME_NONNULL_END
     [self.portraitOutsideDismissOverlayView removeFromSuperview];
     UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[window bounds]];
     [outsideDismissOverlayView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
-    [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.18]];
+    [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.001]];
     [outsideDismissOverlayView setAlpha:0];
     [outsideDismissOverlayView setHidden:YES];
     [outsideDismissOverlayView setUserInteractionEnabled:NO];
