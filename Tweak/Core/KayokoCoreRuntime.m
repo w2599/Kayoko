@@ -186,6 +186,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) UIWindow *compactLandscapeOverlayWindow;
 @property(nonatomic, assign) KayokoPanelPresentationMode activePresentationMode;
 @property(nonatomic, assign) BOOL pendingHeightPreferenceApply;
+@property(nonatomic, strong, nullable) NSNumber *pendingInitialViewMode;
 @property(nonatomic, assign) BOOL didRequestInitialHistoryPreload;
 @property(nonatomic, assign, getter=hasAuthorizationPassInMemory) BOOL authorizationPassInMemory;
 
@@ -229,6 +230,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)preparePanelHostForPresentationMode:(KayokoPanelPresentationMode)presentationMode;
 - (CGRect)fullscreenPanelFrameInWindow:(nullable UIWindow *)window;
+- (void)showWithInitialViewModeOnMainThread:(KayokoInitialViewMode)initialViewMode;
 
 @end
 
@@ -329,6 +331,12 @@ NS_ASSUME_NONNULL_END
     }
 
     [self preparePanelHostForPresentationMode:KayokoPanelPresentationModePortraitDrawer];
+
+    NSNumber *pendingInitialViewMode = self.pendingInitialViewMode;
+    self.pendingInitialViewMode = nil;
+    if (pendingInitialViewMode && ![self isPackageMaintenanceMode]) {
+        [self showWithInitialViewModeOnMainThread:[pendingInitialViewMode unsignedIntegerValue]];
+    }
 }
 
 - (CGFloat)overlayWindowLevel {
@@ -1033,11 +1041,28 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)showWithInitialViewMode:(KayokoInitialViewMode)initialViewMode {
-    if ([self isPackageMaintenanceMode]) {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self showWithInitialViewMode:initialViewMode];
+        });
         return;
     }
 
-    if (!self.mainViewController || ![self.mainViewController isHidden]) {
+    [self showWithInitialViewModeOnMainThread:initialViewMode];
+}
+
+- (void)showWithInitialViewModeOnMainThread:(KayokoInitialViewMode)initialViewMode {
+    if ([self isPackageMaintenanceMode]) {
+        self.pendingInitialViewMode = nil;
+        return;
+    }
+
+    if (!self.mainViewController) {
+        self.pendingInitialViewMode = @(initialViewMode);
+        return;
+    }
+
+    if (![self.mainViewController isHidden]) {
         return;
     }
 
@@ -1049,10 +1074,12 @@ NS_ASSUME_NONNULL_END
 
     KayokoPanelPresentationMode presentationMode = [self currentPresentationMode];
     if (![self preparePanelHostForPresentationMode:presentationMode]) {
+        self.pendingInitialViewMode = @(initialViewMode);
         [self playFailureHapticFeedbackIfNeeded];
         return;
     }
 
+    self.pendingInitialViewMode = nil;
     [self.mainViewController setInitialViewMode:initialViewMode];
     [self.mainViewController setAuthorizationPassed:[self authorizationPassedForPanelShow]];
 
