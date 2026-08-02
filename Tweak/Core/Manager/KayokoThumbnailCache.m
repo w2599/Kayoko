@@ -8,18 +8,17 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <ImageIO/ImageIO.h>
 #import <sys/stat.h>
+#import <roothide.h>
 
 static NSUInteger const kKayokoThumbnailMemoryCacheCountLimit = 80;
 static NSUInteger const kKayokoThumbnailMemoryCacheCostLimit = 24 * 1024 * 1024;
 static NSUInteger const kKayokoThumbnailPendingWriteCountLimit = 16;
 static NSUInteger const kKayokoThumbnailPendingWriteCostLimit = 16 * 1024 * 1024;
 static CGFloat const kKayokoThumbnailDiskCacheJPEGQuality = 0.9;
-static NSString *const kKayokoThumbnailDefaultCacheDirectoryPath =
-    @"/var/mobile/Library/Caches/com.zqbb.kayoko/thumbnails/v2";
+static NSString *const kKayokoThumbnailDefaultCacheDirectoryPath = @"/var/mobile/Library/com.zqbb.kayoko/thumbnails/v2";
 static NSString *const kKayokoThumbnailCacheRecipeVersion = @"3";
 static unsigned char const kKayokoThumbnailContainerMagic[] = {'K', 'Y', 'T', '2'};
-static NSUInteger const kKayokoThumbnailContainerHeaderLength =
-    sizeof(kKayokoThumbnailContainerMagic) + sizeof(uint64_t) + CC_SHA256_DIGEST_LENGTH;
+static NSUInteger const kKayokoThumbnailContainerHeaderLength = sizeof(kKayokoThumbnailContainerMagic) + sizeof(uint64_t) + CC_SHA256_DIGEST_LENGTH;
 static NSUInteger const kKayokoThumbnailContainerPayloadLimit = 32 * 1024 * 1024;
 
 @implementation KayokoThumbnailCache {
@@ -35,7 +34,7 @@ static NSUInteger const kKayokoThumbnailContainerPayloadLimit = 32 * 1024 * 1024
 }
 
 + (NSString *)defaultCacheDirectoryPath {
-    return kKayokoThumbnailDefaultCacheDirectoryPath;
+    return jbroot(kKayokoThumbnailDefaultCacheDirectoryPath);
 }
 
 - (instancetype)init {
@@ -49,8 +48,7 @@ static NSUInteger const kKayokoThumbnailContainerPayloadLimit = 32 * 1024 * 1024
         _fileManager = [[NSFileManager alloc] init];
         _decodeQueue =
             dispatch_queue_create("com.zqbb.kayoko.queue.thumbnail", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
-        _writeQueue = dispatch_queue_create("com.zqbb.kayoko.queue.thumbnail-write",
-                                            DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
+        _writeQueue = dispatch_queue_create("com.zqbb.kayoko.queue.thumbnail-write", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         _memoryCache = [[NSCache alloc] init];
         [_memoryCache setCountLimit:kKayokoThumbnailMemoryCacheCountLimit];
         [_memoryCache setTotalCostLimit:kKayokoThumbnailMemoryCacheCostLimit];
