@@ -44,6 +44,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 - (void)warmUpHistoryAccess;
 - (void)enterMaintenanceModeUntilProcessExit;
 - (void)resetThumbnailMemoryCache;
+- (void)removeAllThumbnailCaches;
 
 + (NSString *)historyPath;
 + (NSString *)historyDatabasePath;

@@ -390,6 +390,13 @@ static NSUInteger const kKayokoThumbnailContainerPayloadLimit = 32 * 1024 * 1024
     });
 }
 
+- (void)removeAllCachedThumbnails {
+    [_memoryCache removeAllObjects];
+    dispatch_async(_writeQueue, ^{
+      [_fileManager removeItemAtPath:_cacheDirectoryPath error:nil];
+    });
+}
+
 - (void)removeAllMemoryCachedThumbnails {
     [_memoryCache removeAllObjects];
 }

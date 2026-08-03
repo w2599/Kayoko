@@ -274,6 +274,10 @@ NS_ASSUME_NONNULL_END
     [_thumbnailCache removeAllMemoryCachedThumbnails];
 }
 
+- (void)removeAllThumbnailCaches {
+    [_thumbnailCache removeAllCachedThumbnails];
+}
+
 #pragma mark - Image Storage Helpers
 
 - (NSString *)randomStringWithLength:(NSUInteger)length {

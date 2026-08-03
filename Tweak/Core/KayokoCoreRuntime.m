@@ -254,6 +254,7 @@ NS_ASSUME_NONNULL_END
         _listHeightInPoints = kKayokoPreferenceKeyListHeightInPointsDefaultValue;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
         _pasteSuppressionState = [[KayokoPasteSuppressionState alloc] init];
+        [[KayokoPasteboardManager sharedInstance] removeAllThumbnailCaches];
     }
     return self;
 }
@@ -1164,6 +1165,7 @@ NS_ASSUME_NONNULL_END
 - (void)prepareForPackageMaintenance {
     [self setPackageMaintenanceMode:YES];
     [[KayokoPasteboardManager sharedInstance] enterMaintenanceModeUntilProcessExit];
+    [[KayokoPasteboardManager sharedInstance] removeAllThumbnailCaches];
     [self hideImmediately];
 }
 

@@ -22,6 +22,7 @@ typedef void (^KayokoThumbnailCompletion)(UIImage *_Nullable image);
                    targetSize:(CGSize)targetSize
                         scale:(CGFloat)scale
                    completion:(KayokoThumbnailCompletion)completion;
+- (void)removeAllCachedThumbnails;
 - (void)removeAllMemoryCachedThumbnails;
 - (void)performWhenIdle:(dispatch_block_t)completion;
 
