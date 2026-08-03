@@ -71,13 +71,9 @@ NS_ASSUME_NONNULL_END
 
 + (NSArray<KayokoHistoryMigrationSource *> *)defaultMigrationSources {
     return @[
-        [KayokoHistoryMigrationSource
-            sourceWithIdentifier:@"codes.aurora.kayoko"
-                     historyPath:jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.json")
-                      imagesPath:jbroot(@"/var/mobile/Library/codes.aurora.kayoko/images/")],
-        [KayokoHistoryMigrationSource sourceWithIdentifier:@"com.zqbb.kayoko"
-                                               historyPath:jbroot(@"/var/mobile/Library/com.zqbb.kayoko/history.json")
-                                                imagesPath:jbroot(@"/var/mobile/Library/com.zqbb.kayoko/images/")]
+        [KayokoHistoryMigrationSource sourceWithIdentifier:@"codes.aurora.kayoko"
+                                               historyPath:jbroot(@"/var/mobile/Library/codes.aurora.kayoko/history.json")
+                                                imagesPath:jbroot(@"/var/mobile/Library/codes.aurora.kayoko/images/")]
     ];
 }
 

@@ -62,7 +62,7 @@ static int runPostinstall(void) {
             fprintf(stderr, "Kayoko: Unable to inspect legacy cleanup paths: %s\n",
                     [[[error localizedDescription] description] UTF8String]);
         }
-        syncCredentialBestEffort();
+        if (NO) syncCredentialBestEffort();
 
         error = nil;
         if (![updater resetThumbnailCacheWithError:&error]) {
