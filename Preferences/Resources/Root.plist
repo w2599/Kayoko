@@ -194,7 +194,7 @@
 			<key>id</key>
 			<string>FavoritesSorting</string>
 			<key>label</key>
-			<string>Favorites Sorting</string>
+			<string>Favorites Sort Order</string>
 		</dict>
 		<dict>
 			<key>cell</key>
