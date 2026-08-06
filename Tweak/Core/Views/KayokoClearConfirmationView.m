@@ -10,8 +10,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoClearConfirmationView ()
 @property(nonatomic, strong) UILabel *confirmationLabel;
+@property(nonatomic, copy) NSString *confirmationHistoryKey;
 @property(nonatomic, strong, readwrite) UIButton *cancelButton;
 @property(nonatomic, strong, readwrite) UIButton *confirmButton;
+@property(nonatomic, strong, readwrite) UISegmentedControl *contentTypeControl;
 @property(nonatomic, strong) NSLayoutConstraint *stackViewCenterYConstraint;
 @end
 
@@ -48,6 +50,21 @@ NS_ASSUME_NONNULL_END
         [NSLayoutConstraint activateConstraints:@[ [[[self confirmationLabel] widthAnchor]
                                                     constraintLessThanOrEqualToAnchor:[self widthAnchor]
                                                                              constant:-48] ]];
+
+        NSBundle *localizationBundle = [KayokoPasteboardManager localizationBundle];
+        NSString *imagesTitle = [localizationBundle localizedStringForKey:@"Images" value:@"Images" table:@"Tweak"];
+        NSString *textTitle = [localizationBundle localizedStringForKey:@"Text" value:@"Text" table:@"Tweak"];
+        [self setContentTypeControl:[[UISegmentedControl alloc] initWithItems:@[ imagesTitle, textTitle ]]];
+        [[self contentTypeControl] setSelectedSegmentIndex:0];
+        [[self contentTypeControl] addTarget:self
+                          action:@selector(handleContentTypeChanged)
+                    forControlEvents:UIControlEventValueChanged];
+        [stackView addArrangedSubview:[self contentTypeControl]];
+        [[self contentTypeControl] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self contentTypeControl] widthAnchor] constraintEqualToConstant:184],
+            [[[self contentTypeControl] heightAnchor] constraintEqualToConstant:32]
+        ]];
 
         UIStackView *buttonStackView = [[UIStackView alloc] init];
         [buttonStackView setAxis:UILayoutConstraintAxisHorizontal];
@@ -102,13 +119,24 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateWithHistoryKey:(NSString *)historyKey {
+    [self updateWithHistoryKey:historyKey contentType:0];
+}
+
+- (void)handleContentTypeChanged {
+    [self updateWithHistoryKey:[self confirmationHistoryKey]
+                    contentType:(NSUInteger)[[self contentTypeControl] selectedSegmentIndex]];
+}
+
+- (void)updateWithHistoryKey:(NSString *)historyKey contentType:(NSUInteger)contentType {
+    [self setConfirmationHistoryKey:historyKey];
     NSString *localizationKey = [historyKey isEqualToString:kKayokoHistoryKeyFavorites]
-                                    ? @"Clear Favorites Confirmation"
-                                    : @"Clear History Confirmation";
+                                    ? (contentType == 1 ? @"Clear Favorites Text Confirmation" : @"Clear Favorites Images Confirmation")
+                                    : (contentType == 1 ? @"Clear History Text Confirmation" : @"Clear History Images Confirmation");
     [[self confirmationLabel]
         setText:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:localizationKey
                                                                               value:nil
                                                                               table:@"Tweak"]];
+    [[self contentTypeControl] setSelectedSegmentIndex:contentType == 1 ? 1 : 0];
 }
 
 @end

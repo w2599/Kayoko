@@ -18,6 +18,11 @@
 "Clear" = "Clear";
 "Clear Favorites Confirmation" = "Clear favorites? This action cannot be undone.";
 "Clear History Confirmation" = "Clear history? This action cannot be undone.";
+"Text" = "Text";
+"Clear Favorites Images Confirmation" = "Clear favorite images? This action cannot be undone.";
+"Clear Favorites Text Confirmation" = "Clear favorite text? This action cannot be undone.";
+"Clear History Images Confirmation" = "Clear history images? This action cannot be undone.";
+"Clear History Text Confirmation" = "Clear history text? This action cannot be undone.";
 "Continue" = "Continue";
 "Continuity" = "Continuity";
 "Copy" = "Copy";

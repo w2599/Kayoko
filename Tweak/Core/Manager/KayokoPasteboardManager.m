@@ -903,6 +903,29 @@ NS_ASSUME_NONNULL_END
                        }];
 }
 
+- (void)removePasteboardItemsFromHistoryWithKey:(NSString *)historyKey
+                                                                        contentType:(KayokoHistoryClearContentType)contentType
+                                                     postsChangeNotification:(BOOL)postsChangeNotification
+                                                                                completion:(void (^)(BOOL success))completion {
+        if (_maintenanceMode) {
+                if (completion) completion(NO);
+                return;
+        }
+
+        [_historyRepository removeItemsFromHistoryKey:historyKey
+                                                                            contentType:contentType
+                                                            shouldRemoveImages:contentType == kKayokoHistoryClearContentTypeImages
+                                                                             completion:^(BOOL success) {
+                                                                                 if (success && postsChangeNotification) {
+                                                                                         [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                                                                                                                                                        changeType:kKayokoPasteboardManagerHistoryChangeTypeClear
+                                                                                                                                                             itemDictionary:nil
+                                                                                                                                                                                     limit:[self limitForHistoryKey:historyKey]];
+                                                                                 }
+                                                                                 if (completion) completion(success);
+                                                                             }];
+}
+
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                                         completion:(void (^)(BOOL success))completion {

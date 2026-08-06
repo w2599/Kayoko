@@ -880,20 +880,24 @@ NS_ASSUME_NONNULL_END
 
     NSString *historyKey = [self clearConfirmationHistoryKey];
     if (reload) {
-        [[self listViewControllerForHistoryKey:historyKey] clearItems];
-        [self markHistoryKeyLoaded:historyKey];
-        if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
-            [self setClearConfirmationHistoryKey:nil];
-            [self updateClearButtonState];
-            if ([self
-                    cancelSearchForEmptyActiveHistoryIfNeededHidingView:[[self clearConfirmationViewController]
-                                                                            confirmationView]
-                                                              direction:KayokoContentTransitionDirectionModalDismissing
-                                                             completion:nil]) {
-                return;
-            }
-            [[self searchController] refreshForListViewController:[self activeListViewController]];
-        }
+        [[self historyController] markHistoryKeyDirty:historyKey];
+        [self reloadTableViewForHistoryKey:historyKey
+                                completion:^(KayokoHistoryListView *tableView) {
+                                  if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
+                                      [self setClearConfirmationHistoryKey:nil];
+                                      [self updateClearButtonState];
+                                      if ([self
+                                              cancelSearchForEmptyActiveHistoryIfNeededHidingView:[[self clearConfirmationViewController]
+                                                                                                      confirmationView]
+                                                                                        direction:KayokoContentTransitionDirectionModalDismissing
+                                                                                       completion:nil]) {
+                                          return;
+                                      }
+                                      [[self searchController] refreshForListViewController:[self activeListViewController]];
+                                  }
+                                  [self finishHidingClearConfirmationForHistoryKey:historyKey];
+                                }];
+        return;
     }
     [self finishHidingClearConfirmationForHistoryKey:historyKey];
 }

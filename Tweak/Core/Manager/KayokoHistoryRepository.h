@@ -72,6 +72,10 @@ typedef void (^KayokoHistoryAppBundleIdentifiersCompletion)(NSArray<NSString *> 
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                        completion:(nullable void (^)(BOOL success))completion;
+- (void)removeItemsFromHistoryKey:(NSString *)historyKey
+           contentType:(NSUInteger)contentType
+         shouldRemoveImages:(BOOL)shouldRemoveImages
+      completion:(nullable void (^)(BOOL success))completion;
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey
                                                                  error:(NSError *_Nullable *_Nullable)error;

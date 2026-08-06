@@ -37,6 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
     (nullable NSString *)clearConfirmationHistoryKey;
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey;
+- (void)markHistoryKeyDirty:(NSString *)historyKey;
 - (void)markAllHistoryKeysForScrollToTopBeforeNextDisplay;
 - (BOOL)consumeScrollToTopBeforeNextDisplayForHistoryKey:(NSString *)historyKey;
 - (void)handleHistoryChanged;

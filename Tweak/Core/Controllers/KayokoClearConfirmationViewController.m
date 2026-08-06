@@ -35,7 +35,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)beginWithHistoryKey:(NSString *)historyKey {
     [self setHistoryKey:historyKey];
-    [[self confirmationView] updateWithHistoryKey:historyKey];
+    [[self confirmationView] updateWithHistoryKey:historyKey contentType:kKayokoHistoryClearContentTypeImages];
     [[[self confirmationView] cancelButton] setEnabled:YES];
     [[[self confirmationView] confirmButton] setEnabled:YES];
 }
@@ -52,9 +52,10 @@ NS_ASSUME_NONNULL_END
 
     [[[self confirmationView] cancelButton] setEnabled:NO];
     [[[self confirmationView] confirmButton] setEnabled:NO];
+    KayokoHistoryClearContentType contentType = (KayokoHistoryClearContentType)[[[self confirmationView] contentTypeControl] selectedSegmentIndex];
     [[KayokoPasteboardManager sharedInstance]
-        removeAllPasteboardItemsFromHistoryWithKey:historyKey
-                                shouldRemoveImages:YES
+        removePasteboardItemsFromHistoryWithKey:historyKey
+                                    contentType:contentType
                            postsChangeNotification:NO
                                         completion:^(BOOL success) {
                                           if (success) {

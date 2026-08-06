@@ -687,6 +687,16 @@ NS_ASSUME_NONNULL_END
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                             error:(NSError **)error {
+    return [self removeItemsFromHistoryKey:historyKey
+                   contentType:NSUIntegerMax
+               shouldRemoveImages:shouldRemoveImages
+                    error:error];
+}
+
+- (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
+               contentType:(NSUInteger)contentType
+           shouldRemoveImages:(BOOL)shouldRemoveImages
+                error:(NSError **)error {
     if ([historyKey length] == 0) {
         return YES;
     }
@@ -695,6 +705,12 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    NSString *contentPredicate = @"";
+    if (contentType == 0) {
+        contentPredicate = @" AND image_name <> ''";
+    } else if (contentType == 1) {
+        contentPredicate = @" AND image_name = ''";
+    }
     NSArray<NSString *> *imageNames = shouldRemoveImages ? [self imageNamesForHistoryKey:historyKey error:error] : @[];
     if (!imageNames) {
         [self rollbackTransaction];
@@ -706,7 +722,8 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    BOOL success = [self executeStatement:@"DELETE FROM history_items WHERE history_key = ?"
+    NSString *deleteSQL = [NSString stringWithFormat:@"DELETE FROM history_items WHERE history_key = ?%@", contentPredicate];
+    BOOL success = [self executeStatement:deleteSQL
                                  bindings:@[ historyKey ]
                                     error:error];
     if (success && shouldRemoveImages) {

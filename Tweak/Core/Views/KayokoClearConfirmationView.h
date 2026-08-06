@@ -13,9 +13,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, strong, readonly) UIButton *cancelButton;
 @property(nonatomic, strong, readonly) UIButton *confirmButton;
+@property(nonatomic, strong, readonly) UISegmentedControl *contentTypeControl;
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 
 - (void)updateWithHistoryKey:(NSString *)historyKey;
+- (void)updateWithHistoryKey:(NSString *)historyKey contentType:(NSUInteger)contentType;
 
 @end
 

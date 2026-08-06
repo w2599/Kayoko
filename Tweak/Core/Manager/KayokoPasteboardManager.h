@@ -19,6 +19,11 @@ typedef void (^KayokoPasteboardAppBundleIdentifiersCompletion)(NSArray<NSString 
 
 static NSString *const kKayokoHistoryKeyHistory = @"history";
 static NSString *const kKayokoHistoryKeyFavorites = @"favorites";
+
+typedef NS_ENUM(NSUInteger, KayokoHistoryClearContentType) {
+    kKayokoHistoryClearContentTypeImages = 0,
+    kKayokoHistoryClearContentTypeText = 1,
+};
 static NSString *const kKayokoPasteboardManagerHistoryDidChangeNotification = @"com.zqbb.kayoko.history.did-change";
 static NSString *const kKayokoPasteboardManagerHistoryChangeTypeKey = @"change_type";
 static NSString *const kKayokoPasteboardManagerHistoryChangeHistoryKeyKey = @"history_key";
@@ -97,6 +102,10 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                            postsChangeNotification:(BOOL)postsChangeNotification
                                         completion:(nullable void (^)(BOOL success))completion;
+- (void)removePasteboardItemsFromHistoryWithKey:(NSString *)historyKey
+                             contentType:(KayokoHistoryClearContentType)contentType
+                      postsChangeNotification:(BOOL)postsChangeNotification
+                                completion:(nullable void (^)(BOOL success))completion;
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)getItemsFromHistoryWithKey:(NSString *)historyKey

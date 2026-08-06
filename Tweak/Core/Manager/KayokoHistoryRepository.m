@@ -325,12 +325,23 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                        completion:(void (^)(BOOL success))completion {
+    [self removeItemsFromHistoryKey:historyKey
+             contentType:NSUIntegerMax
+         shouldRemoveImages:shouldRemoveImages
+              completion:completion];
+}
+
+- (void)removeItemsFromHistoryKey:(NSString *)historyKey
+               contentType:(NSUInteger)contentType
+           shouldRemoveImages:(BOOL)shouldRemoveImages
+            completion:(void (^)(BOOL success))completion {
     [self performAsync:^{
       NSError *error = nil;
       KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
-      BOOL success = historyStore && [historyStore removeItemsFromHistoryKey:historyKey
-                                                          shouldRemoveImages:shouldRemoveImages
-                                                                       error:&error];
+    BOOL success = historyStore && [historyStore removeItemsFromHistoryKey:historyKey
+                                            contentType:contentType
+                                        shouldRemoveImages:shouldRemoveImages
+                                                 error:&error];
       if (!success) {
           HBLogDebug(@"Kayoko: Failed to remove history items: %@", error);
       }

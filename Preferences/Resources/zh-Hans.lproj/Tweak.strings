@@ -18,6 +18,11 @@
 "Clear" = "清空";
 "Clear Favorites Confirmation" = "要清空所有收藏内容吗？此操作不可撤销。";
 "Clear History Confirmation" = "要清空历史记录吗？此操作不可撤销。";
+"Text" = "文字";
+"Clear Favorites Images Confirmation" = "要清空收藏中的图片吗？此操作不可撤销。";
+"Clear Favorites Text Confirmation" = "要清空收藏中的文字吗？此操作不可撤销。";
+"Clear History Images Confirmation" = "要清空历史中的图片吗？此操作不可撤销。";
+"Clear History Text Confirmation" = "要清空历史中的文字吗？此操作不可撤销。";
 "Continue" = "继续";
 "Continuity" = "连续互通";
 "Copy" = "拷贝";
