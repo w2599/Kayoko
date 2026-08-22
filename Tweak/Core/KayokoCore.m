@@ -452,26 +452,21 @@ static void _kayokoCopy() {
     }];
 }
 
-static BOOL limitedCallback(CFTimeInterval interval) {
-    static CFTimeInterval lastTime = 0;
-    static os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
-    CFTimeInterval now = CACurrentMediaTime();
-    os_unfair_lock_lock(&lock);
-    BOOL limited = (now - lastTime) < interval;
-    if (!limited) {
-        lastTime = now;
-    }
-    os_unfair_lock_unlock(&lock);
-    return limited;
+static dispatch_queue_t kayokoPasteboardProcessingQueue(void) {
+    static dispatch_queue_t queue = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // if (@available(iOS 16.0, *)) {
+        //     queue = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
+        // }else{
+            queue = dispatch_queue_create("com.kayoko.core.PasteboardProcessingQueue", DISPATCH_QUEUE_SERIAL);
+        // }
+    });
+    return queue;
 }
 
 static void kayokoCopy() {
-    if (limitedCallback(0.1)) {
-        NSLogDebug(@"[----] [kayoko]: 频率过高，已限制");
-        return;
-    }
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    dispatch_async(kayokoPasteboardProcessingQueue(), ^{
         if (kayokoPrefsIgnoreRemoteReplication) {
             BOOL isRemote = [[UIPasteboard generalPasteboard] containsPasteboardTypes:@[@"com.apple.is-remote-clipboard"]];
             if (isRemote) {
@@ -486,8 +481,9 @@ static void kayokoCopy() {
             NSLogDebug(@"[----] [kayoko]: 检测到远程文件，忽略此次粘贴板变更");
             return;
         }
-
-        _kayokoCopy();
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            _kayokoCopy();
+        });
     });
 }
 
