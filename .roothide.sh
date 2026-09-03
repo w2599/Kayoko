@@ -6,18 +6,18 @@ buildPath="$(dirname "$tweakPath")/__build_roothide/$(basename "$tweakPath")"
 echo "tweakPath: $tweakPath"
 echo "buildPath: $buildPath"
 cd $tweakPath
-# make clean
+rm -rf .theos
+rm -rf packages
 
-versionFile=$(ls _version* | head -n 1)
+versionFile=$(ls _version_* | head -n 1)
 versionSee=$(echo $versionFile | sed 's/_version_//g')
 
-versionRSA="1.0.0-1"
+versionRSA="1.0.0-15"
 
-if [ -d "$buildPath" ]; then
-    rm -rf "$buildPath" || { echo "清理 buildPath 失败: $buildPath"; exit 1; }
+if [ ! -d "$buildPath" ]; then
+    mkdir -p "$buildPath" || { echo "创建 buildPath 失败: $buildPath"; exit 1; }
 fi
-mkdir -p "$buildPath" || { echo "创建 buildPath 失败: $buildPath"; exit 1; }
-cp -a . "$buildPath"/ || { echo "复制源文件到 buildPath 失败: $buildPath"; exit 1; }
+rsync -a --delete --exclude='.git' "$tweakPath"/ "$buildPath"/ || { echo "复制源文件到 buildPath 失败: $buildPath"; exit 1; }
 cd "$buildPath" || { echo "切换到 buildPath 失败: $buildPath"; exit 1; }
 
 # 如果还是原来的路径就退出
@@ -63,10 +63,10 @@ then
 	export THEOS_PACKAGE_SCHEME=roothide
     make package
 
-	make clean
 
 	export THEOS_PACKAGE_SCHEME=rootless
 	cp -af ./Headers/libSandyKayoko_rootless.plist ./layout/Library/libSandy/Kayoko.plist
+	make clean
     make package
 
 	# cp -f ./packages/*.deb $tweakPath
